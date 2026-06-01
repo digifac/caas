@@ -1,9 +1,12 @@
 """Health check route: /health."""
 
 import importlib.metadata
+import logging
 from typing import Any
 
 from fastapi import FastAPI
+
+logger = logging.getLogger(__name__)
 
 
 def _get_version() -> str:
@@ -31,10 +34,11 @@ async def _check_redis(app: FastAPI) -> dict[str, Any]:
             "redis_version": info.get("redis_version", "unknown"),
         }
     except Exception as exc:
+        logger.error("Redis health check failed: %s", exc)
         return {
             "enabled": True,
             "status": "unhealthy",
-            "error": str(exc),
+            "error": "Redis connection error",
         }
 
 

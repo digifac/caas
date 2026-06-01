@@ -23,7 +23,7 @@ def _is_trusted_proxy(host: str) -> bool:
                 if host == proxy:
                     return True
         except ValueError:
-            logger.warning("Ignoring invalid proxy IP/CIDR: %s", proxy)
+            logger.warning("Ignoring invalid proxy IP/CIDR (length=%d)", len(proxy))
     return False
 
 
