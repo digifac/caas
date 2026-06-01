@@ -29,9 +29,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y tesseract-ocr
-          # fra+eng sont toujours installés (requis par les tests)
+          # fra+eng always installed (required by tests)
           sudo apt-get install -y tesseract-ocr-fra tesseract-ocr-eng
-          # Installer les langues supplémentaires définies dans CAAS_OCR_LANGUAGES
+          # Install additional languages defined in CAAS_OCR_LANGUAGES
           IFS='+' read -ra langs <<< "${{ env.CAAS_OCR_LANGUAGES }}"
           for lang in "${langs[@]}"; do
             sudo apt-get install -y "tesseract-ocr-${lang}" || echo "WARN: tesseract-ocr-${lang} not found, skipping"
@@ -91,3 +91,35 @@ jobs:
           name: benchmark-results
           path: .benchmarks/
           retention-days: 30
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
