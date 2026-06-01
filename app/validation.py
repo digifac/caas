@@ -2,6 +2,7 @@
 
 import io
 import logging
+import re
 import zipfile
 from collections.abc import Callable
 
@@ -9,6 +10,38 @@ from app.config import settings
 from app.zip_utils import _validate_openxml_structure, _validate_zip_bomb
 
 logger = logging.getLogger(__name__)
+
+# Pattern to detect path traversal attempts in filenames
+_PATH_TRAVERSAL_RE = re.compile(r"(\.\./|\.\.\\|%2e%2e|%5c|/|\\\\)")
+
+
+def validate_filename(filename: str) -> str | None:
+    """Validate a filename for security issues (path traversal, null bytes, control chars).
+
+    Args:
+        filename: The filename to validate.
+
+    Returns:
+        Error message if invalid, None if valid.
+    """
+    if not filename:
+        return "Filename is empty"
+
+    # Check for path traversal sequences
+    if _PATH_TRAVERSAL_RE.search(filename):
+        return "Path traversal detected in filename"
+
+    # Check for null bytes
+    if "\x00" in filename:
+        return "Null byte detected in filename"
+
+    # Check for control characters (ASCII 0-31 except common whitespace)
+    for char in filename:
+        code = ord(char)
+        if code < 32 and code not in (9, 10, 13):  # Allow tab, newline, carriage return
+            return f"Control character detected in filename (U+{code:04X})"
+
+    return None
 
 # --- Magic bytes (headers) by format ---
 MAGIC_BYTES: dict = {

@@ -4,6 +4,7 @@ Converts OpenDocument Spreadsheet (.ods) files to Markdown format.
 Extracts all sheets, cells, and formats them as Markdown tables.
 """
 
+import html
 import io
 import logging
 
@@ -38,7 +39,7 @@ def convert_ods_to_md(file_bytes: bytes) -> str:
 
     for sheet_idx, sheet in enumerate(sheets):
         sheet_name = sheet.getAttribute("name") or f"Sheet {sheet_idx + 1}"
-        markdown_parts.append(f"## {sheet_name}\n")
+        markdown_parts.append(f"## {html.escape(str(sheet_name))}\n")
 
         rows = list(sheet.getElementsByType(table.TableRow))
 
@@ -88,10 +89,10 @@ def _extract_cell_text(cell: table.TableCell) -> str:
     if not texts:
         return ""
 
-    # Concatenate all paragraph text in the cell
+    # Concatenate all paragraph text in the cell (escape to prevent XSS)
     parts: list[str] = []
     for p in texts:
-        cell_text = str(p).strip()
+        cell_text = html.escape(str(p).strip())
         if cell_text:
             parts.append(cell_text)
 

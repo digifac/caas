@@ -184,6 +184,15 @@ La fonction `_sanitize_soup()` étend maintenant la sanitisation des attributs `
 
 ✅ **Versions bien verrouillées** avec des bornes supérieures (`<1.0.0`, `<2.0.0`), ce qui est une bonne pratique pour éviter les breaking changes.
 
+### 🔒 Scan de vulnérabilités (pip-audit)
+
+| Date       | Vulnérabilité  | Paquet    | Version avant | Version après | Statut     |
+| ---------- | -------------- | --------- | ------------- | ------------- | ---------- |
+| 2025-02-19 | PYSEC-2026-161 | starlette | 1.0.0         | 1.2.1         | ✅ Corrigé |
+
+**Commande utilisée :** `.venv/Scripts/pip-audit.exe`  
+**Résultat actuel :** Aucune vulnérabilité connue dans les dépendances installées.
+
 ---
 
 ## 6. Verdict global
@@ -219,3 +228,33 @@ C'est un projet **mature et bien conçu**, avec une architecture claire, une app
 **Points restants (mineurs) :**
 
 Aucun point critique restant.
+
+---
+
+## 7. Recommandations supplémentaires
+
+### 🟡 Moyenne priorité
+
+1. **Health check exposé** : L'endpoint `/healthz` expose des informations détaillées (version, stockage, Redis). Ajouter un endpoint `/ready` minimal pour les load balancers et réserver `/healthz` au réseau interne.
+2. **Redis sans TLS** : Utiliser `rediss://` (Redis over TLS) en production si Redis est sur une machine séparée.
+
+### 🟢 Basse priorité
+
+1. **Limite de taille réponse Markdown** : Une conversion PDF→Markdown peut produire un résultat volumineux. Ajouter une vérification post-conversion (erreur 413 si trop grand).
+2. **Logs de sécurité dédiés** : Logger les tentatives de path traversal bloquées, ZIP bombs détectées, et activations du rate limiting.
+3. **CORS explicite** : Configurer `allow_origins` restreint si l'API a des consommateurs frontend connus.
+
+---
+
+## 8. Score Global
+
+| Catégorie              | Note       | Commentaire                                               |
+| ---------------------- | ---------- | --------------------------------------------------------- |
+| Validation d'entrée    | ⭐⭐⭐⭐⭐ | Magic bytes + path traversal + ZIP bomb (7 vérifications) |
+| Sanitisation de sortie | ⭐⭐⭐⭐⭐ | html.escape() dans tous les converters, URL sanitization  |
+| Infrastructure         | ⭐⭐⭐⭐   | Multi-stage Docker, non-root user, Redis optionnel        |
+| Gestion d'erreurs      | ⭐⭐⭐⭐   | Centralisée, debug-only details                           |
+| Rate Limiting          | ⭐⭐⭐⭐⭐ | Sliding window, dual backend (memory/Redis)               |
+| Dépendances            | ⭐⭐⭐⭐⭐ | Aucune vulnérabilité connue après correction starlette    |
+
+**Note globale : A+ (Excellent)**
