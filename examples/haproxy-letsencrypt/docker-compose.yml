@@ -1,0 +1,112 @@
+# ============================================================
+# HAProxy + CAAS + Certbot (Let's Encrypt)
+# ============================================================
+# This compose file deploys CAAS behind HAProxy with:
+#   - TLS termination via Let's Encrypt certificates
+#   - API key authentication enforced by HAProxy
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # HAProxy — reverse proxy, TLS termination, API key auth
+  # ----------------------------------------------------------
+  haproxy:
+    image: haproxy:2.9-alpine
+    container_name: haproxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - certbot-conf:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+    environment:
+      - CAAS_API_KEY=${CAAS_API_KEY}
+    depends_on:
+      - caas
+      - certbot
+    networks:
+      - caas-net
+
+  # ----------------------------------------------------------
+  # CAAS — the conversion service (internal only)
+  # ----------------------------------------------------------
+  caas:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    container_name: caas
+    restart: unless-stopped
+    # No ports exposed — only reachable via HAProxy on the internal network
+    env_file:
+      - ../../.env
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - caas-net
+
+  # ----------------------------------------------------------
+  # Certbot — obtains and renews Let's Encrypt certificates
+  # ----------------------------------------------------------
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        mkdir -p /var/www/certbot
+
+        haproxy-reload() {
+          CERT_PATH="/etc/letsencrypt/live/${DOMAIN}"
+          cat "${CERT_PATH}/fullchain.pem" "${CERT_PATH}/privkey.pem" \
+            > /etc/ssl/certs/caas.pem 2>/dev/null || true
+        }
+
+        # Initial certificate request
+        certbot certonly --webroot \
+          --webroot-path /var/www/certbot \
+          --email "${CERTBOT_EMAIL}" \
+          --agree-tos \
+          --no-eff-email \
+          -d "${DOMAIN}" \
+          --deploy-hook "haproxy-reload"
+
+        # Renewal loop: check every 12 hours
+        while true; do
+          certbot renew --deploy-hook "haproxy-reload" --quiet
+          sleep 43200
+        done
+    environment:
+      - DOMAIN=${DOMAIN}
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
+    networks:
+      - caas-net
+
+# ----------------------------------------------------------
+# Volumes
+# ----------------------------------------------------------
+volumes:
+  certbot-conf:
+    driver: local
+  certbot-www:
+    driver: local
+
+# ----------------------------------------------------------
+# Networks
+# ----------------------------------------------------------
+networks:
+  caas-net:
+    driver: bridge

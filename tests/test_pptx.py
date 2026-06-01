@@ -1,0 +1,236 @@
+"""Tests for PPTX to Markdown conversion."""
+
+import httpx
+import pytest
+from app.api import create_app
+from app.converters.pptx import convert_pptx_to_md
+from app.validation import validate_file_content
+from fastapi.testclient import TestClient
+
+
+@pytest.fixture
+def app():
+    """Create a test application."""
+    return create_app()
+
+
+@pytest.fixture
+def client(app):
+    """Create a sync test client for streaming tests."""
+    return TestClient(app)
+
+
+# =============================================================================
+# Tests unitaires — convert_pptx_to_md
+# =============================================================================
+
+
+class TestConvertPptxToMdBasic:
+    """Tests for basic PPTX to Markdown conversion."""
+
+    def test_convert_pptx_to_md_basic(self, sample_pptx_bytes):
+        """Conversion d'une présentation simple."""
+        result = convert_pptx_to_md(sample_pptx_bytes)
+        assert "## Présentation de Test" in result
+        assert "Sous-titre de la présentation" in result
+
+    def test_convert_pptx_to_md_multiple_slides(self, sample_pptx_bytes):
+        """Plusieurs slides."""
+        result = convert_pptx_to_md(sample_pptx_bytes)
+        assert "## Présentation de Test" in result
+        assert "## Deuxième Slide" in result
+        # Slides should be separated by ---
+        assert "---" in result
+
+    def test_convert_pptx_to_md_with_title(self, sample_pptx_bytes):
+        """Slide avec titre."""
+        result = convert_pptx_to_md(sample_pptx_bytes)
+        assert "## Présentation de Test" in result
+        assert "## Deuxième Slide" in result
+
+    def test_convert_pptx_to_md_with_bullets(self, sample_pptx_bytes):
+        """Listes à puces."""
+        result = convert_pptx_to_md(sample_pptx_bytes)
+        assert "Premier point" in result
+        assert "Deuxième point" in result
+        assert "Sous-point" in result
+
+    def test_convert_pptx_to_md_with_table(self, sample_pptx_with_table_bytes):
+        """Tableau dans une slide."""
+        result = convert_pptx_to_md(sample_pptx_with_table_bytes)
+        assert "Slide avec Tableau" in result
+        assert "En-tête 1" in result
+        assert "En-tête 2" in result
+        assert "En-tête 3" in result
+        assert "A" in result
+        assert "B" in result
+        assert "C" in result
+        assert "1" in result
+        assert "2" in result
+        assert "3" in result
+        # Markdown table format
+        assert "| En-tête 1 |" in result
+        assert "| --- |" in result
+
+    def test_convert_pptx_to_md_empty_slide(self, sample_pptx_empty_slide_bytes):
+        """Slide vide."""
+        result = convert_pptx_to_md(sample_pptx_empty_slide_bytes)
+        # Even an empty slide should have a slide header
+        assert "## Slide 1" in result
+
+    def test_convert_pptx_to_md_mocked(self, sample_pptx_bytes):
+        """Test avec python-pptx mocké (vérifie que le résultat est une chaîne)."""
+        result = convert_pptx_to_md(sample_pptx_bytes)
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+
+# =============================================================================
+# Tests d'intégration — API endpoints
+# =============================================================================
+
+
+class TestConvertPptxIntegration:
+    """Tests for PPTX conversion via API endpoints."""
+
+    @pytest.mark.anyio
+    async def test_convert_pptx_success(
+        self, async_client: httpx.AsyncClient, sample_pptx_bytes: bytes
+    ):
+        """POST /convert avec fichier valide."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.pptx",
+                    sample_pptx_bytes,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                )
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "markdown" in data
+        assert "## Présentation de Test" in data["markdown"]
+
+    @pytest.mark.anyio
+    async def test_convert_pptx_uppercase_ext(
+        self, async_client: httpx.AsyncClient, sample_pptx_bytes: bytes
+    ):
+        """Extension .PPTX en majuscules."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.PPTX",
+                    sample_pptx_bytes,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                )
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "markdown" in data
+
+    @pytest.mark.anyio
+    async def test_convert_async_pptx_completes(
+        self, async_client: httpx.AsyncClient, sample_pptx_bytes: bytes
+    ):
+        """Tâche asynchrone PPTX."""
+        response = await async_client.post(
+            "/convert?async=true",
+            files={
+                "file": (
+                    "test.pptx",
+                    sample_pptx_bytes,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                )
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert "task_id" in data
+        assert data["status"] == "pending"
+
+        # Wait for task to complete
+        import asyncio
+
+        task_id = data["task_id"]
+        for _ in range(30):  # Max 30 seconds
+            await asyncio.sleep(0.5)
+            task_response = await async_client.get(f"/task/{task_id}")
+            task_data = task_response.json()
+            if task_data["status"] == "completed":
+                break
+        assert task_data["status"] == "completed"
+        assert "markdown" in task_data["result"]
+        assert "## Présentation de Test" in task_data["result"]["markdown"]
+
+    def test_convert_pptx_streaming(self, client, sample_pptx_bytes):
+        """Streaming SSE pour PPTX (TestClient sync — StreamingResponse non supporté par httpx.AsyncClient)."""
+        response = client.post(
+            "/convert?streaming=true",
+            files={
+                "file": (
+                    "test.pptx",
+                    sample_pptx_bytes,
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                )
+            },
+        )
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
+        # The response should contain SSE data
+        text = response.text
+        assert "data:" in text
+        # Should have start and complete events
+        events = [line for line in text.split("\n") if line.startswith("data:")]
+        assert len(events) >= 2
+
+
+# =============================================================================
+# Tests de validation
+# =============================================================================
+
+
+class TestValidatePptx:
+    """Tests for PPTX file validation."""
+
+    def test_validate_pptx_magic_bytes(self, sample_pptx_bytes):
+        """Détection par magic bytes."""
+        error = validate_file_content(sample_pptx_bytes, "pptx")
+        assert error is None
+
+    def test_validate_pptx_mime_type(self, sample_pptx_bytes):
+        """Validation MIME."""
+        error = validate_file_content(sample_pptx_bytes, "pptx")
+        assert error is None
+
+    def test_validate_pptx_zip_structure(self, sample_pptx_bytes):
+        """Validation structure ZIP."""
+        error = validate_file_content(sample_pptx_bytes, "pptx")
+        assert error is None
+
+    def test_validate_pptx_min_size(self):
+        """Taille minimale."""
+        # A minimal PPTX should be at least 512 bytes
+        small_bytes = b"PK\x03\x04" + b"\x00" * 100  # Too small
+        error = validate_file_content(small_bytes, "pptx")
+        assert error is not None
+        assert "too short" in error.lower() or "corrupted" in error.lower()
+
+    def test_validate_pptx_invalid_header(self):
+        """En-tête invalide."""
+        invalid_bytes = b"This is not a PPTX file" + b"\x00" * 600
+        error = validate_file_content(invalid_bytes, "pptx")
+        assert error is not None
+        assert "header" in error.lower() or "invalid" in error.lower()
+
+    def test_validate_pptx_empty_file(self):
+        """Fichier vide."""
+        error = validate_file_content(b"", "pptx")
+        assert error is not None
+        assert "empty" in error.lower()

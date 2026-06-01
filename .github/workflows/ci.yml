@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CAAS_OCR_LANGUAGES: fra+eng
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+          # fra+eng sont toujours installés (requis par les tests)
+          sudo apt-get install -y tesseract-ocr-fra tesseract-ocr-eng
+          # Installer les langues supplémentaires définies dans CAAS_OCR_LANGUAGES
+          IFS='+' read -ra langs <<< "${{ env.CAAS_OCR_LANGUAGES }}"
+          for lang in "${langs[@]}"; do
+            sudo apt-get install -y "tesseract-ocr-${lang}" || echo "WARN: tesseract-ocr-${lang} not found, skipping"
+          done
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run tests
+        run: |
+          pytest tests/ -v --ignore=tests/test_benchmarks.py
+
+  benchmark:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr
+          sudo apt-get install -y tesseract-ocr-fra tesseract-ocr-eng
+          IFS='+' read -ra langs <<< "${{ env.CAAS_OCR_LANGUAGES }}"
+          for lang in "${langs[@]}"; do
+            sudo apt-get install -y "tesseract-ocr-${lang}" || echo "WARN: tesseract-ocr-${lang} not found, skipping"
+          done
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run converter benchmarks
+        run: |
+          pytest tests/test_benchmarks.py -k "ConversionBenchmark or ThroughputBenchmark" -v --benchmark-only --benchmark-save=benchmark --benchmark-save-data
+
+      - name: Run API performance tests
+        run: |
+          pytest tests/test_benchmarks.py -k "APIEndpointBenchmark or ConcurrentAPIBenchmark" -v
+
+      - name: Ensure benchmark directory exists
+        run: mkdir -p .benchmarks
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: benchmark-results
+          path: .benchmarks/
+          retention-days: 30

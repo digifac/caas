@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Convert your PDF, DOCX, ODT, ODP, HTML, XLSX, ODS, and PPTX files to Markdown with CAAS.">
+    <title>CAAS - Convert PDF/DOCX/ODT/ODP/HTML/XLSX/ODS/PPTX to Markdown</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container" id="container">
+        <div class="resize-handle" id="resizeHandle"></div>
+        <h1>📄 CAAS</h1>
+        <p>Convert PDF, DOCX, ODT, ODP, HTML, XLSX, ODS, or PPTX files to Markdown</p>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="upload-zone" id="dropZone">
+                <div class="icon">📁</div>
+                <div class="label">Drag and drop files here or click to select</div>
+                <input type="file" name="files" id="fileInput" accept=".pdf,.docx,.odt,.odp,.html,.htm,.xlsx,.pptx,.ods" multiple>
+            </div>
+            <div class="file-list" id="fileList"></div>
+            <div class="file-count" id="fileCount"></div>
+            <div class="mode-toggles">
+                <div class="async-toggle">
+                    <input type="checkbox" id="asyncMode">
+                    <label for="asyncMode">Async mode (background processing)</label>
+                </div>
+                <div class="async-toggle">
+                    <input type="checkbox" id="streamingMode">
+                    <label for="streamingMode">Streaming mode (progressive display)</label>
+                </div>
+            </div>
+            <button type="submit" id="submitBtn" disabled>Convert</button>
+        </form>
+        <div class="task-status" id="taskStatus">
+            <div class="spinner" id="taskSpinner"></div>
+            <span id="taskStatusText"></span>
+        </div>
+        <div class="queue-info" id="queueInfo"></div>
+        <div class="error" id="error"></div>
+        <div class="result" id="result">
+            <div class="doc-blocks" id="docBlocks"></div>
+            <pre id="markdown" style="display:none"></pre>
+            <div class="rendered" id="rendered" style="display:none"></div>
+            <div class="view-toggle" id="viewToggle" style="display:none">
+                <button id="renderedBtn" class="active" data-view="rendered">Formatted</button>
+                <button id="rawBtn" data-view="raw">Raw</button>
+            </div>
+        </div>
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/marked@15.0.6/marked.min.js" integrity="sha256-ixCmFz1ST8bJe8lYm6g4PgIS1cDWF+FRnl9OagyfIk8=" crossorigin="anonymous"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

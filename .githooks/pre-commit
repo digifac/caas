@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Pre-commit hook: auto-increment version in pyproject.toml
+# Runs on EVERY commit - no manual intervention needed
+# Uses --no-reinstall to avoid pip operations during git commit
+
+# Get the repository root
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PYPROJECT="$REPO_ROOT/pyproject.toml"
+BUMP_SCRIPT="$REPO_ROOT/bump_version.py"
+
+# Check if bump_version.py exists
+if [ -f "$BUMP_SCRIPT" ]; then
+    # Use the virtual environment Python if available, otherwise system Python
+    if [ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+        PYTHON="$REPO_ROOT/.venv/Scripts/python.exe"
+    elif [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+        PYTHON="$REPO_ROOT/.venv/bin/python"
+    else
+        PYTHON="python"
+    fi
+    
+    echo "🔄 Auto-bumping version..."
+    "$PYTHON" "$BUMP_SCRIPT" --no-reinstall
+    
+    # Stage the updated pyproject.toml
+    git add "$PYPROJECT"
+fi
+
+exit 0

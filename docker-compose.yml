@@ -1,0 +1,52 @@
+# ============================================================================
+# CAAS — Docker Compose
+# ============================================================================
+# Default: in-memory mode (no Redis required).
+# To enable Redis, uncomment the redis service below AND set:
+#   CAAS_REDIS_URL=redis://caas-redis:6379/0
+# in your .env file.
+# ============================================================================
+
+services:
+  caas:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: caas
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Uncomment depends_on when Redis is enabled:
+    # depends_on:
+    #   redis:
+    #     condition: service_healthy
+
+  # --- Optional Redis service (uncomment to enable shared state) ---
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: caas-redis
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 5s
+  #   volumes:
+  #     - redis-data:/data
+
+# volumes:
+#   redis-data:
+#     driver: local

@@ -1,0 +1,161 @@
+{
+  "name": "CAAS - Streaming Document to Markdown Conversion",
+  "nodes": [
+    {
+      "id": "stream-001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.ScheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "webhookId": "stream-schedule-001",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromUrl",
+        "url": "={{ $env.PDF_URL || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' }}",
+        "options": {}
+      },
+      "id": "stream-002",
+      "name": "Download File",
+      "type": "n8n-nodes-base.ReadWriteFile",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CAAS_URL || 'http://localhost:8000' }}/convert?streaming=true",
+        "sendFiles": true,
+        "fileKey": "file",
+        "options": {
+          "timeout": 60000,
+          "responseFormat": "stream"
+        }
+      },
+      "id": "stream-003",
+      "name": "CAAS Stream Convert",
+      "type": "n8n-nodes-base.HttpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse SSE (Server-Sent Events) stream and accumulate markdown chunks\nconst body = $input.item.json.body || '';\nconst lines = body.split('\\n');\nconst chunks = [];\n\nfor (const line of lines) {\n  if (line.startsWith('data: ')) {\n    // Extract the data payload from SSE event\n    const data = line.slice(6); // Remove 'data: ' prefix\n    // Unescape SSE-encoded newlines\n    const unescaped = data.replace(/\\\\n/g, '\\n');\n    chunks.push(unescaped);\n  }\n}\n\n// The last chunk contains the full accumulated markdown\nconst markdown = chunks.length > 0 ? chunks[chunks.length - 1] : '';\n\nreturn {\n  json: {\n    markdown,\n    chunk_count: chunks.length,\n    received_streaming: true\n  }\n};",
+        "mode": "js"
+      },
+      "id": "stream-004",
+      "name": "Parse SSE Stream",
+      "type": "n8n-nodes-base.Code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "version": 2,
+        "fields": {
+          "content": {
+            "mode": "name",
+            "name": "markdown",
+            "value": "={{ $json.markdown }}"
+          },
+          "chunks": {
+            "mode": "name",
+            "name": "chunk_count",
+            "value": "={{ $json.chunk_count }}"
+          }
+        },
+        "options": {}
+      },
+      "id": "stream-005",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.Set",
+      "typeVersion": 3.4,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Streaming Conversion Workflow\n\nThis workflow demonstrates **streaming** conversion via CAAS:\n\n### Supported Formats:\nPDF, DOCX, ODT, ODP, ODS, HTML, XLSX, PPTX\n\n### Steps:\n1. **Download File**: Downloads a file from a URL\n2. **CAAS Stream Convert**: POST /convert?streaming=true → returns SSE stream\n3. **Parse SSE Stream**: Code node parses SSE events and extracts markdown chunks\n4. **Format Output**: Cleans up the final output\n\n### How Streaming Works:\n- CAAS yields markdown chunks progressively (per-page for PDF, per-block for others)\n- Each chunk is sent as an SSE event: `data: <chunk>\\n\\n`\n- Each event contains the **accumulated** markdown up to that point\n- The last event contains the complete converted document\n\n### Required Environment:\n- `CAAS_URL`: CAAS API URL (e.g., http://localhost:8000)\n- `PDF_URL`: URL of the file to convert (optional)",
+        "height": 380,
+        "width": 420
+      },
+      "id": "stream-006",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.StickyNote",
+      "typeVersion": 1,
+      "position": [250, 80]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "CAAS Stream Convert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CAAS Stream Convert": {
+      "main": [
+        [
+          {
+            "node": "Parse SSE Stream",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse SSE Stream": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceSettings": {
+      "credits": {
+        "consumed": 0,
+        "limit": 0
+      }
+    }
+  },
+  "id": "caas-workflow-streaming",
+  "tags": []
+}

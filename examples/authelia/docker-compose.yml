@@ -1,0 +1,153 @@
+# ============================================================
+# Authelia + Nginx + CAAS
+# ============================================================
+# This compose file deploys CAAS behind Nginx with:
+#   - Authelia for user authentication (SSO, 2FA, LDAP, etc.)
+#   - Nginx as reverse proxy enforcing Authelia rules
+#   - CAAS protected by authentication policies
+# ============================================================
+
+services:
+  # ----------------------------------------------------------
+  # Nginx — reverse proxy + Authelia enforcement
+  # ----------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot-www:/var/www/certbot:ro
+      - certbot-conf:/etc/letsencrypt:ro
+    depends_on:
+      - caas
+      - authelia
+      - certbot
+    networks:
+      - caas-net
+
+  # ----------------------------------------------------------
+  # Authelia — authentication server (SSO, 2FA, LDAP, etc.)
+  # ----------------------------------------------------------
+  authelia:
+    image: authelia/authelia:latest
+    container_name: authelia
+    restart: unless-stopped
+    # No direct port exposure — only reachable via Nginx
+    volumes:
+      - ./authelia/config.yml:/etc/authelia/config.yml:ro
+      - authelia-data:/var/lib/authelia
+    environment:
+      - AUTHELIA_JWT_SECRET_FILE=/run/secrets/jwt_secret
+      - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/session_secret
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/run/secrets/storage_key
+      - AUTHELIA_DUAL_FACTOR_TOTP_ISSUER=${AUTHELIA_DUAL_FACTOR_TOTP_ISSUER}
+      - AUTHELIA_IDENTITY_VALIDATORS__LOCAL_USERS_PASSWORD_RESET_DISABLE=${AUTHELIA_PASSWORD_RESET_DISABLE}
+    healthcheck:
+      test: ["CMD", "/usr/bin/authelia", "check", "config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    secrets:
+      - jwt_secret
+      - session_secret
+      - storage_key
+    networks:
+      - caas-net
+
+  # ----------------------------------------------------------
+  # CAAS — the conversion service (internal only)
+  # ----------------------------------------------------------
+  caas:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    container_name: caas
+    restart: unless-stopped
+    # No ports exposed — only reachable via Nginx on the internal network
+    env_file:
+      - ../../.env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CAAS_TRUSTED_PROXIES=127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      - CAAS_CORS_ORIGINS=${CAAS_CORS_ORIGINS}
+      - CAAS_CORS_ALLOW_CREDENTIALS=${CAAS_CORS_ALLOW_CREDENTIALS}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - caas-net
+
+  # ----------------------------------------------------------
+  # Certbot — obtains and renews Let's Encrypt certificates
+  # ----------------------------------------------------------
+  certbot:
+    image: certbot/certbot:latest
+    container_name: certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-conf:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        mkdir -p /var/www/certbot
+
+        nginx-reload() {
+          docker exec nginx nginx -s reload 2>/dev/null || true
+        }
+
+        # Initial certificate request
+        certbot certonly --webroot \
+          --webroot-path /var/www/certbot \
+          --email "${CERTBOT_EMAIL}" \
+          --agree-tos \
+          --no-eff-email \
+          -d "${DOMAIN}" \
+          --deploy-hook "nginx-reload"
+
+        # Renewal loop: check every 12 hours
+        while true; do
+          certbot renew --deploy-hook "nginx-reload" --quiet
+          sleep 43200
+        done
+    environment:
+      - DOMAIN=${DOMAIN}
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
+    networks:
+      - caas-net
+
+# ----------------------------------------------------------
+# Volumes
+# ----------------------------------------------------------
+volumes:
+  certbot-conf:
+  certbot-www:
+  authelia-data:
+
+# ----------------------------------------------------------
+# Secrets (generated at first startup)
+# ----------------------------------------------------------
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  session_secret:
+    file: ./secrets/session_secret.txt
+  storage_key:
+    file: ./secrets/storage_key.txt
+
+# ----------------------------------------------------------
+# Networks
+# ----------------------------------------------------------
+networks:
+  caas-net:
+    driver: bridge

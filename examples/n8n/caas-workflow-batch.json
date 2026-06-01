@@ -1,0 +1,198 @@
+{
+  "name": "CAAS - Batch Multi-File to Markdown Conversion",
+  "nodes": [
+    {
+      "id": "batch-001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.ScheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "webhookId": "batch-schedule-001",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromUrl",
+        "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "options": {}
+      },
+      "id": "batch-002",
+      "name": "Download File 1",
+      "type": "n8n-nodes-base.ReadWriteFile",
+      "typeVersion": 1,
+      "position": [450, 200]
+    },
+    {
+      "parameters": {
+        "operation": "fromUrl",
+        "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+        "options": {}
+      },
+      "id": "batch-003",
+      "name": "Download File 2",
+      "type": "n8n-nodes-base.ReadWriteFile",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.CAAS_URL || 'http://localhost:8000' }}/convert/batch",
+        "sendFiles": true,
+        "fileKey": "files",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "batch-004",
+      "name": "CAAS Batch Convert",
+      "type": "n8n-nodes-base.HttpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse batch conversion results\nconst body = $input.item.json;\nconst results = body.results || [];\n\n// Extract per-file results\nconst fileResults = results.map((r, i) => ({\n  json: {\n    index: r.index ?? i,\n    filename: r.filename,\n    success: r.success,\n    markdown: r.result?.markdown || '',\n    pages: r.result?.pages || 0,\n    error_code: r.error_code || null\n  }\n}));\n\nreturn fileResults;",
+        "mode": "js"
+      },
+      "id": "batch-005",
+      "name": "Parse Batch Results",
+      "type": "n8n-nodes-base.Code",
+      "typeVersion": 2,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "version": 2,
+        "fields": {
+          "content": {
+            "content": [
+              {
+                "name": "filename",
+                "value": "={{ $json.filename }}"
+              },
+              {
+                "name": "success",
+                "value": "={{ $json.success }}"
+              },
+              {
+                "name": "markdown",
+                "value": "={{ $json.markdown }}"
+              },
+              {
+                "name": "pages",
+                "value": "={{ $json.pages }}"
+              }
+            ]
+          }
+        },
+        "options": {}
+      },
+      "id": "batch-006",
+      "name": "Format Output",
+      "type": "n8n-nodes-base.Set",
+      "typeVersion": 3.4,
+      "position": [1150, 300]
+    },
+    {
+      "parameters": {
+        "content": "## Batch Conversion Workflow\n\nThis workflow demonstrates **batch** conversion of multiple files via CAAS:\n\n### Steps:\n1. **Download File 1 & 2**: Downloads files from URLs (replace with your sources)\n2. **CAAS Batch Convert**: POST /convert/batch → converts all files in one request\n3. **Parse Batch Results**: Code node extracts per-file results from the batch response\n4. **Format Output**: Cleans up the final output per file\n\n### How Batch Works:\n- Send multiple files in a single POST /convert/batch request\n- Each file is processed independently — failures don't block others\n- Response contains a `results` array with per-file success/error status\n- Supports all 8 formats: PDF, DOCX, ODT, ODP, ODS, HTML, XLSX, PPTX\n- Use `?async=true` for async batch processing\n\n### Limits:\n- Max 10 files per batch (configurable via CAAS_MAX_FILES_PER_REQUEST)\n- Max 100 MB total size (configurable via CAAS_MAX_TOTAL_SIZE_MB)\n\n### Required Environment:\n- `CAAS_URL`: CAAS API URL (e.g., http://localhost:8000)",
+        "height": 380,
+        "width": 420
+      },
+      "id": "batch-007",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.StickyNote",
+      "typeVersion": 1,
+      "position": [250, 80]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download File 1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download File 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File 1": {
+      "main": [
+        [
+          {
+            "node": "CAAS Batch Convert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File 2": {
+      "main": [
+        [
+          {
+            "node": "CAAS Batch Convert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CAAS Batch Convert": {
+      "main": [
+        [
+          {
+            "node": "Parse Batch Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Batch Results": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "instanceSettings": {
+      "credits": {
+        "consumed": 0,
+        "limit": 0
+      }
+    }
+  },
+  "id": "caas-workflow-batch",
+  "tags": []
+}

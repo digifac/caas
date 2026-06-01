@@ -1,0 +1,238 @@
+# ============================================================
+# Authelia Configuration — CAAS Example
+# ============================================================
+# This is a minimal Authelia configuration for protecting CAAS.
+# For production, review all settings and adjust to your needs.
+#
+# Full documentation: https://www.authelia.com/docs/
+# ============================================================
+
+# -----------------------------------------------------------
+# Theme: dark or light
+# -----------------------------------------------------------
+theme: dark
+
+# -----------------------------------------------------------
+# Server: listens on 0.0.0.0:9091 inside the container
+# -----------------------------------------------------------
+server:
+  host: 0.0.0.0
+  port: 9091
+  headers:
+    csp: "default-src 'self'; frame-src 'none'; object-src 'none';"
+
+# -----------------------------------------------------------
+# Log level: debug, info, warn, error
+# -----------------------------------------------------------
+log:
+  level: info
+
+# -----------------------------------------------------------
+# Telemetry: expose metrics on /metrics
+# -----------------------------------------------------------
+telemetry:
+  metrics:
+    enabled: false
+    address: "tcp://0.0.0.0:9092"
+
+# -----------------------------------------------------------
+# Storage: SQLite (simple, single-server setup)
+# For multi-server, use PostgreSQL or MySQL.
+# -----------------------------------------------------------
+storage:
+  encryption_key: ${AUTHELIA_STORAGE_ENCRYPTION_KEY}
+  local:
+    path: /var/lib/authelia/authelia.db
+
+# -----------------------------------------------------------
+# Session: manages user sessions (cookies)
+# -----------------------------------------------------------
+session:
+  secret: ${AUTHELIA_SESSION_SECRET}
+  name: authelia_session
+  same_site: lax
+  expiration: 1h # Session expires after 1h of inactivity
+  inactivity: 5m # Session expires after 5m of inactivity
+  remember_me: 1M # "Remember me" extends session to 1 month
+  domain: ${DOMAIN} # Set to your domain (e.g., caas.example.com)
+
+# -----------------------------------------------------------
+# Identity Providers: local users database
+# -----------------------------------------------------------
+identity_providers:
+  oauth2:
+    enable: false # Enable if you want OAuth2/OpenID Connect
+    clients: []
+
+# -----------------------------------------------------------
+# Authentication: local users + optional LDAP
+# -----------------------------------------------------------
+authentication_backend:
+  # ---------------------------------------------------------
+  # Option 1: Local Users (file-based, simple)
+  # Uncomment this block and comment out LDAP below
+  # ---------------------------------------------------------
+  file:
+    path: /etc/authelia/users_database.yml
+    watch: false
+    search:
+      email: false
+      case_insensitive: false
+    password:
+      algorithm: argon2
+      argon2:
+        variant: argon2id
+        iterations: 3
+        memory: 65536
+        parallelism: 4
+        key_length: 32
+        salt_length: 16
+
+  # ---------------------------------------------------------
+  # Option 2: LDAP (Active Directory, OpenLDAP, etc.)
+  # Uncomment this block and comment out "file" above
+  # ---------------------------------------------------------
+  # ldap:
+  #   implementation: custom
+  #   url: ldap://ldap-server:389
+  #   timeout: 5s
+  #   start_tls: false
+  #   base_dn: dc=example,dc=com
+  #   additional_users_dn: ou=users
+  #   users_filter: (&({username_attribute}={input})(objectClass=person))
+  #   additional_groups_dn: ou=groups
+  #   groups_filter: (member={dn})
+  #   group_search_mode: filter
+  #   user: cn=authelia,ou=services,dc=example,dc=com
+  #   password: "ldap-bind-password"
+  #   attributes:
+  #     username: uid
+  #     display_name: cn
+  #     email: mail
+  #     groups: memberOf
+  #   tls:
+  #     skip_verify: false
+  #     minimum_version: TLS1.2
+  #     maximum_version: TLS1.3
+  #     client_certificate_key: ""
+  #     client_certificate: ""
+
+# -----------------------------------------------------------
+# Access Control: define which routes require auth
+# -----------------------------------------------------------
+access_control:
+  # ---------------------------------------------------------
+  # Default policy: deny all unless explicitly allowed
+  # Options: one_of, bypass, deny, one_and_only_one
+  # ---------------------------------------------------------
+  default_policy: deny
+
+  # ---------------------------------------------------------
+  # Networks (optional: trust internal networks)
+  # ---------------------------------------------------------
+  networks:
+    - name: internal
+      networks:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+
+  # ---------------------------------------------------------
+  # Rules: define access rules for specific domains/routes
+  # ---------------------------------------------------------
+  rules:
+    # -------------------------------------------------------
+    # CAAS — all routes require authentication
+    # -------------------------------------------------------
+    - domain:
+        - "${DOMAIN}"
+      policy: one_factor
+
+      # -----------------------------------------------------
+      # Fine-grained rules per route
+      # -----------------------------------------------------
+      rules:
+        # Health check endpoint — no auth required
+        - path: /health
+          policy: bypass
+
+        # API endpoints — require authentication
+        - path: /convert
+          policy: one_factor
+
+        - path: /convert/batch
+          policy: one_factor
+
+        - path: /task/.*
+          policy: one_factor
+
+        - path: /tasks
+          policy: one_factor
+
+        # Web interface — require authentication
+        - path: /
+          policy: one_factor
+
+        # Static assets — require authentication
+        - path: /static/.*
+          policy: one_factor
+
+        # Swagger docs — require authentication (or bypass for testing)
+        - path: /docs
+          policy: one_factor
+        - path: /redoc
+          policy: one_factor
+        - path: /openapi.json
+          policy: one_factor
+
+# -----------------------------------------------------------
+# Dual Factor (2FA): TOTP, WebAuthn, etc.
+# -----------------------------------------------------------
+dual_factor:
+  # ---------------------------------------------------------
+  # Mode: user_controlled, enforced, or disabled
+  #   - user_controlled: users can enable/disable 2FA
+  #   - enforced: 2FA is mandatory for all users
+  #   - disabled: 2FA is not available
+  # ---------------------------------------------------------
+  mode: user_controlled
+
+  notifier:
+    # -------------------------------------------------------
+    # Email notifier (optional — for backup codes)
+    # -------------------------------------------------------
+    mailbox:
+      username: "${AUTHELIA_NOTIFIER_SMTP_USERNAME}"
+      password: "${AUTHELIA_NOTIFIER_SMTP_PASSWORD}"
+      sender: "${AUTHELIA_NOTIFIER_SMTP_SENDER}"
+      sender_name: "Authelia"
+      host: "${AUTHELIA_NOTIFIER_SMTP_HOST}"
+      port: 587
+      encryption: starttls
+      authentication:
+        subject: "[Authelia] {title}"
+      timeout: 5s
+
+  totp:
+    issuer: ${AUTHELIA_DUAL_FACTOR_TOTP_ISSUER}
+    period: 30
+    skew: 1
+    algorithm: sha1
+    digits: 6
+
+  webauthn:
+    timeout: 60s
+    user_verification: preferred
+
+# -----------------------------------------------------------
+# Password Policy
+# -----------------------------------------------------------
+password_reset:
+  disable: ${AUTHELIA_PASSWORD_RESET_DISABLE}
+
+password_settings:
+  max_length: false
+  require_uppercase: false
+  require_lowercase: false
+  require_number: false
+  require_special_character: false

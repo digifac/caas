@@ -1,0 +1,34 @@
+# ============================================================
+# Authelia — Local Users Database
+# ============================================================
+# This file stores user credentials for the file-based backend.
+#
+# IMPORTANT:
+# - Passwords are hashed with Argon2 (configured in config.yml)
+# - Use `authelia hash-password` to generate password hashes
+# - Groups are used for access control rules
+#
+# To generate a password hash:
+#   docker run --rm authelia/authelia:latest hash-password 'your-password'
+#
+# Example output:
+#   $argon2id$v=19$m=65536,t=3,p=4$...
+# ============================================================
+
+users:
+  admin:
+    displayname: "Admin User"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$XCXZVPLqN8k3S7nNqY+LqA$K3xJ5vZ8qY7mN2pR4sT6uW8xY0zA2bC4dE6fG8hI0jK"
+    email: admin@example.com
+    groups:
+      - admins
+      - caas-users
+    password_reset: false
+
+  user:
+    displayname: "Regular User"
+    password: "$argon2id$v=19$m=65536,t=3,p=4$XCXZVPLqN8k3S7nNqY+LqA$K3xJ5vZ8qY7mN2pR4sT6uW8xY0zA2bC4dE6fG8hI0jK"
+    email: user@example.com
+    groups:
+      - caas-users
+    password_reset: false

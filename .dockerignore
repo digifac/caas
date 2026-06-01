@@ -1,0 +1,48 @@
+# Virtual environment
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Environment & secrets
+.env
+.env.*
+
+# Tests
+tests/
+.pytest_cache/
+htmlcov/
+coverage.xml
+.coverage
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation (not needed in runtime image)
+TODO.md
+CHANGELOG.md
+CONTRIBUTING.md
+AUDIT.md
+
+# Examples (not needed at runtime)
+examples/
+
+# Docker
+docker-compose.yml
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
