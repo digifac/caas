@@ -1,11 +1,11 @@
 """Automatically increment the patch/release number in pyproject.toml.
 
 Version formats supported:
-  - a.b.c          (e.g., 1.0.11)
-  - a.b-alpha.c    (e.g., 2.5-alpha.2589)
-  - a.b-beta.c     (e.g., 2.0-beta.12)
+  - a.b.c              (e.g., 1.0.11)
+  - a.b-<tag>.c        (e.g., 2.5-alpha.2589, 2.0-beta.12, 1.0.rc1.3)
 
-Only the release number c is auto-incremented.
+The optional <tag> can be any text starting with '-' and may contain additional dots.
+Only the final release number c is auto-incremented.
 
 After bumping, the package is reinstalled in editable mode so that
 the version is synchronized everywhere (Swagger UI, CLI, metadata).
@@ -24,10 +24,10 @@ from pathlib import Path
 
 PYPROJECT_PATH = Path(__file__).parent / "pyproject.toml"
 
-# Pattern: version = "a.b.c" or version = "a.b-alpha.c" or version = "a.b-beta.c"
-# Groups: 1=prefix (version = "), 2=major.minor, 3=optional pre-release tag (-alpha/-beta), 4=release number
+# Pattern: version = "a.b.c" or version = "a.b-<tag>.c" or version = "a.b<tag>.c"
+# Groups: 1=prefix (version = "), 2=major.minor, 3=optional pre-release suffix (-alpha.rc1, -beta, .rc1, etc.), 4=release number
 VERSION_PATTERN = re.compile(
-    r'^(version\s*=\s*")(\d+\.\d+)(-(?:alpha|beta))?\.(\d+)"', re.MULTILINE
+    r'^(version\s*=\s*")(\d+\.\d+)([-.][a-zA-Z][a-zA-Z0-9._-]*)?\.(\d+)"', re.MULTILINE
 )
 
 
@@ -38,10 +38,10 @@ def get_current_version() -> str:
     if not match:
         raise ValueError(
             f"Version not found in {PYPROJECT_PATH}. "
-            "Expected format: version = \"a.b.c\" or version = \"a.b-{alpha|beta}.c\""
+            'Expected format: version = "a.b.c" or version = "a.b-<tag>.c"'
         )
     major_minor = match.group(2)       # "a.b"
-    pre_release = match.group(3) or ""  # "-alpha", "-beta", or ""
+    pre_release = match.group(3) or ""  # e.g. "-alpha", "-beta.rc1", or ""
     release_num = match.group(4)        # "c"
     return f"{major_minor}{pre_release}.{release_num}"
 
@@ -53,11 +53,11 @@ def bump_version() -> str:
     if not match:
         raise ValueError(
             f"Version not found in {PYPROJECT_PATH}. "
-            "Expected format: version = \"a.b.c\" or version = \"a.b-{alpha|beta}.c\""
+            'Expected format: version = "a.b.c" or version = "a.b-<tag>.c"'
         )
 
     major_minor = match.group(2)       # "a.b"
-    pre_release = match.group(3) or ""  # "-alpha", "-beta", or ""
+    pre_release = match.group(3) or ""  # e.g. "-alpha", "-beta.rc1", or ""
     release_num = int(match.group(4))   # c
     new_release_num = release_num + 1
     new_version = f"{major_minor}{pre_release}.{new_release_num}"

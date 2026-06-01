@@ -12,14 +12,15 @@ class TestGetVersion:
 
     def test_returns_version_from_pyproject_toml(self):
         """Should return version read directly from pyproject.toml."""
+        import re
+
         version = _get_version()
         assert version is not None
         assert version != "unknown"
-        # Version should match the a.b.c format
-        parts = version.split(".")
-        assert len(parts) == 3
-        for part in parts:
-            assert part.isdigit()
+        # Version should match a.b.c or a.b-<tag>.c format (e.g. 1.0.3, 1.0-beta.0, 2.1.rc1.7)
+        # The first two parts must be digits (major.minor), last part is the release number
+        assert re.match(r"^\d+\.\d+([-.]?[a-zA-Z][a-zA-Z0-9._-]*)?\.(\d+)$", version), \
+            f"Version '{version}' should match a.b.c or a.b-<tag>.c format"
 
     def test_returns_unknown_when_pyproject_toml_unreadable(self):
         """Should return 'unknown' when pyproject.toml cannot be read."""
