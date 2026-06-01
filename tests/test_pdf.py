@@ -65,10 +65,15 @@ async def test_convert_pdf_with_link(
     )
     assert response.status_code == 200
     markdown = response.json()["markdown"]
-    # Extract URLs from markdown links and parse hostnames for safe validation
+    # Extract URLs from markdown links and parse hostnames for strict host validation
     urls = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", markdown)
-    parsed_hosts = {urlparse(url).hostname for _, url in urls if urlparse(url).hostname}
-    assert "example.com" in parsed_hosts
+    parsed_hosts = {
+        parsed.hostname
+        for _, url in urls
+        for parsed in [urlparse(url)]
+        if parsed.hostname
+    }
+    assert any(host == "example.com" for host in parsed_hosts)
 
 
 @pytest.mark.anyio
