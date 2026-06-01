@@ -913,11 +913,3 @@ Ready-to-use configuration examples for deploying CAAS in production. See the [e
 ## 📄 License
 
 This project is licensed under the [MIT](LICENSE) License.
-
----
-
-## 👤 Author
-
-**Florent PELCAT** — DIGIFAC
-
-Developed with FastAPI and Python 3.12+.
