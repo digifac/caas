@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 env:
   CAAS_OCR_LANGUAGES: fra+eng
@@ -93,6 +94,7 @@ jobs:
           retention-days: 30
   docker:
     needs: test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
 
     steps:
