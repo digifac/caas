@@ -38,7 +38,7 @@ async def _check_redis(app: FastAPI) -> dict[str, Any]:
         return {
             "enabled": True,
             "status": "unhealthy",
-            "error": "Redis connection error",
+            "error": f"Redis connection error: {exc}",
         }
 
 
