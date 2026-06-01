@@ -90,7 +90,8 @@ By limiting the scope to these eight widely-used document formats, CAAS delivers
 
 ### User Interface
 
-- **Web interface**: built-in upload form with drag & drop, batch upload support, and async polling
+- **Web interface**: built-in upload form with drag & drop, batch upload support, and async polling (Jinja2 templating)
+- **Metrics dashboard**: live HTML page at `/metrics/ui` with auto-refresh, uptime, request counters, latency histograms, and runtime gauges
 - **OpenAPI documentation**: auto-generated Swagger UI (`/docs`) and ReDoc (`/redoc`)
 
 ### Streaming
@@ -100,6 +101,16 @@ By limiting the scope to these eight widely-used document formats, CAAS delivers
 - **DOCX / ODT / ODP / XLSX / ODS / PPTX / HTML**: chunked streaming — full conversion then split into configurable chunks
 - **SSE metadata events**: `started` (format, size), markdown chunks, `complete`, and `error`
 - **Configurable**: enable/disable via `CAAS_STREAMING_ENABLED`, chunk size via `CAAS_STREAMING_CHUNK_SIZE`
+
+### Metrics & Monitoring
+
+- **Prometheus endpoint** (`GET /metrics`): text exposition format compatible with Prometheus scraping
+  - HTTP request counter (`caas_http_requests_total`) by method/path/status
+  - HTTP latency histogram (`caas_http_request_duration_seconds`)
+  - In-progress requests gauge (`caas_http_inprogress_requests`)
+  - Runtime gauges (uptime, active/pending tasks, rate limiter state)
+- **HTML dashboard** (`GET /metrics/ui`): live visualization with auto-refresh
+- **Zero external dependency**: in-memory collector, no additional services required
 
 ---
 
@@ -123,6 +134,7 @@ caas/
 │   ├── middleware.py        # Security headers middleware (CSP, X-Frame-Options, etc.)
 │   ├── ip_helpers.py        # Secure client IP extraction with trusted proxy support
 │   ├── redis_client.py      # Async Redis client with conditional import
+│   ├── metrics.py           # In-memory metrics collector (counters, histograms, gauges)
 │   ├── converters/          # Modular converter architecture
 │   │   ├── __init__.py
 │   │   ├── base.py          # Shared utilities (clean_lines, heading detection)
@@ -143,12 +155,14 @@ caas/
 │   │   ├── __init__.py
 │   │   ├── convert.py       # /, /convert, /task/{task_id}, /tasks
 │   │   ├── batch.py         # /convert/batch, /batch/{batch_id}
-│   │   └── health.py        # /health
+│   │   ├── health.py        # /health
+│   │   └── metrics.py       # /metrics (Prometheus), /metrics/ui (HTML dashboard)
 │   ├── static/              # Static assets
 │   │   ├── app.js           # Frontend JavaScript (drag & drop, batch upload, polling)
 │   │   └── style.css        # Frontend styles
 │   └── templates/
-│       └── form.html        # Upload form (drag & drop, batch support)
+│       ├── form.html        # Upload form (Jinja2 templating, drag & drop, batch support)
+│       └── metrics.html     # Metrics dashboard (auto-refresh, Jinja2 templating)
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py          # Pytest fixtures (PDF, DOCX, ODT, XLSX, HTML, scanned PDF)
@@ -658,6 +672,8 @@ FastAPI automatically generates interactive documentation:
 | `GET`  | `/batch/{batch_id}`         | Retrieve all results for an async batch                      |
 | `GET`  | `/tasks`                    | Queue overview                                               |
 | `GET`  | `/health`                   | Health check for load balancers                              |
+| `GET`  | `/metrics`                  | Prometheus text exposition format                            |
+| `GET`  | `/metrics/ui`               | HTML metrics dashboard with auto-refresh                     |
 
 ### Parameters
 
@@ -763,6 +779,7 @@ Tests cover:
 - **Storage**: in-memory, Redis, and storage switching tests
 - **Task manager**: queue, concurrency, cleanup, batch tracking
 - **Security**: headers, CORS, IP extraction, anti-spoofing
+- **Metrics**: Prometheus exposition format and HTML dashboard rendering
 - **Benchmarks**: performance measurements
 - **Utilities**: text cleanup, Markdown structure detection
 
@@ -874,6 +891,7 @@ Ready-to-use configuration examples for deploying CAAS in production. See the [e
 | Package             | Version Range      | Role                          |
 | ------------------- | ------------------ | ----------------------------- |
 | `fastapi`           | ≥ 0.115.0, < 1.0.0 | Asynchronous web framework    |
+| `jinja2`            | ≥ 3.1.0, < 4.0.0   | Server-side templating        |
 | `uvicorn`           | ≥ 0.32.0, < 1.0.0  | ASGI server (development)     |
 | `gunicorn`          | ≥ 22.0.0, < 24.0.0 | WSGI HTTP server (production) |
 | `python-multipart`  | ≥ 0.0.9, < 1.0.0   | File upload support           |
