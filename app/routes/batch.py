@@ -12,7 +12,7 @@ from app.converter import _convert_worker
 from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip
 from app.task_manager import QueueFullError, TaskManager, TaskStatus
-from app.validation import validate_file_content
+from app.validation import validate_filename, validate_file_content
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +70,17 @@ def register_batch_routes(app: FastAPI) -> None:
                     client_ip,
                 )
                 error(400, "MISSING_FILENAME")
+
+            filename_error = validate_filename(file.filename)
+            if filename_error:
+                logger.warning(
+                    "[%s] Rejected batch from %s: invalid filename (%s)",
+                    batch_id,
+                    client_ip,
+                    filename_error,
+                )
+                error(400, "INVALID_FILENAME")
+
             assert file.filename is not None
             ext = file.filename.rsplit(".", 1)[-1].lower()
             if ext not in ("pdf", "docx", "odt", "odp", "html", "xlsx", "pptx", "ods"):

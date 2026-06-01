@@ -15,7 +15,7 @@ from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip
 from app.streaming import convert_stream
 from app.task_manager import TaskStatus
-from app.validation import validate_file_content
+from app.validation import validate_filename, validate_file_content
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,10 @@ def register_convert_routes(app: FastAPI) -> None:
 
         if not file.filename:
             error(400, "MISSING_FILENAME")
+
+        filename_error = validate_filename(file.filename)
+        if filename_error:
+            error(400, "INVALID_FILENAME")
 
         assert file.filename is not None
         ext = file.filename.rsplit(".", 1)[-1].lower()

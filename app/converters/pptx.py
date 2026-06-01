@@ -1,5 +1,6 @@
 """PPTX to Markdown conversion using python-pptx."""
 
+import html
 import io
 import logging
 
@@ -27,7 +28,8 @@ def _extract_text_from_table(table) -> str:
     for row in table.rows:
         row_values = []
         for cell in row.cells:
-            row_values.append(cell.text.replace("|", "\\|").replace("\n", " "))
+            text = html.escape(cell.text).replace("|", "\\|").replace("\n", " ")
+            row_values.append(text)
         rows.append(row_values)
 
     if not rows:
@@ -61,9 +63,9 @@ def _extract_slide_text(slide, slide_number: int) -> list[str]:
     """
     lines = []
 
-    # Handle slide title
+    # Handle slide title (escaped to prevent XSS)
     if slide.shapes.title:
-        title_text = slide.shapes.title.text.strip()
+        title_text = html.escape(slide.shapes.title.text).strip()
         if title_text:
             lines.append(f"## {title_text}")
         else:
@@ -94,21 +96,22 @@ def _extract_slide_text(slide, slide_number: int) -> list[str]:
                 if not text:
                     continue
 
-                # Detect bullet points
+                # Detect bullet points (escaped to prevent XSS)
+                escaped_text = html.escape(text)
                 if paragraph.level > 0:
                     indent = "  " * paragraph.level
-                    lines.append(f"{indent}- {text}")
+                    lines.append(f"{indent}- {escaped_text}")
                 else:
                     # Check if the paragraph is a bullet
                     try:
                         if paragraph.style is not None:
                             # python-pptx doesn't have a direct bullet property
                             # but we can check the paragraph's level
-                            lines.append(f"- {text}" if paragraph.level >= 0 else text)
+                            lines.append(f"- {escaped_text}" if paragraph.level >= 0 else escaped_text)
                         else:
-                            lines.append(text)
+                            lines.append(escaped_text)
                     except Exception:
-                        lines.append(text)
+                        lines.append(escaped_text)
 
     return lines
 
