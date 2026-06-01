@@ -2,6 +2,8 @@
 
 import asyncio
 import io
+import re
+from urllib.parse import urlparse
 
 import httpx
 import pytest
@@ -63,7 +65,15 @@ async def test_convert_pdf_with_link(
     )
     assert response.status_code == 200
     markdown = response.json()["markdown"]
-    assert "example.com" in markdown
+    # Extract URLs from markdown links and parse hostnames for strict host validation
+    urls = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", markdown)
+    parsed_hosts = {
+        parsed.hostname
+        for _, url in urls
+        for parsed in [urlparse(url)]
+        if parsed.hostname
+    }
+    assert any(host == "example.com" for host in parsed_hosts)
 
 
 @pytest.mark.anyio
