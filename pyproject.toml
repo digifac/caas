@@ -1,6 +1,6 @@
 [project]
 name = "caas"
-version = "1.0-beta.0"
+version = "1.0-beta.1"
 description = "Conversion-as-a-Service: Convert PDF, DOCX, ODT, ODP, XLSX, ODS, PPTX, and HTML to Markdown via a REST API. 100% in-memory (zero-disk I/O), with OCR fallback, streaming (SSE), async/batch processing, and security hardening — optimized for LLM pipelines."
 readme = "README.md"
 license = "MIT"

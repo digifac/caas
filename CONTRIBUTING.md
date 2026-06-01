@@ -64,6 +64,14 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
+### Enable repository git hooks (required for auto-version bump)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This project ships a custom pre-commit hook in `.githooks/pre-commit` that automatically increments the version in `pyproject.toml` on each commit.
+
 ### Configuration
 
 Copy the example environment file and adjust as needed:
