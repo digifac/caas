@@ -26,12 +26,6 @@ class TestMainReExports:
         assert "SERVER_ERROR" in AppError._messages
         assert hasattr(AppError, "get")
 
-    def test_get_html_form_reexported(self):
-        """app.main.get_html_form should be callable."""
-        from app.main import get_html_form
-
-        assert callable(get_html_form)
-
     def test_clean_lines_reexported(self):
         """app.main._clean_lines should be callable."""
         from app.main import _clean_lines
@@ -52,7 +46,6 @@ class TestMainReExports:
             "app",
             "task_manager",
             "AppError",
-            "get_html_form",
             "_clean_lines",
             "_convert_worker",
         }

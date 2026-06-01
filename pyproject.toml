@@ -1,6 +1,6 @@
 [project]
 name = "caas"
-version = "1.0-beta.1"
+version = "1.0-beta.2"
 description = "Conversion-as-a-Service: Convert PDF, DOCX, ODT, ODP, XLSX, ODS, PPTX, and HTML to Markdown via a REST API. 100% in-memory (zero-disk I/O), with OCR fallback, streaming (SSE), async/batch processing, and security hardening — optimized for LLM pipelines."
 readme = "README.md"
 license = "MIT"
@@ -19,6 +19,7 @@ classifiers = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0,<1.0.0",
+    "jinja2>=3.1.0,<4.0.0",
     "uvicorn>=0.32.0,<1.0.0",
     "python-multipart>=0.0.9,<1.0.0",
     "pydantic>=2.10.0,<3.0.0",

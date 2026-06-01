@@ -54,25 +54,6 @@ def _clean_lines(lines: list[str]) -> list[str]:
     return result
 
 
-def get_html_form() -> str:
-    """Load the form from the form.html file.
-
-    Raises:
-        FileNotFoundError: If the template file is missing.
-        IOError: If the template file cannot be read.
-    """
-    html_path = os.path.join(os.path.dirname(__file__), "templates", "form.html")
-    try:
-        with open(html_path, encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        logger.error("Template file not found: %s", html_path)
-        raise
-    except OSError as e:
-        logger.error("Failed to read template file: %s (%s)", html_path, e)
-        raise
-
-
 async def _convert_worker(file_bytes: bytes, ext: str) -> dict:
     """Worker that runs conversion in a thread (used by TaskManager)."""
     converters = {

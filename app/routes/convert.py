@@ -6,10 +6,11 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
+from starlette.templating import Jinja2Templates
 
 from app.config import settings
-from app.converter import _convert_worker, get_html_form
+from app.converter import _convert_worker
 from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip
 from app.streaming import convert_stream
@@ -18,21 +19,18 @@ from app.validation import validate_file_content
 
 logger = logging.getLogger(__name__)
 
+_jinja_templates = Jinja2Templates(directory="app/templates")
+
 
 def register_convert_routes(app: FastAPI) -> None:
     """Register conversion-related routes on the FastAPI app instance."""
 
     @app.get("/")
-    async def root():
+    async def root(request: Request):
         """Return the file upload form."""
-        try:
-            return HTMLResponse(content=get_html_form(), status_code=200)
-        except (OSError, FileNotFoundError):
-            logger.exception("Failed to load HTML form template")
-            return JSONResponse(
-                status_code=500,
-                content=ErrorHandler.make_error_response("SERVER_ERROR"),
-            )
+        return _jinja_templates.TemplateResponse(
+            request, "form.html", {"request": request}
+        )
 
     @app.post("/convert", response_model=dict[str, Any])
     async def convert_document(
