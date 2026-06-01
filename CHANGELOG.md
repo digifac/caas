@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Application metrics** with Prometheus-compatible exposition
+  - `GET /metrics` endpoint in text exposition format (`text/plain; version=0.0.4`)
+  - `GET /metrics/ui` dedicated HTML dashboard for live metrics visualization
+  - New in-memory collector in `app/metrics.py` with:
+    - HTTP request counter (`caas_http_requests_total`) by method/path/status
+    - HTTP latency histogram (`caas_http_request_duration_seconds`)
+    - In-progress requests gauge (`caas_http_inprogress_requests`)
+    - Runtime gauges (`caas_uptime_seconds`, `caas_tasks_active`, `caas_tasks_pending`, `caas_tasks_max_concurrent`, `caas_rate_limiter_enabled`)
+  - Global instrumentation middleware wired in `app/api.py`
+  - New routes module `app/routes/metrics.py` registered via `app/routes/__init__.py`
+  - Tests: `tests/test_metrics.py`
+- **Prometheus deployment example** in `examples/prometheus/`
+  - `docker-compose.yml` with CAAS + Prometheus services
+  - `prometheus.yml` scrape config targeting `caas:8000/metrics`
+  - `README.md` quick start and verification queries
+  - Example indexed in `examples/README.md` and root `README.md`
 - **ODP → Markdown** converter (`app/converters/odp.py`)
   - OpenDocument Presentation conversion via `odfpy`
   - Slide-by-slide text extraction with `## Slide N` headers

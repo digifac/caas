@@ -2,8 +2,11 @@
 
 from unittest.mock import patch
 
+from httpx import AsyncClient, ASGITransport
+
+from app.api import create_app
 from app.config import settings
-from app.converter import _clean_lines, get_html_form
+from app.converter import _clean_lines
 
 
 class TestCleanLines:
@@ -97,20 +100,26 @@ class TestCleanLines:
 
 
 class TestGetHtmlForm:
-    """Tests for the get_html_form function."""
+    """Tests for the form route (/) rendered via Jinja2."""
 
-    def test_returns_string(self):
-        html = get_html_form()
+    async def _get_root_html(self):
+        app = create_app()
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+            resp = await ac.get("/")
+        return resp.text
+
+    async def test_returns_string(self):
+        html = await self._get_root_html()
         assert isinstance(html, str)
 
-    def test_contains_doctype(self):
-        html = get_html_form()
+    async def test_contains_doctype(self):
+        html = await self._get_root_html()
         assert "<!DOCTYPE html>" in html
 
-    def test_contains_title(self):
-        html = get_html_form()
+    async def test_contains_title(self):
+        html = await self._get_root_html()
         assert "CAAS" in html
 
-    def test_contains_form_elements(self):
-        html = get_html_form()
+    async def test_contains_form_elements(self):
+        html = await self._get_root_html()
         assert "<form" in html or "upload" in html.lower() or "input" in html

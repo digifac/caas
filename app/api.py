@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.exceptions import global_exception_handler, http_exception_handler
+from app.metrics import AppMetrics
 from app.middleware import add_security_headers
 from app.rate_limiter import RateLimiter
 from app.redis_client import RedisManager
@@ -129,6 +130,10 @@ def create_app() -> FastAPI:
 
     # Security headers middleware (imported from app.middleware)
     app.middleware("http")(add_security_headers)
+
+    # Metrics middleware and collector
+    app.state.metrics = AppMetrics()
+    app.middleware("http")(app.state.metrics.middleware(app))
 
     # Static files (CSS, JS)
     static_dir = os.path.join(os.path.dirname(__file__), "static")

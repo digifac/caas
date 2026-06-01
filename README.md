@@ -862,6 +862,7 @@ Ready-to-use configuration examples for deploying CAAS in production. See the [e
 | [Authelia](examples/authelia/)                           | Nginx reverse proxy with Authelia authentication (2FA, LDAP)  |
 | [HAProxy + Let's Encrypt](examples/haproxy-letsencrypt/) | Reverse proxy with TLS termination and API key authentication |
 | [Nginx + Let's Encrypt](examples/nginx-letsencrypt/)     | Reverse proxy with TLS termination and API key authentication |
+| [Prometheus](examples/prometheus/)                       | Monitoring stack scraping CAAS metrics endpoint               |
 | [n8n Workflows](examples/n8n/)                           | Ready-to-import n8n workflows for document conversion         |
 
 ---

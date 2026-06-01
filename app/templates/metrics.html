@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="{{ refresh_seconds }}">
+    <title>CAAS Metrics</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --bg: #f5f7fb;
+            --panel: #ffffff;
+            --text: #102033;
+            --muted: #526179;
+            --line: #d7dfed;
+            --accent: #0b5fff;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top right, #e6efff, var(--bg) 48%);
+            color: var(--text);
+        }
+        main { max-width: 1120px; margin: 0 auto; padding: 24px; }
+        .top {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        h1 { margin: 0; font-size: 1.8rem; }
+        .muted { color: var(--muted); }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 12px 14px;
+        }
+        .card .label { color: var(--muted); font-size: 0.85rem; }
+        .card .value { font-weight: 700; font-size: 1.2rem; margin-top: 4px; }
+        section {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        section h2 { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; }
+        th { background: #f2f6ff; }
+        tr:last-child td { border-bottom: 0; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+<main>
+    <div class="top">
+        <h1>CAAS Metrics</h1>
+        <p class="muted">Auto-refresh every {{ refresh_seconds }} seconds · <a href="/metrics">Prometheus endpoint</a></p>
+    </div>
+
+    <div class="cards">
+        <div class="card"><div class="label">Uptime</div><div class="value">{{ '%.1f'|format(runtime.uptime_seconds) }}s</div></div>
+        <div class="card"><div class="label">Active Tasks</div><div class="value">{{ runtime.task_active }}</div></div>
+        <div class="card"><div class="label">Pending Tasks</div><div class="value">{{ runtime.task_pending }}</div></div>
+        <div class="card"><div class="label">Max Concurrent</div><div class="value">{{ runtime.task_max_concurrent }}</div></div>
+        <div class="card"><div class="label">Rate Limiter</div><div class="value">{% if runtime.rate_limiter_enabled == 1 %}enabled{% else %}disabled{% endif %}</div></div>
+    </div>
+
+    <section>
+        <h2>HTTP Request Counters</h2>
+        <table>
+            <thead>
+                <tr><th>Method</th><th>Path</th><th>Status</th><th>Total</th></tr>
+            </thead>
+            <tbody>
+            {% if requests %}
+                {% for row in requests %}
+                <tr>
+                    <td>{{ row.method }}</td>
+                    <td>{{ row.path }}</td>
+                    <td>{{ row.status }}</td>
+                    <td>{{ row.total }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="4">No traffic recorded yet.</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Latency Averages (seconds)</h2>
+        <table>
+            <thead>
+                <tr><th>Method</th><th>Path</th><th>Count</th><th>Average</th></tr>
+            </thead>
+            <tbody>
+            {% if latencies %}
+                {% for row in latencies %}
+                <tr>
+                    <td>{{ row.method }}</td>
+                    <td>{{ row.path }}</td>
+                    <td>{{ row.count }}</td>
+                    <td>{{ '%.4f'|format(row.average) }}</td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr><td colspan="4">No latency data yet.</td></tr>
+            {% endif %}
+            </tbody>
+        </table>
+    </section>
+</main>
+</body>
+</html>

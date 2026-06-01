@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.routes.batch import register_batch_routes
 from app.routes.convert import register_convert_routes
 from app.routes.health import register_health_routes
+from app.routes.metrics import register_metrics_routes
 
 
 def _register_routes(app: FastAPI) -> None:
@@ -16,6 +17,7 @@ def _register_routes(app: FastAPI) -> None:
     register_convert_routes(app)
     register_batch_routes(app)
     register_health_routes(app)
+    register_metrics_routes(app)
 
 
 __all__ = [
@@ -23,4 +25,5 @@ __all__ = [
     "register_convert_routes",
     "register_batch_routes",
     "register_health_routes",
+    "register_metrics_routes",
 ]
