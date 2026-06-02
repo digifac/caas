@@ -51,13 +51,32 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Auto-increment version in pyproject.toml
+# Auto-increment version in pyproject.toml (only once per commit workflow)
+# This prevents excessive version bumps when making multiple commits.
 if [ -f "$BUMP_SCRIPT" ]; then
-    echo "🔄 Auto-bumping version..."
-    "$PYTHON" "$BUMP_SCRIPT" --no-reinstall
+    # Check if pyproject.toml is already staged or modified in the working tree
+    # If it's already changed, skip bumping to avoid overwriting manual changes
+    # and prevent double-bumping within the same commit workflow.
+    STAGED_CHANGES=$(git diff --cached --name-only 2>/dev/null)
+    WORKING_CHANGES=$(git diff --name-only 2>/dev/null)
     
-    # Stage the updated pyproject.toml
-    git add "$PYPROJECT"
+    PYPROJECT_CHANGED=false
+    
+    # Check if pyproject.toml is in staged changes
+    echo "$STAGED_CHANGES" | grep -q "pyproject.toml" && PYPROJECT_CHANGED=true
+    
+    # Check if pyproject.toml is in working tree changes
+    echo "$WORKING_CHANGES" | grep -q "pyproject.toml" && PYPROJECT_CHANGED=true
+    
+    if [ "$PYPROJECT_CHANGED" = true ]; then
+        echo "⏭️  Skipping version bump — pyproject.toml already modified in this commit workflow."
+    else
+        echo "🔄 Auto-bumping version..."
+        "$PYTHON" "$BUMP_SCRIPT" --no-reinstall
+        
+        # Stage the updated pyproject.toml
+        git add "$PYPROJECT"
+    fi
 fi
 
 exit 0
