@@ -186,7 +186,6 @@ caas/
 │   ├── test_storage_redis.py    # Redis storage tests
 │   ├── test_storage_switching.py # Storage switching tests
 │   ├── test_security.py         # Security tests
-│   ├── test_benchmarks.py       # Performance benchmarks
 │   └── test_utils.py            # Utility function tests
 ├── Dockerfile               # Multi-stage image with Tesseract (60+ languages)
 ├── docker-compose.yml       # Docker orchestration
