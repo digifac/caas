@@ -2,11 +2,10 @@
 
 from unittest.mock import patch
 
-from httpx import AsyncClient, ASGITransport
-
 from app.api import create_app
 from app.config import settings
 from app.converter import _clean_lines
+from httpx import ASGITransport, AsyncClient
 
 
 class TestCleanLines:

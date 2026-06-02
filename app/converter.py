@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import os
 import re
 
 from app.config import settings

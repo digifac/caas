@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook: auto-increment version in pyproject.toml
+# Pre-commit hook: linting, type checking, and auto-increment version in pyproject.toml
 # Runs on EVERY commit - no manual intervention needed
 # Uses --no-reinstall to avoid pip operations during git commit
 
@@ -8,17 +8,51 @@ REPO_ROOT="$(git rev-parse --show-toplevel)"
 PYPROJECT="$REPO_ROOT/pyproject.toml"
 BUMP_SCRIPT="$REPO_ROOT/bump_version.py"
 
-# Check if bump_version.py exists
+# Determine Python executable from virtual environment
+if [ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
+    PYTHON="$REPO_ROOT/.venv/Scripts/python.exe"
+elif [ -x "$REPO_ROOT/.venv/bin/python" ]; then
+    PYTHON="$REPO_ROOT/.venv/bin/python"
+else
+    PYTHON="python"
+fi
+
+# Determine ruff executable from virtual environment
+if [ -x "$REPO_ROOT/.venv/Scripts/ruff.exe" ]; then
+    RUFF="$REPO_ROOT/.venv/Scripts/ruff.exe"
+elif [ -x "$REPO_ROOT/.venv/bin/ruff" ]; then
+    RUFF="$REPO_ROOT/.venv/bin/ruff"
+else
+    RUFF="ruff"
+fi
+
+# Determine mypy executable from virtual environment
+if [ -x "$REPO_ROOT/.venv/Scripts/mypy.exe" ]; then
+    MYPY="$REPO_ROOT/.venv/Scripts/mypy.exe"
+elif [ -x "$REPO_ROOT/.venv/bin/mypy" ]; then
+    MYPY="$REPO_ROOT/.venv/bin/mypy"
+else
+    MYPY="mypy"
+fi
+
+# Run ruff check (linting + auto-fix)
+echo "🔍 Running ruff check..."
+"$RUFF" check . --fix
+if [ $? -ne 0 ]; then
+    echo "❌ Ruff found errors. Please fix them before committing."
+    exit 1
+fi
+
+# Run mypy type checking
+echo "🔍 Running mypy type checking..."
+"$MYPY" app/
+if [ $? -ne 0 ]; then
+    echo "❌ Mypy found type errors. Please fix them before committing."
+    exit 1
+fi
+
+# Auto-increment version in pyproject.toml
 if [ -f "$BUMP_SCRIPT" ]; then
-    # Use the virtual environment Python if available, otherwise system Python
-    if [ -x "$REPO_ROOT/.venv/Scripts/python.exe" ]; then
-        PYTHON="$REPO_ROOT/.venv/Scripts/python.exe"
-    elif [ -x "$REPO_ROOT/.venv/bin/python" ]; then
-        PYTHON="$REPO_ROOT/.venv/bin/python"
-    else
-        PYTHON="python"
-    fi
-    
     echo "🔄 Auto-bumping version..."
     "$PYTHON" "$BUMP_SCRIPT" --no-reinstall
     

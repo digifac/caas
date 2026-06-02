@@ -21,7 +21,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 PYPROJECT_PATH = Path(__file__).parent / "pyproject.toml"
 
 # Pattern: version = "a.b.c" or version = "a.b-<tag>.c" or version = "a.b<tag>.c"
