@@ -12,7 +12,7 @@ from app.converter import _convert_worker
 from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip
 from app.task_manager import QueueFullError, TaskManager, TaskStatus
-from app.validation import validate_filename, validate_file_content
+from app.validation import validate_file_content, validate_filename
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,7 @@ def register_batch_routes(app: FastAPI) -> None:
                 )
                 error(400, "MISSING_FILENAME")
 
+            assert file.filename is not None
             filename_error = validate_filename(file.filename)
             if filename_error:
                 logger.warning(

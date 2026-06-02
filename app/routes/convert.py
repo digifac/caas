@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from starlette.templating import Jinja2Templates
 
 from app.config import settings
@@ -15,7 +15,7 @@ from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip
 from app.streaming import convert_stream
 from app.task_manager import TaskStatus
-from app.validation import validate_filename, validate_file_content
+from app.validation import validate_file_content, validate_filename
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ def register_convert_routes(app: FastAPI) -> None:
         if not file.filename:
             error(400, "MISSING_FILENAME")
 
+        assert file.filename is not None
         filename_error = validate_filename(file.filename)
         if filename_error:
             error(400, "INVALID_FILENAME")
