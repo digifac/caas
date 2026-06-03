@@ -712,7 +712,7 @@ class TestBatchNotFoundGetResults:
     async def test_get_batch_results_nonexistent(self):
         """get_batch_results returns None for non-existent batch."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        result = manager.get_batch_results("nonexistent")
+        result = await manager.get_batch_results("nonexistent")
         assert result is None
 
 

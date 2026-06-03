@@ -569,13 +569,20 @@ class TaskManager:
             return BatchInfo.from_json(json_str)
         return None
 
-    def get_batch_results(self, batch_id: str) -> dict[str, Any] | None:
+    async def get_batch_results(self, batch_id: str) -> dict[str, Any] | None:
         """
         Retrieve full batch results: metadata + per-task status/result.
 
-        Returns None if the batch doesn't exist.
+        Checks in-memory first, then falls back to storage for both the batch
+        and individual tasks. This ensures completed/failed tasks that have been
+        evicted from memory are still retrievable via the storage backend.
+
+        Returns None if the batch doesn't exist (in either memory or storage).
         """
+        # Check in-memory first, then fall back to storage for the batch itself
         batch_info = self._batches.get(batch_id)
+        if batch_info is None:
+            batch_info = await self.get_batch_with_storage(batch_id)
         if batch_info is None:
             return None
 
@@ -586,7 +593,8 @@ class TaskManager:
         processing = 0
 
         for index, task_id in enumerate(batch_info.task_ids):
-            task = self._tasks.get(task_id)
+            # Use get_task which checks in-memory first, then falls back to storage
+            task = await self.get_task(task_id)
             entry: dict[str, Any] = {
                 "index": index,
                 "filename": batch_info.filenames[index]

@@ -252,8 +252,10 @@ def register_batch_routes(app: FastAPI) -> None:
 
         Returns per-task status/result for every file in the batch.
         Error details are only exposed when debug mode is enabled.
+        Results are fetched from storage if evicted from memory, so completed/
+        failed tasks remain retrievable even after expiration from RAM.
         """
-        batch_results = app.state.task_manager.get_batch_results(batch_id)
+        batch_results = await app.state.task_manager.get_batch_results(batch_id)
         if batch_results is None:
             error(404, "BATCH_NOT_FOUND")
 
