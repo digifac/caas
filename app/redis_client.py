@@ -14,6 +14,61 @@ if TYPE_CHECKING:
     import redis.asyncio as aioredis
 
 
+def _mask_url(url: str) -> str:
+    """Return a redacted version of a Redis URL, hiding credentials.
+
+    'redis://user:mypassword@host:6379/0' → 'redis://user:****@host:6379/0'
+    """
+    try:
+        from urllib.parse import ParseResult, urlparse, urlunparse
+
+        parsed = urlparse(url)
+        if parsed.password is not None:
+            masked = ParseResult(
+                scheme=parsed.scheme,
+                netloc=f"{parsed.username}:****@{parsed.hostname or ''}"
+                + (f":{parsed.port}" if parsed.port else "")
+                ,
+                path=parsed.path,
+                params=parsed.params,
+                query=parsed.query,
+                fragment=parsed.fragment,
+            )
+            return urlunparse(masked)
+    except Exception:
+        pass
+    return url
+
+
+def _inject_password(url: str, password: str) -> str:
+    """Inject a password into a Redis URL if not already present.
+
+    'redis://localhost:6379/0' + 'mypass' → 'redis://:mypass@localhost:6379/0'
+    """
+    if not password:
+        return url
+
+    from urllib.parse import ParseResult, urlparse, urlunparse
+
+    parsed = urlparse(url)
+    # Skip injection if credentials are already embedded in the URL
+    if parsed.password is not None or (parsed.username and parsed.hostname):
+        return url
+
+    hostname = parsed.hostname or "localhost"
+    port_str = f":{parsed.port}" if parsed.port else ""
+    netloc = f":{password}@{hostname}{port_str}"
+    injected = ParseResult(
+        scheme=parsed.scheme,
+        netloc=netloc,
+        path=parsed.path,
+        params=parsed.params,
+        query=parsed.query,
+        fragment=parsed.fragment,
+    )
+    return urlunparse(injected)
+
+
 class RedisManager:
     """Manages the lifecycle of a Redis client instance.
 
@@ -21,12 +76,14 @@ class RedisManager:
     injectable manager — safer for tests and hot-reload scenarios.
     """
 
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, password: str = "") -> None:
         """
         Args:
             url: Redis connection URL (e.g., 'redis://localhost:6379/0').
+            password: Optional Redis password for requirepass authentication.
+                Injected into the URL automatically if not already present.
         """
-        self._url = url
+        self._url = _inject_password(url, password)
         self._client: aioredis.Redis | None = None
 
     @property
@@ -56,11 +113,11 @@ class RedisManager:
                 self._url,
                 decode_responses=True,
             )
-            logger.info("Redis client initialized: %s", self._url)
+            logger.info("Redis client initialized: %s", _mask_url(self._url))
             return self._client
         except ConnectionError as exc:
             raise RuntimeError(
-                f"Redis is configured ({self._url}) but the server is not accessible: {exc}"
+                f"Redis is configured ({_mask_url(self._url)}) but the server is not accessible: {exc}"
             ) from exc
 
     async def close(self) -> None:

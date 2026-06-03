@@ -316,6 +316,7 @@ All settings are externalized via **environment variables** or a **`.env`** file
 | `CAAS_RELOAD`                        | `false`    | Auto-reload mode (development only)                           |
 | `CAAS_DEBUG`                         | `false`    | Expose error details (development only)                       |
 | `CAAS_REDIS_URL`                     | _(empty)_  | Redis URL for shared state across instances (optional)        |
+| `CAAS_REDIS_PASSWORD`                | _(empty)_  | Redis password for `requirepass` authentication (optional)    |
 | `CAAS_STREAMING_ENABLED`             | `true`     | Enable/disable streaming responses via SSE                    |
 | `CAAS_STREAMING_CHUNK_SIZE`          | `1024`     | Minimum chunk size in bytes before yielding an SSE event      |
 
@@ -338,6 +339,28 @@ All settings are externalized via **environment variables** or a **`.env`** file
 > ```env
 > CAAS_REDIS_URL=redis://localhost:6379/0
 > ```
+>
+> #### Password Authentication
+>
+> If your Redis server requires a password (configured with `requirepass`), you have two options:
+>
+> **Option 1 — Dedicated environment variable (recommended):**
+>
+> ```env
+> CAAS_REDIS_URL=redis://localhost:6379/0
+> CAAS_REDIS_PASSWORD=mypassword
+> ```
+>
+> The password is automatically injected into the Redis URL at startup.
+>
+> **Option 2 — Embed in the URL:**
+>
+> ```env
+> CAAS_REDIS_URL=redis://:mypassword@localhost:6379/0
+> ```
+>
+> When using `CAAS_REDIS_PASSWORD`, the password is never logged in plain text —
+> log messages automatically redact it (e.g., `redis://:****@localhost:6379/0`).
 >
 > When `CAAS_REDIS_URL` is set:
 >
@@ -427,6 +450,7 @@ CAAS_DEBUG=false
 
 # Redis (optional — shared state across instances)
 # CAAS_REDIS_URL=redis://localhost:6379/0
+# CAAS_REDIS_PASSWORD=mypassword
 
 # Streaming
 CAAS_STREAMING_ENABLED=true

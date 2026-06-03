@@ -246,6 +246,43 @@ class TestSettingsProperties:
         settings = Settings(trusted_proxies="10.0.0.0/8,,172.16.0.0/12", _env_file=None)
         assert len(settings.trusted_proxies_list) == 2
 
+# --- Redis settings tests ---
+
+
+class TestRedisSettings:
+    """Tests for Redis configuration."""
+
+    def test_redis_url_default_empty(self):
+        """Default redis_url is empty string."""
+        settings = Settings(_env_file=None)
+        assert settings.redis_url == ""
+
+    def test_redis_password_default_empty(self):
+        """Default redis_password is empty string."""
+        settings = Settings(_env_file=None)
+        assert settings.redis_password == ""
+
+    def test_redis_enabled_false_when_url_empty(self):
+        """redis_enabled returns False when url is empty."""
+        settings = Settings(_env_file=None)
+        assert settings.redis_enabled is False
+
+    def test_redis_enabled_true_when_url_set(self):
+        """redis_enabled returns True when url is configured."""
+        settings = Settings(redis_url="redis://localhost:6379/0", _env_file=None)
+        assert settings.redis_enabled is True
+
+    def test_env_var_override_redis_password(self, monkeypatch):
+        """Environment variables override redis password."""
+        monkeypatch.setenv("CAAS_REDIS_PASSWORD", "my-secret-pass")
+        settings = Settings(_env_file=None)
+        assert settings.redis_password == "my-secret-pass"
+
+    def test_env_var_override_redis_url(self, monkeypatch):
+        """Environment variables override redis URL."""
+        monkeypatch.setenv("CAAS_REDIS_URL", "redis://localhost:6379/0")
+        settings = Settings(_env_file=None)
+        assert settings.redis_url == "redis://localhost:6379/0"
 
 # --- .env file tests ---
 
