@@ -788,14 +788,105 @@ Tests cover:
 
 ### Build and run
 
+#### Via Docker Compose (recommended) ⭐
+
 ```bash
-# Via Docker Compose (recommended)
+# Build and start
 docker-compose up --build
 
-# Or manually
-docker build -t caas .
-docker run -p 8000:8000 caas
+# Run in the background
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f
+
+# Stop and remove containers
+docker-compose down
 ```
+
+#### Via `docker run`
+
+##### Pull from GitHub Container Registry (recommended)
+
+No build step required — just pull the pre-built image:
+
+```bash
+# Latest release
+docker pull ghcr.io/digifac/caas:latest
+
+# Run it
+docker run -d \
+  --name caas \
+  -p 8000:8000 \
+  --env-file .env \
+  --restart unless-stopped \
+  ghcr.io/digifac/caas:latest
+```
+
+##### Build locally
+
+Build the image first:
+
+```bash
+docker build -t caas .
+```
+
+**Basic run:**
+
+```bash
+docker run -p 8000:8000 --name caas caas
+```
+
+**With environment variables (recommended):**
+
+```bash
+docker run -d \
+  --name caas \
+  -p 8000:8000 \
+  -e CAAS_WORKERS=4 \
+  -e CAAS_MAX_FILE_SIZE_MB=50 \
+  -e CAAS_OCR_LANGUAGES=fra+eng \
+  -e PYTHONUNBUFFERED=1 \
+  --restart unless-stopped \
+  caas
+```
+
+**With a `.env` file:**
+
+```bash
+docker run -d \
+  --name caas \
+  -p 8000:8000 \
+  --env-file .env \
+  --restart unless-stopped \
+  caas
+```
+
+**With Redis for horizontal scaling:**
+
+```bash
+# Start Redis first
+docker run -d --name redis -p 6379:6379 redis:7-alpine
+
+# Then start CAAS connected to Redis
+docker run -d \
+  --name caas \
+  -p 8000:8000 \
+  -e CAAS_REDIS_URL=redis://host.docker.internal:6379/0 \
+  --restart unless-stopped \
+  caas
+```
+
+> **Tip:** On macOS/Linux, use `host.docker.internal` to reach the host. On Windows Docker Desktop, it works the same way. For Linux without Docker Desktop, replace it with your actual host IP or run Redis in a separate container and link them via a custom network:
+>
+> ```bash
+> docker network create caas-network
+> docker run -d --name redis --network caas-network redis:7-alpine
+> docker run -d --name caas --network caas-network \
+>   -p 8000:8000 \
+>   -e CAAS_REDIS_URL=redis://redis:6379/0 \
+>   caas
+> ```
 
 ### Docker image
 
