@@ -119,6 +119,10 @@ class Settings(BaseSettings):
     """Redis connection URL for shared state (task results, rate limiting) across multiple workers/instances.
     Empty = in-memory mode (default). E.g., 'redis://localhost:6379/0'."""
 
+    redis_password: str = ""
+    """Redis password for authentication with requirepass. Injected into the URL automatically.
+    Alternative to embedding the password directly in CAAS_REDIS_URL."""
+
     # --- Streaming ---
     streaming_enabled: bool = True
     """Enable streaming responses for large documents via SSE."""

@@ -44,7 +44,7 @@ def _get_version() -> str:
     return "unknown"
 
 
-def _get_lifespan(redis_enabled: bool, redis_url: str):
+def _get_lifespan(redis_enabled: bool, redis_url: str, redis_password: str = ""):
     """Create a lifespan context manager for startup/shutdown events."""
 
     @asynccontextmanager
@@ -55,12 +55,13 @@ def _get_lifespan(redis_enabled: bool, redis_url: str):
         # Startup logic — attempt Redis swap if configured
         if redis_enabled:
             try:
+                from app.redis_client import _mask_url
                 from app.storage.redis import RedisStorage
 
-                redis_manager = RedisManager(redis_url)
+                redis_manager = RedisManager(redis_url, password=redis_password)
                 redis_storage = RedisStorage(redis_manager.client)
                 app.state.redis_manager = redis_manager
-                logger.info("Storage: Redis mode active (%s)", redis_url)
+                logger.info("Storage: Redis mode active (%s)", _mask_url(redis_url))
 
                 # Replace rate limiter with Redis-backed instance
                 app.state.rate_limiter = RateLimiter(
@@ -114,7 +115,7 @@ def create_app() -> FastAPI:
         title="CAAS Converter",
         description="PDF/DOCX/ODT/ODS/ODP/HTML/XLSX/PPTX → Markdown conversion, 100% in-memory (zero-disk I/O)",
         version=_get_version(),
-        lifespan=_get_lifespan(settings.redis_enabled, settings.redis_url),
+        lifespan=_get_lifespan(settings.redis_enabled, settings.redis_url, settings.redis_password),
     )
 
     # CORS middleware (only if origins are configured)

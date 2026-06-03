@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Redis password authentication** for servers configured with `requirepass`
+  - New `CAAS_REDIS_PASSWORD` environment variable (optional)
+  - Automatic password injection into Redis URL at startup
+  - Password-aware URL masking in log messages (`redis://:****@host`) — never logs plain-text passwords
+  - Helpers `_mask_url()` and `_inject_password()` in `app/redis_client.py`
+  - Tests: new test classes in `tests/test_redis_client.py` (`TestMaskUrl`, `TestInjectPassword`, `TestRedisManagerPassword`)
 - **Application metrics** with Prometheus-compatible exposition
   - `GET /metrics` endpoint in text exposition format (`text/plain; version=0.0.4`)
   - `GET /metrics/ui` dedicated HTML dashboard for live metrics visualization

@@ -4,7 +4,127 @@ import sys
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from app.redis_client import RedisManager, RedisUnavailableError
+from app.redis_client import (
+    RedisManager,
+    RedisUnavailableError,
+    _inject_password,
+    _mask_url,
+)
+
+
+class TestMaskUrl:
+    """Test the _mask_url helper function."""
+
+    def test_masks_password_in_url(self):
+        url = "redis://:mypassword@localhost:6379/0"
+        assert _mask_url(url) == "redis://:****@localhost:6379/0"
+
+    def test_masks_password_with_username(self):
+        url = "redis://user:mypassword@host:1234/5"
+        assert _mask_url(url) == "redis://user:****@host:1234/5"
+
+    def test_returns_url_unchanged_without_credentials(self):
+        url = "redis://localhost:6379/0"
+        assert _mask_url(url) == url
+
+    def test_returns_url_unchanged_for_invalid_url(self):
+        url = "not-a-valid-url"
+        assert _mask_url(url) == url
+
+
+class TestInjectPassword:
+    """Test the _inject_password helper function."""
+
+    def test_injects_password_when_none_present(self):
+        result = _inject_password("redis://localhost:6379/0", "secret")
+        assert result == "redis://:secret@localhost:6379/0"
+
+    def test_injects_password_with_custom_db(self):
+        result = _inject_password("redis://myhost:6380/5", "pass123")
+        assert result == "redis://:pass123@myhost:6380/5"
+
+    def test_does_not_inject_when_empty_password(self):
+        result = _inject_password("redis://localhost:6379/0", "")
+        assert result == "redis://localhost:6379/0"
+
+    def test_skips_injection_when_password_already_present(self):
+        url = "redis://:existing@localhost:6379/0"
+        result = _inject_password(url, "newpass")
+        assert result == url
+
+    def test_preserves_query_and_fragment(self):
+        result = _inject_password("redis://localhost:6379/0?timeout=5", "pw")
+        assert "://" in result and "@" in result
+
+
+class TestRedisManagerPassword:
+    """Test RedisManager with password parameter."""
+
+    def _setup_mock_aioredis(self, mock_client=None):
+        mock_aioredis = MagicMock()
+        if mock_client is not None:
+            mock_aioredis.from_url.return_value = mock_client
+        mock_redis = MagicMock()
+        mock_redis.asyncio = mock_aioredis
+        sys.modules["redis"] = mock_redis
+        sys.modules["redis.asyncio"] = mock_aioredis
+        return mock_aioredis
+
+    def _cleanup_sys_modules(self):
+        for key in list(sys.modules):
+            if key == "redis" or key.startswith("redis."):
+                del sys.modules[key]
+
+    def test_init_with_password_injects_into_url(self):
+        manager = RedisManager("redis://localhost:6379/0", password="secret")
+        assert manager._url == "redis://:secret@localhost:6379/0"
+
+    def test_init_without_password_preserves_url(self):
+        manager = RedisManager("redis://localhost:6379/0")
+        assert manager._url == "redis://localhost:6379/0"
+
+    def test_init_skips_injection_when_credentials_embedded(self):
+        manager = RedisManager(
+            "redis://:embedded@localhost:6379/0", password="ignored"
+        )
+        assert manager._url == "redis://:embedded@localhost:6379/0"
+
+    def test_client_uses_injected_password_url(self):
+        self._cleanup_sys_modules()
+        mock_client = MagicMock()
+        mock_aioredis = self._setup_mock_aioredis(mock_client=mock_client)
+
+        try:
+            manager = RedisManager("redis://localhost:6379/0", password="secret")
+            _ = manager.client
+
+            mock_aioredis.from_url.assert_called_once_with(
+                "redis://:secret@localhost:6379/0",
+                decode_responses=True,
+            )
+        finally:
+            self._cleanup_sys_modules()
+
+    def test_log_masks_password_on_init(self, caplog):
+        import logging
+
+        self._cleanup_sys_modules()
+        mock_client = MagicMock()
+        self._setup_mock_aioredis(mock_client=mock_client)
+
+        try:
+            with caplog.at_level(logging.INFO):
+                manager = RedisManager(
+                    "redis://localhost:6379/0", password="secret"
+                )
+                _ = manager.client
+
+                # Verify the log does NOT contain the raw password
+                for record in caplog.records:
+                    assert "secret" not in record.message
+        finally:
+            self._cleanup_sys_modules()
+
 
 
 class TestRedisManagerInit:
