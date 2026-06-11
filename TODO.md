@@ -1386,40 +1386,536 @@ ENABLE_JSONL_CHUNKING = True  # Activer le chunking pour les fichiers textuels
 
 ---
 
-### 3.3 Modifier le streaming pour JSON/JSONL
+### 3.3 Modifier le streaming pour JSON/JSONL ✅ **COMPLÉTÉ**
 
-**Objectif**: Adapter `app/streaming.py` pour supporter le streaming JSON.
+**Objectif**: Adapter `app/streaming.py` pour supporter le streaming JSON et JSONL avec granularité adaptée au chunking.
 
-**Actions**:
-- [ ] **Étape 3.3.1**: Créer modèle Pydantic `StreamingEventJson`:
-  ```python
-  class StreamingEventJson(BaseModel):
-      type: str  # "page", "complete", "error"
-      page_index: int | None = None
-      content: dict | str
-  ```
-- [ ] **Étape 3.3.2**: Modifier `_convert_pdf_stream()` pour JSON:
-  ```python
-  async def _convert_pdf_stream(file_bytes, format="markdown"):
-      if format == "json":
-          _, json_pages = _extract_pdf_content(file_bytes)
-          for page in json_pages:
-              yield {"type": "page", "content": page}
-          yield {"type": "complete"}
-  ```
-- [ ] **Étape 3.3.3**: Modifier `_convert_pdf_stream()` pour JSONL:
-  ```python
-  async def _convert_pdf_stream(file_bytes, format="markdown"):
-      if format == "jsonl":
-          _, json_pages = _extract_pdf_content(file_bytes)
-          for page in json_pages:
-              yield {"type": "page", "content": json.dumps(page)}
-          yield {"type": "complete"}
-  ```
+**Actions réalisées**:
+- [x] Importer les fonctions de conversion JSON/JSONL dans `app/streaming.py`
+- [x] Créer les générateurs async pour chaque format (PDF, DOCX, ODT, HTML, XLSX, PPTX, ODS, ODP)
+- [x] Implémenter le chunking textuel pour les formats textuels avec `CAAS_JSONL_CHUNK_SIZE`
+- [x] Ajouter événements de début/fin pour chaque unité logique (page, section, diapositive)
+
+**Fichier implémenté**: [`app/streaming.py`](d:\Projets\caas\app\streaming.py)
 
 ---
 
-### 3.4 Mettre à jour les routes
+#### 3.3.1 Streaming JSON structuré ✅ **COMPLÉTÉ**
+
+**Objectif**: Envoyer des événements JSON complets par page/section/diapositive.
+
+**Approche**: Chaque événement contient un objet JSON complet avec la structure définie dans `app/models/response.py`.
+
+**Implémentation pour PDF**:
+```python
+async def _convert_pdf_stream_json(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream PDF → JSON conversion, yielding one page per event.
+    
+    Each page is sent as a complete JSON object with index, content and URLs.
+    """
+    # Extraction des données brutes (pages + metadata)
+    pages_data = await asyncio.to_thread(_extract_pdf_content_raw, file_bytes)
+    
+    start_event = json.dumps({
+        "format": "pdf", 
+        "status": "started", 
+        "total_pages": len(pages_data),
+        "size_bytes": len(file_bytes)
+    })
+    yield _sse_event(start_event)
+    
+    for idx, (page_idx, content, urls) in enumerate(pages_data):
+        page_json = {
+            "type": "page", 
+            "index": page_idx, 
+            "content": content, 
+            "urls": urls
+        }
+        yield _sse_event(json.dumps(page_json, ensure_ascii=False))
+    
+    end_event = json.dumps({"status": "complete"})
+    yield _sse_event(end_event)
+```
+
+**Implémentation pour DOCX**:
+```python
+async def _convert_docx_stream_json(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream DOCX → JSON conversion, yielding one section per event.
+    
+    Each section is sent as a complete JSON object with index and content.
+    """
+    # Extraction des sections (paragraphes + tables)
+    sections_data = await asyncio.to_thread(_extract_docx_sections_raw, file_bytes)
+    
+    start_event = json.dumps({
+        "format": "docx", 
+        "status": "started", 
+        "total_sections": len(sections_data),
+        "size_bytes": len(file_bytes)
+    })
+    yield _sse_event(start_event)
+    
+    for idx, section in enumerate(sections_data):
+        section_json = {
+            "type": "section", 
+            "index": idx, 
+            "content": section["content"], 
+            "tables": section.get("tables", [])
+        }
+        yield _sse_event(json.dumps(section_json, ensure_ascii=False))
+    
+    end_event = json.dumps({"status": "complete"})
+    yield _sse_event(end_event)
+```
+
+**Implémentation pour XLSX (données structurées)**:
+```python
+async def _convert_xlsx_stream_json(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream XLSX → JSON conversion, yielding one sheet per event.
+    
+    Each sheet is sent as a complete JSON object with name and data rows.
+    No chunking for structured data - one row per line in JSONL mode.
+    """
+    sheets_data = await asyncio.to_thread(_extract_xlsx_sheets_raw, file_bytes)
+    
+    start_event = json.dumps({
+        "format": "xlsx", 
+        "status": "started", 
+        "total_sheets": len(sheets_data),
+        "size_bytes": len(file_bytes)
+    })
+    yield _sse_event(start_event)
+    
+    for idx, sheet in enumerate(sheets_data):
+        sheet_json = {
+            "type": "sheet", 
+            "index": idx, 
+            "name": sheet["name"], 
+            "data": sheet["data"], 
+            "headers": sheet.get("headers")
+        }
+        yield _sse_event(json.dumps(sheet_json, ensure_ascii=False))
+    
+    end_event = json.dumps({"status": "complete"})
+    yield _sse_event(end_event)
+```
+
+---
+
+#### 3.3.2 Streaming JSONL avec chunking ✅ **COMPLÉTÉ**
+
+**Objectif**: Envoyer des événements JSONL granulaires pour le streaming progressif et LLM-friendly.
+
+**Approche**: Chunk textuel par blocs de `CAAS_JSONL_CHUNK_SIZE` caractères (défaut: 1024). Événements standardisés: `start`, `chunk`, `end`.
+
+**Implémentation pour PDF (formats textuels)**:
+```python
+async def _convert_pdf_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream PDF → JSONL conversion with chunking.
+    
+    Each page is split into chunks of CAAS_JSONL_CHUNK_SIZE characters.
+    Events: start (page), chunk×N, end (page).
+    """
+    pages_data = await asyncio.to_thread(_extract_pdf_content_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for page_idx, content, urls in pages_data:
+        # Événement start de la page
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": page_idx, 
+            "metadata": {"source": f"pdf_page_{page_idx}", "urls_count": len(urls)}
+        }, ensure_ascii=False))
+        
+        # Chunker le contenu textuel (Markdown) par blocs
+        for i in range(0, len(content), chunk_size):
+            chunk_content = content[i:i+chunk_size]
+            yield _sse_event(json.dumps({
+                "type": "chunk", 
+                "content": chunk_content,
+                "offset": i,
+                "length": len(chunk_content)
+            }, ensure_ascii=False))
+        
+        # Événement end de la page
+        yield _sse_event(json.dumps({
+            "type": "end", 
+            "index": page_idx, 
+            "urls": urls
+        }, ensure_ascii=False))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour DOCX (formats textuels)**:
+```python
+async def _convert_docx_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream DOCX → JSONL conversion with chunking.
+    
+    Each section is split into chunks of CAAS_JSONL_CHUNK_SIZE characters.
+    Events: start (section), chunk×N, end (section).
+    """
+    sections_data = await asyncio.to_thread(_extract_docx_sections_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, section in enumerate(sections_data):
+        content = section["content"]
+        
+        # Événement start de la section
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"source": f"docx_section_{idx}", "tables_count": len(section.get("tables", []))}
+        }, ensure_ascii=False))
+        
+        # Chunker le contenu textuel par blocs
+        for i in range(0, len(content), chunk_size):
+            chunk_content = content[i:i+chunk_size]
+            yield _sse_event(json.dumps({
+                "type": "chunk", 
+                "content": chunk_content,
+                "offset": i,
+                "length": len(chunk_content)
+            }, ensure_ascii=False))
+        
+        # Événement end de la section
+        yield _sse_event(json.dumps({
+            "type": "end", 
+            "index": idx
+        }, ensure_ascii=False))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour XLSX (données structurées - pas de chunking)**:
+```python
+async def _convert_xlsx_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream XLSX → JSONL conversion for structured data.
+    
+    One JSON line per row (no chunking). Events: start (sheet), row×N, end (sheet).
+    Chunking only if a single row exceeds CAAS_JSONL_CHUNK_SIZE.
+    """
+    sheets_data = await asyncio.to_thread(_extract_xlsx_sheets_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, sheet in enumerate(sheets_data):
+        # Événement start de la feuille
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"source": f"xlsx_sheet_{sheet['name']}", "rows_count": len(sheet["data"])}
+        }, ensure_ascii=False))
+        
+        for row_idx, row in enumerate(sheet["data"]):
+            # Une ligne JSONL par ligne (données structurées)
+            line_content = json.dumps(row, ensure_ascii=False)
+            
+            # Chunking optionnel si la ligne dépasse la taille configurée
+            if len(line_content) > chunk_size:
+                for i in range(0, len(line_content), chunk_size):
+                    yield _sse_event(json.dumps({
+                        "type": "chunk", 
+                        "content": line_content[i:i+chunk_size],
+                        "offset": i,
+                        "length": len(line_content[i:i+chunk_size])
+                    }, ensure_ascii=False))
+            else:
+                # Événement row direct pour les lignes normales
+                yield _sse_event(json.dumps({
+                    "type": "row", 
+                    "index": row_idx, 
+                    "data": row
+                }, ensure_ascii=False))
+        
+        # Événement end de la feuille
+        yield _sse_event(json.dumps({"type": "end", "index": idx}))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour PPTX (formats textuels)**:
+```python
+async def _convert_pptx_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream PPTX → JSONL conversion with chunking.
+    
+    Each slide is split into chunks of CAAS_JSONL_CHUNK_SIZE characters.
+    Events: start (slide), chunk×N, end (slide).
+    """
+    slides_data = await asyncio.to_thread(_extract_pptx_slides_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, slide in enumerate(slides_data):
+        # Concaténer le contenu textuel de la diapositive
+        content_text = " ".join(slide.get("content", []))
+        
+        # Événement start de la diapositive
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"source": f"pptx_slide_{idx}", "title": slide.get("title")}
+        }, ensure_ascii=False))
+        
+        # Chunker le contenu textuel de la diapositive par blocs
+        for i in range(0, len(content_text), chunk_size):
+            chunk_content = content_text[i:i+chunk_size]
+            yield _sse_event(json.dumps({
+                "type": "chunk", 
+                "content": chunk_content,
+                "offset": i,
+                "length": len(chunk_content)
+            }, ensure_ascii=False))
+        
+        # Événement end de la diapositive
+        yield _sse_event(json.dumps({
+            "type": "end", 
+            "index": idx
+        }, ensure_ascii=False))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour HTML (formats textuels)**:
+```python
+async def _convert_html_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream HTML → JSONL conversion with chunking.
+    
+    Each element is split into chunks of CAAS_JSONL_CHUNK_SIZE characters.
+    Events: start (element), chunk×N, end (element).
+    """
+    elements_data = await asyncio.to_thread(_extract_html_elements_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, element in enumerate(elements_data):
+        content_text = element.get("content", "")
+        
+        # Événement start de l'élément HTML
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"tag": element.get("tag", ""), "attributes": str(element.get("attributes", {}))}
+        }, ensure_ascii=False))
+        
+        # Chunker le contenu textuel de l'élément HTML par blocs
+        for i in range(0, len(content_text), chunk_size):
+            chunk_content = content_text[i:i+chunk_size]
+            yield _sse_event(json.dumps({
+                "type": "chunk", 
+                "content": chunk_content,
+                "offset": i,
+                "length": len(chunk_content)
+            }, ensure_ascii=False))
+        
+        # Événement end de l'élément HTML
+        yield _sse_event(json.dumps({
+            "type": "end", 
+            "index": idx
+        }, ensure_ascii=False))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour ODT (formats textuels)**:
+```python
+async def _convert_odt_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream ODT → JSONL conversion with chunking.
+    
+    Each element is split into chunks of CAAS_JSONL_CHUNK_SIZE characters.
+    Events: start (element), chunk×N, end (element).
+    """
+    elements_data = await asyncio.to_thread(_extract_odt_elements_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, element in enumerate(elements_data):
+        content_text = element["content"]
+        
+        # Événement start de l'élément ODT
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"type": element["type"], "level": element.get("level", 0)}
+        }, ensure_ascii=False))
+        
+        # Chunker le contenu textuel de l'élément ODT par blocs
+        for i in range(0, len(content_text), chunk_size):
+            chunk_content = content_text[i:i+chunk_size]
+            yield _sse_event(json.dumps({
+                "type": "chunk", 
+                "content": chunk_content,
+                "offset": i,
+                "length": len(chunk_content)
+            }, ensure_ascii=False))
+        
+        # Événement end de l'élément ODT
+        yield _sse_event(json.dumps({
+            "type": "end", 
+            "index": idx
+        }, ensure_ascii=False))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour ODS (données structurées - pas de chunking)**:
+```python
+async def _convert_ods_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream ODS → JSONL conversion for structured data.
+    
+    One JSON line per row (no chunking). Events: start (sheet), row×N, end (sheet).
+    Chunking only if a single row exceeds CAAS_JSONL_CHUNK_SIZE.
+    """
+    sheets_data = await asyncio.to_thread(_extract_ods_sheets_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, sheet in enumerate(sheets_data):
+        # Événement start de la feuille
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"source": f"ods_sheet_{sheet['name']}", "rows_count": len(sheet["data"])}
+        }, ensure_ascii=False))
+        
+        for row_idx, row in enumerate(sheet["data"]):
+            # Une ligne JSONL par ligne (données structurées)
+            line_content = json.dumps(row, ensure_ascii=False)
+            
+            # Chunking optionnel si la ligne dépasse la taille configurée
+            if len(line_content) > chunk_size:
+                for i in range(0, len(line_content), chunk_size):
+                    yield _sse_event(json.dumps({
+                        "type": "chunk", 
+                        "content": line_content[i:i+chunk_size],
+                        "offset": i,
+                        "length": len(line_content[i:i+chunk_size])
+                    }, ensure_ascii=False))
+            else:
+                # Événement row direct pour les lignes normales
+                yield _sse_event(json.dumps({
+                    "type": "row", 
+                    "index": row_idx, 
+                    "data": row
+                }, ensure_ascii=False))
+        
+        # Événement end de la feuille
+        yield _sse_event(json.dumps({"type": "end", "index": idx}))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Implémentation pour ODP (formats textuels)**:
+```python
+async def _convert_odp_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Stream ODP → JSONL conversion with chunking.
+    
+    Each slide is split into chunks of CAAS_JSONL_CHUNK_SIZE characters.
+    Events: start (slide), chunk×N, end (slide).
+    """
+    slides_data = await asyncio.to_thread(_extract_odp_slides_raw, file_bytes)
+    chunk_size = settings.jsonl_chunk_size or 1024
+    
+    for idx, slide in enumerate(slides_data):
+        # Concaténer le contenu textuel de la diapositive
+        content_text = " ".join(slide.get("content", []))
+        
+        # Événement start de la diapositive
+        yield _sse_event(json.dumps({
+            "type": "start", 
+            "index": idx, 
+            "metadata": {"source": f"odp_slide_{idx}", "title": slide.get("title")}
+        }, ensure_ascii=False))
+        
+        # Chunker le contenu textuel de la diapositive par blocs
+        for i in range(0, len(content_text), chunk_size):
+            chunk_content = content_text[i:i+chunk_size]
+            yield _sse_event(json.dumps({
+                "type": "chunk", 
+                "content": chunk_content,
+                "offset": i,
+                "length": len(chunk_content)
+            }, ensure_ascii=False))
+        
+        # Événement end de la diapositive
+        yield _sse_event(json.dumps({
+            "type": "end", 
+            "index": idx
+        }, ensure_ascii=False))
+    
+    # Événement final de fin de document
+    yield _sse_event(json.dumps({"type": "document_end"}))
+```
+
+**Résumé des stratégies de chunking**:
+- **Formats textuels** (PDF, DOCX, ODT, HTML, PPTX, ODP): Chunking activé par défaut avec `CAAS_JSONL_CHUNK_SIZE` (1024 chars) pour optimiser le contexte LLM
+- **Formats structurés** (XLSX, ODS): Pas de chunking artificiel - une ligne JSONL par ligne de données, chunking optionnel uniquement si une ligne dépasse la taille configurée
+
+---
+
+#### 3.3.3 Wrapper functions et orchestration ✅ **COMPLÉTÉ**
+
+**Objectif**: Créer des fonctions wrapper dans `app/streaming.py` pour chaque format avec les deux modes (JSON structuré et JSONL chunké).
+
+**Implémentation complète dans app/streaming.py**:
+```python
+from .converter import (
+    _extract_pdf_content_raw, 
+    _extract_docx_sections_raw, 
+    _extract_odt_elements_raw,
+    _extract_html_elements_raw,
+    _extract_xlsx_sheets_raw,
+    _extract_pptx_slides_raw,
+    _extract_ods_sheets_raw,
+    _extract_odp_slides_raw
+)
+
+async def convert_pdf_stream_json(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Wrapper pour PDF → JSON streaming."""
+    async for chunk in _convert_pdf_stream_json(file_bytes):
+        yield chunk
+
+async def convert_pdf_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, None]:
+    """Wrapper pour PDF → JSONL streaming avec chunking."""
+    async for chunk in _convert_pdf_stream_jsonl(file_bytes):
+        yield chunk
+
+# ... mêmes wrappers pour tous les formats (DOCX, ODT, HTML, XLSX, PPTX, ODS, ODP)
+```
+
+**Configuration des paramètres**:
+- Paramètre `format` dans les routes: `"markdown" | "json" | "jsonl"`
+- Paramètre `streaming` pour activer le mode SSE (défaut: `False`)
+- Paramètre `chunk_size` optionnel pour surcharger `CAAS_JSONL_CHUNK_SIZE`
+
+---
+
+## 3.4 Mettre à jour les routes ✅ **À FAIRE**
+
+**Objectif**: Modifier `app/routes/convert.py` pour accepter le paramètre format.
+
+**Actions**:
+- [ ] Ajouter validation du paramètre format:
+  ```python
+  from typing import Literal
+  
+  def convert_endpoint(file, format: str = "markdown"):
+      if format not in ["markdown", "json", "jsonl"]:
+          raise HTTPException(status_code=400, detail="Format invalide")
+  ```
+- [ ] Modifier l'appel au convertisseur:
+  ```python
+  result = converter.convert_file(file_bytes, file_type, format=format)
+  
+  if format == "jsonl":
+      return Response(content=result, media_type="text/plain; charset=utf-8")
+  else:
+      return JSONResponse(content=ConversionResponse(format=format, content=result))
+  ```
+
+---
 
 **Objectif**: Modifier `app/routes/convert.py` pour accepter le paramètre format.
 
