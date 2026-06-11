@@ -114,12 +114,12 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
 
 ### 2.1 Définir les endpoints
 
-**Objectif**: Ajouter des paramètres d'export au endpoint existant `/convert`.
+**Objectif**: Ajouter des paramètres d'export au endpoint existant `/convert`. ✅ **COMPLÉTÉ**
 
-**Actions**:
-- [ ] Ajouter `?format=json` ou `?format=markdown|json|jsonl` à `/convert`
-- [ ] Ajouter `?format=jsonl` pour le format JSONL
-- [ ] Définir la réponse par défaut (Markdown) si aucun format non spécifié
+**Actions réalisées**:
+- [x] Ajouter `?format=json` ou `?format=markdown|json|jsonl` à `/convert`
+- [x] Ajouter `?format=jsonl` pour le format JSONL
+- [x] Définir la réponse par défaut (Markdown) si aucun format non spécifié
 
 **Changement attendu**:
 ```python
@@ -131,6 +131,50 @@ GET /convert?file=&format=markdown → Markdown string (défaut)
 GET /convert?file=&format=json → JSON object
 GET /convert?file=&format=jsonl → JSONL stream (SSE ou raw text)
 ```
+
+**Paramètres d'endpoint**:
+| Paramètre | Type | Valeurs possibles | Défaut | Description |
+|-----------|------|-------------------|--------|-------------|
+| `format` | query string | `"markdown"`, `"json"`, `"jsonl"` | `"markdown"` | Format de sortie souhaité |
+
+**Comportement par format**:
+- **Markdown (défaut)**: Retourne une chaîne Markdown brute
+- **JSON**: Retourne un objet JSON structuré avec métadonnées et contenu paginé
+- **JSONL**: Retourne du texte brut avec une ligne JSON par événement (pour streaming)
+
+**Exemples d'utilisation**:
+```bash
+# Export en Markdown (défaut)
+curl -X POST "http://localhost:8000/convert" \
+     -F "file=@document.pdf"
+
+# Export en JSON structuré
+curl -X POST "http://localhost:8000/convert?format=json" \
+     -F "file=@document.pdf"
+
+# Export en JSONL (streaming)
+curl -X POST "http://localhost:8000/convert?format=jsonl" \
+     -F "file=@document.pdf"
+```
+
+**Réponse HTTP**:
+- **Markdown**: `text/plain; charset=utf-8` avec le contenu Markdown
+- **JSON**: `application/json` avec l'objet JSON structuré
+- **JSONL**: `text/plain; charset=utf-8` avec une ligne JSON par événement (pour streaming) ou `application/x-ndjson`
+
+**Validation du paramètre format**:
+```python
+from typing import Literal
+
+def convert_endpoint(file, format: str = "markdown"):
+    if format not in ["markdown", "json", "jsonl"]:
+        raise HTTPException(status_code=400, detail="Format invalide. Doit être 'markdown', 'json' ou 'jsonl'.")
+```
+
+**Notes d'implémentation**:
+- Le paramètre `format` est optionnel et par défaut retourne Markdown (comportement existant)
+- Pour JSONL en streaming, chaque événement SSE correspond à une ligne JSON complète
+- Pour JSON non-streaming, la réponse contient tout le document dans un objet JSON unique
 
 ---
 
