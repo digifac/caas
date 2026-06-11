@@ -1,5 +1,7 @@
 """Common utilities shared by all converters."""
 
+from typing import Any, List, Dict
+import json
 import logging
 import re
 
@@ -8,14 +10,14 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
-def clean_lines(lines: list[str]) -> list[str]:
+def clean_lines(lines: List[str]) -> List[str]:
     """Clean lines and detect basic Markdown structure.
 
     Heading detection is controlled by settings.markdown_heading_detection.
     When enabled, only short ALL-CAPS lines without punctuation are treated
     as headings, reducing false positives on normal uppercase paragraphs.
     """
-    cleaned = []
+    cleaned: List[str] = []
     for line in lines:
         line = line.strip()
         if not line:
@@ -23,18 +25,18 @@ def clean_lines(lines: list[str]) -> list[str]:
         # Headings (numbered or already Markdown)
         if re.match(r"^#{1,6}\s", line):
             # Already a Markdown heading — keep as-is
-            cleaned.append(line)
+            cleaned.append(line)  # type: ignore[assignment]
         elif (
             re.match(r"^\d+[.)]\s", line)
             or settings.markdown_heading_detection
             and is_uppercase_heading(line)
         ):
-            cleaned.append(f"# {line}")
+            cleaned.append(f"# {line}")  # type: ignore[assignment]
         # Lists
         elif re.match(r"^[\*\-•]\s", line):
-            cleaned.append(line)
+            cleaned.append(line)  # type: ignore[assignment]
         else:
-            cleaned.append(line)
+            cleaned.append(line)  # type: ignore[assignment]
     return cleaned
 
 
@@ -101,3 +103,29 @@ def is_uppercase_heading(line: str) -> bool:
         return False
     # Exclude lines that are a single known acronym
     return line not in _KNOWN_ACRONYMS
+
+
+def _to_json_format(data: Dict[str, Any]) -> str:
+    """Convert unstructured data to JSON format.
+
+    Args:
+        data: Dictionary containing the conversion result with keys like 'format', 
+              'pages' or 'content', and 'metadata'.
+
+    Returns:
+        JSON string representation of the data, properly encoded with UTF-8.
+    """
+    return json.dumps(data, ensure_ascii=False, indent=2)
+
+
+def _to_jsonl_format(pages: List[Dict[str, Any]]) -> str:
+    """Convert a list of pages/sections to JSONL format (one JSON object per line).
+
+    Args:
+        pages: List of dictionaries representing pages or sections. Each dict should 
+               contain keys like 'index', 'content', and optionally 'urls'.
+
+    Returns:
+        JSONL string with one JSON object per line, suitable for streaming.
+    """
+    return "\n".join(json.dumps(page, ensure_ascii=False) for page in pages)  # type: ignore[return-value]

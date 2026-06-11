@@ -546,18 +546,41 @@ def handle_conversion_error(error: Exception, request_id: str | None = None) -> 
 
 **Actions par fichier**:
 
-#### `app/converters/base.py` - Utilitaires communs
-- [ ] **Étape 3.1.1**: Importer `json` module (`import json`)
-- [ ] **Étape 3.1.2**: Ajouter fonction `_to_json_format(data: dict) -> str`:
+#### `app/converters/base.py` - Utilitaires communs ✅ **COMPLÉTÉ**
+
+- [x] **Étape 3.1.1**: Importer `json` module (`import json`)
+- [x] **Étape 3.1.2**: Ajouter fonction `_to_json_format(data: dict) -> str`:
   ```python
   def _to_json_format(data: dict) -> str:
+      """Convert unstructured data to JSON format."""
       return json.dumps(data, ensure_ascii=False, indent=2)
   ```
-- [ ] **Étape 3.1.3**: Ajouter fonction `_to_jsonl_format(pages: list[dict]) -> str`:
+- [x] **Étape 3.1.3**: Ajouter fonction `_to_jsonl_format(pages: list[dict]) -> str`:
   ```python
   def _to_jsonl_format(pages: list[dict]) -> str:
+      """Convert a list of pages/sections to JSONL format (one JSON object per line)."""
       return "\n".join(json.dumps(page, ensure_ascii=False) for page in pages)
   ```
+
+**Implémentation réalisée**:
+- [x] Module `json` importé dans `app/converters/base.py`
+- [x] Fonction `_to_json_format()` ajoutée : convertit un dict en JSON avec UTF-8 et indentation
+- [x] Fonction `_to_jsonl_format()` ajoutée : convertit une liste de dicts en JSONL (une ligne par objet)
+
+**Utilisation**:
+```python
+# Exemple d'utilisation dans les convertisseurs:
+json_output = _to_json_format({
+    "format": "pdf",
+    "pages": [{"index": 0, "content": "..."}],
+    "metadata": {"total_pages": 1}
+})
+
+jsonl_output = _to_jsonl_format([
+    {"index": 0, "content": "..."},
+    {"index": 1, "content": "..."}
+])
+```
 
 #### `app/converters/pdf.py` - PDF → JSON/JSONL
 
