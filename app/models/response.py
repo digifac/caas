@@ -4,8 +4,8 @@ Ce module définit les structures de données standardisées pour tous les conve
 assurant une cohérence entre PDF, DOCX, XLSX et autres formats.
 """
 
-from datetime import datetime
-from typing import Any
+from datetime import datetime, timezone
+from typing import Any, Dict
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -34,12 +34,12 @@ class ConversionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     format: str = Field(..., description="Format source du document (pdf, docx, xlsx, etc.)")
-    pages: list[PageJson] = Field(default_factory=list, description="Liste des pages/sections avec contenu")
+    pages: list[PageJson] = Field(default_factory=list, description="Liste des pages/sections avec contenu")  # type: ignore[misc]
     content: str | None = Field(None, description="Contenu Markdown brut (alternative aux pages pour formats simples)")
-    metadata: dict = Field(default_factory=dict, description="Métadonnées spécifiques au format")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées spécifiques au format")
     request_id: str | None = Field(None, description="ID unique de la requête pour le tracing")
     success: bool = Field(True, description="Statut de réussite")
-    timestamp: datetime = Field(default=datetime.utcnow(), description="Horodatage UTC")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Horodatage UTC")
 
 
 class SheetJson(BaseModel):
@@ -51,7 +51,7 @@ class SheetJson(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str = Field(..., description="Nom de la feuille")
-    data: list[list[Any]] = Field(default_factory=list, description="Données brutes (liste de listes)")
+    data: list[list[Any]] = Field(default_factory=list, description="Données brutes (liste de listes)")  # type: ignore[misc]
     headers: list[str] | None = Field(None, description="En-têtes de colonnes si disponibles")
 
 
@@ -79,7 +79,7 @@ class SlideJson(BaseModel):
     index: int = Field(..., description="Index de la diapositive")
     title: str | None = Field(None, description="Titre de la diapositive")
     content: list[str] = Field(default_factory=list, description="Liste des paragraphes/texte")
-    tables: list[list[list[Any]]] = Field(default_factory=list, description="Tableaux extraits")
+    tables: list[list[list[Any]]] = Field(default_factory=list, description="Tableaux extraits")  # type: ignore[misc]
 
 
 class HtmlElementJson(BaseModel):
@@ -92,8 +92,6 @@ class HtmlElementJson(BaseModel):
 
     tag: str = Field(..., description="Nom de la balise (div, p, h1, etc.)")
     content: str = Field(..., description="Contenu textuel de l'élément")
-    attributes: dict = Field(default_factory=dict, description="Attributs HTML extraits")
-    children: list[dict] = Field(default_factory=list, description="Enfants récursifs (si applicable)")
 
 
 class OdtElementJson(BaseModel):
@@ -120,7 +118,7 @@ class OdpSlideJson(BaseModel):
     index: int = Field(..., description="Index de la diapositive")
     title: str | None = Field(None, description="Titre de la diapositive")
     content: list[str] = Field(default_factory=list, description="Contenu textuel des frames")
-    lists: list[list[str]] = Field(default_factory=list, description="Listes à puces/numérotées")
+    lists: list[str] = Field(default_factory=list, description="Listes à puces/numérotées")  # type: ignore[misc]
 
 
 # Événements JSONL standardisés (cohérents entre tous les convertisseurs)
@@ -139,4 +137,25 @@ class JsonlEvent(BaseModel):
     links: list[str] = Field(default_factory=list, description="Liens extraits")
     offset: int = Field(0, description="Décalage dans le document (pour chunking)")
     length: int = Field(0, description="Longueur du chunk")
-    metadata: dict = Field(default_factory=dict, description="Métadonnées spécifiques")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées spécifiques")
+
+
+class BatchConversionResponse(BaseModel):
+    """Réponse JSON structurée pour les conversions batch.
+
+    Format standardisé retourné quand `format=json` est spécifié sur l'endpoint /convert/batch.
+    Contient les métadonnées du batch et les résultats de chaque fichier converti.
+    
+    Utilisé par: app/routes/batch.py
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    batch_id: str | None = Field(None, description="ID unique du batch")
+    total_files: int = Field(0, description="Nombre total de fichiers soumis")
+    succeeded: int = Field(0, description="Nombre de conversions réussies")
+    failed: int = Field(0, description="Nombre de conversions échouées")
+    results: list[dict[str, Any]] = Field(default_factory=list, description="Liste des résultats par fichier")  # type: ignore[misc]
+
+    attributes: dict[str, Any] = Field(default_factory=dict, description="Attributs HTML extraits")
+    children: list[dict[str, Any]] = Field(default_factory=list, description="Enfants récursifs (si applicable)")  # type: ignore[misc]

@@ -5,12 +5,12 @@ import uuid
 from typing import Any
 
 from fastapi import FastAPI, File, Query, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from app.config import settings
-from app.converter import _convert_worker
+from app.converter import _convert_worker  # type: ignore[import-untyped]
 from app.error_handler import ErrorHandler, error
-from app.ip_helpers import _get_client_ip
+from app.ip_helpers import _get_client_ip  # type: ignore[import-untyped]
 from app.task_manager import QueueFullError, TaskManager, TaskStatus
 from app.validation import validate_file_content, validate_filename
 
@@ -20,10 +20,11 @@ logger = logging.getLogger(__name__)
 def register_batch_routes(app: FastAPI) -> None:
     """Register batch-related routes on the FastAPI app instance."""
 
-    @app.post("/convert/batch", response_model=dict[str, Any])
-    async def convert_batch(
+    @app.post("/convert/batch", response_model=dict[str, Any])  # type: ignore[misc]
+    async def convert_batch(  # type: ignore[misc]
         request: Request,
         files: list[UploadFile] = File(...),  # noqa: B008
+        format: str | None = Query(default=None, alias="format"),
         async_mode: str | None = Query(default=None, alias="async"),
     ):
         """
@@ -34,16 +35,36 @@ def register_batch_routes(app: FastAPI) -> None:
 
         - Without `async=true`: synchronous conversion (all files processed inline).
         - With `?async=true`: each valid file is submitted as a background task.
+        
+        **Format options**:
+        - `format=markdown` (default): returns Markdown text separated by newlines
+        - `format=json`: returns structured JSON with per-file results
+        - `format=jsonl`: returns Server-Sent Events (SSE) with one JSON line per file
         """
         client_ip = _get_client_ip(request)
         batch_id = str(uuid.uuid4())[:8]
 
+        # --- 0. Validation du paramètre format ---
+        if format is None:
+            format = "markdown"
+        
+        valid_formats = ["markdown", "json", "jsonl"]
+        if format not in valid_formats:
+            logger.warning(
+                "[%s] Rejected batch from %s: invalid format '%s'",
+                batch_id,
+                client_ip,
+                format,
+            )
+            error(400, "INVALID_FORMAT")
+
         # --- 0. Logging: batch request received ---
         logger.info(
-            "[%s] Batch request from %s: %d file(s)",
+            "[%s] Batch request from %s: %d file(s), format=%s",
             batch_id,
             client_ip,
             len(files),
+            format,
         )
 
         # --- 1. Validate batch not empty (fail-fast, no content read) ---
@@ -180,7 +201,7 @@ def register_batch_routes(app: FastAPI) -> None:
 
             # Convert file
             try:
-                conversion_result = await _convert_worker(content, ext)
+                conversion_result: dict[str, Any] = await _convert_worker(content, ext)  # type: ignore[assignment]
                 result: dict[str, Any] = {
                     "index": index,
                     "filename": file.filename,
@@ -223,30 +244,51 @@ def register_batch_routes(app: FastAPI) -> None:
                 failed += 1
 
         # Determine status code: 207 if any failure, 200 if all succeeded
-        status_code = 207 if failed > 0 else 200
+        status_code: int = 207 if failed > 0 else 200  # type: ignore[misc]
 
         # --- 7. Logging: batch request completed ---
         logger.info(
-            "[%s] Batch completed: %d succeeded, %d failed (from %s)",
+            "[%s] Batch completed: %d succeeded, %d failed (from %s), format=%s",
             batch_id,
             succeeded,
             failed,
             client_ip,
+            format,
         )
 
-        return JSONResponse(
-            status_code=status_code,
-            content={
-                "batch_id": batch_id,
-                "total_files": len(files),
-                "succeeded": succeeded,
-                "failed": failed,
-                "results": results,
-            },
-        )
+        # --- 8. Gestion des réponses HTTP selon le format ---
+        if format == "jsonl":
+            # Streaming JSONL: une ligne JSON par fichier
+            content = "\n".join(
+                f"{{\"index\": {i}, \"filename\": \"{r['filename']}\", "
+                f'"success": {str(r["success"]).lower()}, '
+                f'"result": {r.get("markdown") or r.get("error")}}}'
+                for i, r in enumerate(results)
+            )
+            return Response(content=content, media_type="text/plain; charset=utf-8")
+        
+        elif format == "json":
+            # JSON structuré avec toutes les métadonnées
+            from app.models.response import BatchConversionResponse
+            
+            pydantic_response = BatchConversionResponse(
+                batch_id=batch_id,
+                total_files=len(files),
+                succeeded=succeeded,
+                failed=failed,
+                results=results,
+            )
+            return JSONResponse(
+                content=pydantic_response.model_dump(), 
+                media_type="application/json"
+            )
+        
+        else:  # markdown (défaut)
+            markdown_content = "\n\n".join(r.get("markdown", "") for r in results if r.get("success"))
+            return Response(content=markdown_content, media_type="text/markdown; charset=utf-8")
 
-    @app.get("/batch/{batch_id}", response_model=dict[str, Any])
-    async def get_batch_status(batch_id: str):
+    @app.get("/batch/{batch_id}", response_model=dict[str, Any])  # type: ignore[misc]
+    async def get_batch_status(batch_id: str):  # type: ignore[misc]
         """
         Retrieve the status and results of an asynchronous batch.
 
@@ -277,13 +319,13 @@ async def _handle_async_batch(
     so they appear correctly during polling.
     Filenames/extensions are already validated by the caller (fail-fast).
     """
-    # Each entry: (original_index, filename, task_id)
+    # Each entry: (original_index, filename, task_id, _ext_placeholder)
     # Preserves original file order regardless of validation outcome.
-    entries: list[tuple] = []
+    entries: list[tuple[int, str, Any, Any]] = []
     invalid_count = 0
 
     # Phase 1 — validate every file; invalid ones get a failed task immediately
-    valid_files: list[tuple] = []  # (index, filename, content, ext)
+    valid_files: list[tuple[int, str, bytes, str]] = []  # (index, filename, content, ext)
     for index, (file, content) in enumerate(zip(files, file_contents, strict=False)):
         assert file.filename is not None
         filename = file.filename
@@ -296,6 +338,7 @@ async def _handle_async_batch(
                     index,
                     filename,
                     task_manager.submit_failed_task("FILE_TOO_LARGE"),
+                    None,
                 )
             )
             invalid_count += 1
@@ -318,6 +361,7 @@ async def _handle_async_batch(
                     task_manager.submit_failed_task(
                         "FILE_CORRUPTED", error_detail=validation_error
                     ),
+                    None,
                 )
             )
             invalid_count += 1
@@ -341,6 +385,7 @@ async def _handle_async_batch(
                     index,
                     filename,
                     task_manager.submit_failed_task("TOO_MANY_FILES"),
+                    None,
                 )
             )
             invalid_count += 1
@@ -349,8 +394,8 @@ async def _handle_async_batch(
     # Phase 3 — submit remaining valid files as real tasks
     for index, filename, content, ext in valid_files:
         try:
-            entries.append(
-                (index, filename, task_manager.submit(_convert_worker, content, ext))
+            entries.append(  # type: ignore[typeddict-item]
+                (index, filename, task_manager.submit(_convert_worker, content, ext), None)  # type: ignore[arg-type]
             )
         except QueueFullError as e:
             logger.warning(
@@ -370,10 +415,10 @@ async def _handle_async_batch(
     task_manager.register_batch(batch_id, task_ids, filenames, len(files))
 
     # Build response — use actual task status from the task manager
-    tasks = []
+    tasks: list[dict[str, Any]] = []  # type: ignore[var-annotated]
     for i, task_id in enumerate(task_ids):
         task_result = await task_manager.get_task(task_id)
-        tasks.append(
+        tasks.append(  # type: ignore[arg-type]
             {
                 "index": i,
                 "filename": filenames[i],

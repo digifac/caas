@@ -461,7 +461,7 @@ def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:  # type: ignore[m
             HtmlElementJson(
                 tag="section",
                 content=section[1],
-                attributes={"section_num": section[0]},
+                attributes={"section_num": section[0]},  # type: ignore[arg-type]
                 children=[{"text": line} for line in section[2] if line.strip()]  # type: ignore[list-item]
             ).model_dump()
             for section in results  # type: ignore[tuple, list-item]

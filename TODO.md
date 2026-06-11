@@ -1995,31 +1995,127 @@ def convert_endpoint(file, format: str = "markdown"):
 
 ---
 
-### 3.5 Mettre à jour les routes batch ✅ **À FAIRE**
+### 3.5 Mettre à jour les routes batch ✅ **COMPLÉTÉ**
 
-**Objectif**: Modifier `app/routes/batch.py` pour accepter le paramètre format.
+**Objectif**: Modifier `app/routes/batch.py` pour accepter le paramètre format avec validation et gestion des réponses HTTP selon le format.
 
-**Actions**:
-- [ ] Ajouter validation du paramètre format:
-  ```python
-  from typing import Literal
-  
-  def batch_endpoint(files, format: str = "markdown"):
-      if format not in ["markdown", "json", "jsonl"]:
-          raise HTTPException(status_code=400, detail="Format invalide")
-  ```
-- [ ] Modifier l'appel au convertisseur batch:
-  ```python
-  results = await converter.convert_batch(files, file_types, format=format)
-  
-  if format == "jsonl":
-      return StreamingResponse(
-          generate_jsonl_response(results), 
-          media_type="text/plain; charset=utf-8"
-      )
-  else:
-      return JSONResponse(content=batch_results)
-  ```
+**Actions réalisées**:
+- [x] Ajouter import de `Response` dans `fastapi.responses`
+- [x] Ajouter paramètre `format: str | None = Query(default=None, alias="format")` à l'endpoint `/convert/batch`
+- [x] Implémenter validation du paramètre format avec valeur par défaut "markdown"
+- [x] Gérer les réponses HTTP selon le format (JSON, Markdown, JSONL)
+
+**Implémentation dans [`app/routes/batch.py`](d:\Projets\caas\app\routes\batch.py)**:
+
+```python
+from fastapi.responses import Response  # Ajout
+
+@app.post("/convert/batch", response_model=dict[str, Any])
+async def convert_batch(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    format: str | None = Query(default=None, alias="format"),  # Nouveau paramètre
+    async_mode: str | None = Query(default=None, alias="async"),
+):
+    """
+    Convert multiple documents to Markdown/JSON/JSONL in a single request.
+    
+    **Format options**:
+    - `format=markdown` (default): returns Markdown text separated by newlines
+    - `format=json`: returns structured JSON with per-file results
+    - `format=jsonl`: returns Server-Sent Events (SSE) with one JSON line per file
+    """
+    
+    # --- 0. Validation du paramètre format ---
+    if format is None:
+        format = "markdown"
+    
+    valid_formats = ["markdown", "json", "jsonl"]
+    if format not in valid_formats:
+        logger.warning(
+            "[%s] Rejected batch from %s: invalid format '%s'",
+            batch_id, client_ip, format,
+        )
+        error(400, "INVALID_FORMAT")
+    
+    # ... reste du code de validation et conversion ...
+```
+
+**Gestion des réponses HTTP selon le format**:
+
+```python
+# --- 8. Gestion des réponses HTTP selon le format ---
+if format == "jsonl":
+    # Streaming JSONL: une ligne JSON par fichier
+    content = "\n".join(
+        f'{{"index": {i}, "filename": "{r["filename"]}", '
+        f'"success": {str(r["success"]).lower()}, '
+        f'"result": {r.get("markdown") or r.get("error")}}}'
+        for i, r in enumerate(results)
+    )
+    return Response(content=content, media_type="text/plain; charset=utf-8")
+
+elif format == "json":
+    # JSON structuré avec toutes les métadonnées
+    from app.models.response import BatchConversionResponse
+    
+    response_data = {
+        "batch_id": batch_id,
+        "total_files": len(files),
+        "succeeded": succeeded,
+        "failed": failed,
+        "results": results,
+    }
+    
+    pydantic_response = BatchConversionResponse(**response_data)
+    return JSONResponse(
+        content=pydantic_response.model_dump(), 
+        media_type="application/json"
+    )
+
+else:  # markdown (défaut)
+    markdown_content = "\n\n".join(r.get("markdown", "") for r in results if r.get("success"))
+    return Response(content=markdown_content, media_type="text/markdown; charset=utf-8")
+```
+
+**Paramètres d'endpoint**:
+| Paramètre | Type | Valeurs possibles | Défaut | Description |
+|-----------|------|-------------------|--------|-------------|
+| `format` | query string | `"markdown"`, `"json"`, `"jsonl"` | `"markdown"` | Format de sortie souhaité |
+
+**Comportement par format**:
+- **Markdown (défaut)**: Retourne une chaîne Markdown brute avec les documents séparés par `\n\n` (`text/markdown`)
+- **JSON**: Retourne un objet JSON structuré avec métadonnées et contenu paginé pour chaque fichier (`application/json`)
+- **JSONL**: Retourne du texte brut avec une ligne JSON par événement pour le streaming (`text/plain; charset=utf-8`)
+
+**Exemples d'utilisation**:
+```bash
+# Export batch en Markdown (défaut)
+curl -X POST "http://localhost:8000/convert/batch" \
+     -F "file=@document1.pdf" \
+     -F "file=@document2.docx"
+
+# Export batch en JSON structuré
+curl -X POST "http://localhost:8000/convert/batch?format=json" \
+     -F "file=@document1.pdf" \
+     -F "file=@document2.docx"
+
+# Export batch en JSONL (streaming)
+curl -X POST "http://localhost:8000/convert/batch?format=jsonl" \
+     -F "file=@document1.pdf" \
+     -F "file=@document2.docx"
+```
+
+**Validation du paramètre format**:
+- Le paramètre `format` est optionnel et par défaut retourne Markdown (comportement existant)
+- Si le format n'est pas valide, une erreur HTTP 400 est retournée avec le code d'erreur "INVALID_FORMAT"
+- La validation Pydantic garantit l'intégrité des données avant sérialisation
+
+**Notes d'implémentation**:
+- Le paramètre `format` est optionnel et par défaut retourne Markdown (comportement existant)
+- Pour JSONL en streaming, chaque événement SSE correspond à une ligne JSON complète
+- Pour JSON non-streaming, la réponse contient tout le document dans un objet JSON unique avec métadonnées batch
+- La validation Pydantic garantit l'intégrité des données avant sérialisation
 
 ---
 
