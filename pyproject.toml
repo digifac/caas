@@ -68,9 +68,6 @@ ignore = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
-warn_return_any = false
-warn_unused_ignores = true
-disallow_untyped_defs = false
 strict_optional = true
 
 # Accepter la syntaxe moderne list[...] au lieu de typing.List[...]

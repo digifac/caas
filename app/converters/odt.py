@@ -191,11 +191,11 @@ def convert_odt_to_json(file_bytes: bytes) -> dict:
         "format": "odt",
         "pages": [
             PageJson(
-                page_num=page[0],
-                title=page[1],
-                text=[_escape_md_text(p) for p in page[2]]
+                page_idx=page[0],
+                markdown_text=_escape_md_text(p) if isinstance(p, str) else ""
             ).model_dump()
             for page in results
+            for p in page[2]
         ],
         "metadata": {
             "format": "odt",
@@ -244,7 +244,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         all_text.append(f"Page {page_num}: {title}")
         all_text.extend(page_lines)
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    chunk_size = settings.jsonl_chunk_size
 
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]

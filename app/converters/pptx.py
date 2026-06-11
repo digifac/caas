@@ -248,9 +248,8 @@ def convert_pptx_to_json(file_bytes: bytes) -> dict:
         "format": "pptx",
         "slides": [
             SlideJson(
-                slide_num=slide[0],
-                title=slide[1],
-                text=[line for line in slide[2] if line.strip()]
+                index=slide[0],
+                content=[line for line in slide[2] if line.strip()]
             ).model_dump()
             for slide in results
         ],
@@ -301,7 +300,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         all_text.append(f"Slide {slide_num}: {title}")
         all_text.extend(slide_lines)
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    chunk_size = settings.jsonl_chunk_size
 
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]

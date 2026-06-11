@@ -5,8 +5,11 @@ import logging
 import re
 from typing import Any, Union
 
-from bs4 import BeautifulSoup, Comment, Tag  # type: ignore[import-not-found]
-from bs4.element import NavigableString
+from bs4 import BeautifulSoup, Comment, Tag as _bs4_Tag  # type: ignore[import-not-found]
+from bs4.element import NavigableString as _bs4_NavigableString
+
+# Alias for type annotations
+bs4 = type('bs4', (), {'Tag': _bs4_Tag, 'NavigableString': _bs4_NavigableString})()  # type: ignore[misc]
 
 from app.config import settings
 
@@ -161,14 +164,14 @@ def _sanitize_soup(soup: BeautifulSoup) -> None:
             element["src"] = _sanitize_url(src_val)
 
 
-def _convert_element(element: Union[Tag, NavigableString]) -> list[str]:  # type: ignore[misc]
+def _convert_element(element: Union[_bs4_Tag, _bs4_NavigableString]) -> list[str]:  # type: ignore[misc]
     """Recursively convert a BeautifulSoup element to Markdown lines."""
     from bs4 import Comment
 
     if isinstance(element, Comment):
         return []  # type: ignore
 
-    if isinstance(element, NavigableString):
+    if isinstance(element, _bs4_NavigableString):
         text = str(element)
         # Preserve meaningful whitespace
         parent = element.parent
@@ -188,20 +191,14 @@ def _convert_element(element: Union[Tag, NavigableString]) -> list[str]:  # type
     if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
         level = int(tag[1])
         text = _get_text(element)
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        content = "".join(lines).strip()  # type: ignore
+        content = text.strip()
         return [f"{'#' * level} {content}"]
 
     # Paragraphs
     if tag == "p":
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        content = "".join(lines).strip()  # type: ignore
-        if content:
-            return [content, ""]
+        text = _get_text(element)
+        if text.strip():
+            return [text.strip(), ""]
 
     # Line breaks
     if tag == "br":
@@ -220,12 +217,9 @@ def _convert_element(element: Union[Tag, NavigableString]) -> list[str]:  # type
     # Links
     if tag == "a":
         href = element.get("href", "")
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        text = "".join(lines).strip()  # type: ignore
-        if text:
-            return [f"[{text}]({href})"]
+        text = _get_text(element)
+        if text.strip():
+            return [f"[{text.strip()}]({href})"]
         return []
 
     # Images
@@ -251,7 +245,7 @@ def _convert_element(element: Union[Tag, NavigableString]) -> list[str]:  # type
 
     # Blockquotes
     if tag == "blockquote":
-        lines: list[str] = []
+        lines = []
         for child in element.children:
             lines.extend(_convert_element(child))  # type: ignore
         quoted: list[str] = []
@@ -269,56 +263,44 @@ def _convert_element(element: Union[Tag, NavigableString]) -> list[str]:  # type
 
     # Bold
     if tag in ("strong", "b"):
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        text = "".join(lines)  # type: ignore
-        return [f"**{text}**"]
+        text = _get_text(element)
+        return [f"**{text.strip()}**"]
 
     # Italic
     if tag in ("em", "i"):
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        text = "".join(lines)  # type: ignore
-        return [f"*{text}*"]
+        text = _get_text(element)
+        return [f"*{text.strip()}*"]
 
     # Strikethrough
     if tag in ("del", "s", "strike"):
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        text = "".join(lines)  # type: ignore
-        return [f"~~{text}~~"]
+        text = _get_text(element)
+        return [f"~~{text.strip()}~~"]
 
     # Divs and sections (block-level containers)
     if tag in ("div", "section", "article", "main", "header", "footer", "body", "html"):
-        lines: list[str] = []
+        lines = []
         for child in element.children:
             lines.extend(_convert_element(child))  # type: ignore
         return lines
 
     # Span (inline container)
     if tag == "span":
-        lines: list[str] = []
-        for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
-        return lines
+        text = _get_text(element)
+        return [text.strip()]
 
     # For other tags, just process children
-    lines: list[str] = []
     for child in element.children:
         lines.extend(_convert_element(child))  # type: ignore
     return lines
 
 
-def _get_text(element: bs4.Tag | bs4.NavigableString) -> str:  # type: ignore[misc]
+def _get_text(element: _bs4_Tag | _bs4_NavigableString) -> str:  # type: ignore[misc]
     """Get stripped text content from an element."""
     text: str = element.get_text()  # type: ignore
     return text.strip()  # type: ignore
 
 
-def _convert_list(element: bs4.Tag, ordered: bool) -> list[str]:  # type: ignore[misc]
+def _convert_list(element: _bs4_Tag, ordered: bool) -> list[str]:  # type: ignore[misc]
     """Convert a <ul> or <ol> to Markdown list."""
     lines: list[str] = []
     index = 1
@@ -347,7 +329,7 @@ def _convert_list(element: bs4.Tag, ordered: bool) -> list[str]:  # type: ignore
     return lines
 
 
-def _convert_table(element: bs4.Tag) -> list[str]:  # type: ignore[misc]
+def _convert_table(element: _bs4_Tag) -> list[str]:
     """Convert a <table> to Markdown table."""
     rows: list[list[str]] = []
 
@@ -412,7 +394,7 @@ def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
 
     _sanitize_soup(soup)
 
-    sections: list[str] = []
+    sections: list[tuple[int, str, list[str]]] = []
     section_num = 0
 
     # Extract content from body or html if no body
@@ -437,9 +419,9 @@ def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
                 for child in element.children:
                     lines.extend(_convert_element(child))  # type: ignore[arg-type]
 
-                sections.append((section_num, title, lines))  # type: ignore[list-item]
+                sections.append((section_num, title, lines))
 
-    return sections  # type: ignore[return-value]
+    return sections
 
 
 def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:  # type: ignore[misc]
@@ -460,9 +442,7 @@ def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:  # type: ignore[m
         "sections": [
             HtmlElementJson(
                 tag="section",
-                content=section[1],
-                attributes={"section_num": section[0]},  # type: ignore[arg-type]
-                children=[{"text": line} for line in section[2] if line.strip()]  # type: ignore[list-item]
+                content=section[1]
             ).model_dump()
             for section in results  # type: ignore[tuple, list-item]
         ],
@@ -514,10 +494,10 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         all_text.append(f"Section {section_num}: {title}")
         all_text.extend(section_lines)
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE  # type: ignore[attr-defined]
+    chunk_size = settings.jsonl_chunk_size
 
     if all_text:
-        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]  # type: ignore[list-item]
+        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
             lines.append(json.dumps({  # type: ignore[dict-item]

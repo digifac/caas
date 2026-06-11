@@ -103,18 +103,6 @@ def _extract_docx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
 
     markdown: str = result.value.strip()  # type: ignore
 
-def _escape_md_text(text: str) -> str:
-    # Split by double newlines to get "pages" (paragraph groups)
-    pages: list[str] = re.split(r'\n\n+', markdown) if markdown else []  # type: ignore
-
-    results: list[tuple[int, str, list[str]]] = []
-    for i, page in enumerate(pages, 1):
-        paragraphs: list[str] = [p.strip() for p in page.split('\n') if p.strip()]
-        if paragraphs:
-            results.append((i, "", paragraphs))
-
-    return results
-
 
 def convert_docx_to_json(file_bytes: bytes) -> dict[str, Any]:
     """Convert DOCX to JSON format.
@@ -132,7 +120,7 @@ def convert_docx_to_json(file_bytes: bytes) -> dict[str, Any]:
         "pages": [
             PageJson(
                 page_idx=page[0],
-                markdown_text="",
+                markdown_text=" ".join(page[2]),  # Reconstituer le texte des paragraphes
                 links=[]
             ).model_dump()
             for page in results
@@ -181,7 +169,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         for page in results
     )
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE  # type: ignore
+    chunk_size = settings.jsonl_chunk_size
 
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]

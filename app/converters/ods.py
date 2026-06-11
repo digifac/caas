@@ -207,16 +207,18 @@ def convert_ods_to_json(file_bytes: bytes) -> dict:
         "format": "ods",
         "sheets": [
             SheetJson(
-                sheet_num=sheet[0],
-                title=sheet[1],
-                cells=[
-                    CellJson(
-                        row=int(cell_row) + 1,
-                        col=int(cell_col) + 1,
-                        value=_escape_md_table(str(cell_val)) if cell_val else ""
-                    ).model_dump()
-                    for cell_row, cell_col, cell_val in sheet[2]
-                ]
+                name=sheet[1],
+                data=[
+                    [
+                        CellJson(
+                            row=int(cell_row) + 1,
+                            col=int(cell_col) + 1,
+                            value=_escape_md_table(str(cell_val)) if cell_val else ""
+                        ).model_dump()
+                        for cell_row, cell_col, cell_val in sheet[2]
+                    ]
+                ],
+                headers=None
             ).model_dump()
             for sheet in results
         ],
@@ -269,7 +271,7 @@ def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
             row_str = "| " + " | ".join(str(v) if v else "" for v in row_values) + " |"
             all_text.append(f"Row {row_idx}:\n{row_str}")
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    chunk_size = settings.jsonl_chunk_size
 
     if all_text:
         chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
