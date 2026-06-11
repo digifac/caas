@@ -1314,30 +1314,75 @@ ENABLE_JSONL_CHUNKING = True  # Activer le chunking pour les fichiers textuels
 
 ---
 
-### 3.2 Modifier l'orchestrateur de conversion
+### 3.2 Modifier l'orchestrateur de conversion ✅ **COMPLÉTÉ**
 
-**Objectif**: Mettre à jour `app/converter.py` pour supporter les nouveaux formats.
+**Objectif**: Mettre à jour `app/converter.py` pour supporter les nouveaux formats. ✅ **RÉALISÉ**
 
-**Actions**:
-- [ ] **Étape 3.2.1**: Importer le module des modèles:
+**Actions réalisées**:
+- [x] Importer tous les modules des convertisseurs JSON/JSONL dans `app/converter.py`:
   ```python
-  from app.models.response import ConversionResponse, PageJson
+  from app.converters.docx import (
+      convert_docx_to_md,
+      convert_docx_to_json,
+      convert_docx_to_jsonl,
+  )
+  # ... mêmes imports pour html, odp, ods, odt, pdf, pptx, xlsx
   ```
-- [ ] **Étape 3.2.2**: Ajouter paramètre `format` à la fonction principale:
+
+- [x] Créer les dictionnaires de routage dans `_convert_worker()`:
   ```python
-  def convert_file(file_bytes: bytes, file_type: str, format: str = "markdown") -> dict | str:
-      # ... logique existante ...
+  converters = {
+      "pdf": convert_pdf_to_md,
+      "docx": convert_docx_to_md,
+      # ... autres formats markdown
+  }
+
+  json_converters = {
+      "pdf": convert_pdf_to_json,
+      "docx": convert_docx_to_json,
+      # ... autres formats JSON
+  }
+
+  jsonl_converters = {
+      "pdf": convert_pdf_to_jsonl,
+      "docx": convert_docx_to_jsonl,
+      # ... autres formats JSONL
+  }
   ```
-- [ ] **Étape 3.2.3**: Modifier le routage vers les convertisseurs:
+
+- [x] Implémenter la logique de routage selon le format:
   ```python
-  if format == "json":
-      return converter.convert(file_bytes, file_type, format="json")
-  elif format == "jsonl":
-      return converter.convert(file_bytes, file_type, format="jsonl")
-  else:
-      # Défaut: markdown
-      return converter.convert(file_bytes, file_type)
+  if output_format == "json":
+      result = await asyncio.to_thread(json_converter, file_bytes)
+  elif output_format == "jsonl":
+      result = await asyncio.to_thread(jsonl_converter, file_bytes)
+  else:  # markdown (default)
+      result = await asyncio.to_thread(converter, file_bytes)
+
+  return {
+      "success": True,
+      "markdown": result if output_format == "markdown" else None,
+      "json": result if output_format == "json" else None,
+      "jsonl": result if output_format == "jsonl" else None,
+      "format": ext,
+      "size_bytes": len(file_bytes),
+  }
   ```
+
+**Fichier implémenté**: [`app/converter.py`](d:\Projets\caas\app\converter.py)
+
+**Détails de l'implémentation**:
+- Le worker `_convert_worker()` supporte les trois formats: `markdown`, `json`, `jsonl`
+- Chaque convertisseur a ses propres fonctions asynchrones synchronisées via `asyncio.to_thread()`:
+  - `convert_*_to_md()` pour le format Markdown (défaut)
+  - `convert_*_to_json()` pour le format JSON structuré
+  - `convert_*_to_jsonl()` pour le format JSONL (streaming)
+- Le résultat est retourné dans un dict avec les clés `markdown`, `json`, `jsonl` selon le format demandé
+
+**Validation**:
+- [x] Tous les convertisseurs ont leurs fonctions JSON/JSONL implémentées
+- [x] L'orchestrateur route correctement vers les bonnes fonctions selon le paramètre `output_format`
+- [x] Le résultat est structuré de manière cohérente pour tous les formats
 
 ---
 
