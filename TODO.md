@@ -20,18 +20,37 @@ Ce fichier liste les étapes pour ajouter le support de l'export JSON et JSONL a
 
 ### 1.1 Comprendre la structure actuelle
 
-**Objectif**: Identifier comment les convertisseurs Markdown sont implémentés pour réutiliser le pattern.
+**Objectif**: Identifier comment les convertisseurs Markdown sont implémentés pour réutiliser le pattern. ✅ **COMPLÉTÉ**
 
-**Actions**:
-- [ ] Lire `app/converters/base.py` pour comprendre les utilitaires partagés
-- [ ] Examiner un convertisseur existant (ex: `app/converters/pdf.py`)
-- [ ] Vérifier la structure des données retournées par chaque convertisseur
-- [ ] Identifier le format de sortie actuel (Markdown en chaîne)
+**Actions réalisées**:
+- [x] Lire `app/converters/base.py` - utilitaires partagés (`clean_lines`, détection d'en-têtes, listes)
+- [x] Examiner `app/converters/pdf.py` - convertisseur PDF → Markdown avec OCR et extraction de liens
+- [x] Vérifier la structure des données retournées par chaque convertisseur
+
+**Structure de données découverte**:
+```python
+# Format interne utilisé par tous les convertisseurs:
+results = [(page_idx, markdown_text, urls)]  # tuple (index_page, texte_markdown, liste_urls)
+
+# Exemple PDF:
+def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
+    """Retourne une liste de tuples (page_idx, page_md, [urls])"""
+```
+
+**Format de sortie actuel**:
+- Markdown en chaîne unique retournée par `convert_pdf_to_md()`
+- Format: `"\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()`
+- Les liens sont ajoutés comme `[uri](uri)` à la fin du markdown
+
+**Pattern identifié pour réutilisation**:
+1. Extraction des données brutes → liste de tuples `(page_idx, content, metadata)`
+2. Nettoyage et conversion en Markdown via `clean_lines()`
+3. Agrégation finale en chaîne unique
 
 **Référence**: 
-- `app/converters/base.py` - utilitaires communs
-- `app/converters/pdf.py` - exemple PDF → Markdown
-- `app/streaming.py` - implémentation du streaming
+- `app/converters/base.py` - utilitaires communs (`clean_lines`, `is_uppercase_heading`)
+- `app/converters/pdf.py` - exemple complet PDF → Markdown avec streaming async
+- `app/streaming.py` - implémentation du streaming SSE
 
 ---
 
