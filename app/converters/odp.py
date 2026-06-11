@@ -7,6 +7,7 @@ import logging
 from odf import opendocument  # type: ignore[import-untyped]
 from odf.namespaces import DRAWNS, STYLENS  # type: ignore[import-untyped]
 
+from app.config import settings
 from app.converters.base import clean_lines
 from app.models.response import SlideJson
 
@@ -380,28 +381,28 @@ def _extract_odp_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
                         slides.append(page)
 
     results = []
-    
+
     for idx, page in enumerate(slides, start=1):
         try:
             lines = _extract_slide_text(page, idx)
-            
+
             # Get title or default to slide number
             frames = _collect_frames(page)
             has_title = False
-            
+
             for frame in frames:
                 style_name = (_get_attr_ns(frame, STYLENS, "name") or "").lower()
                 page_master = (_get_attr_ns(frame, DRAWNS, "style-name") or "").lower()
                 frame_name = (_get_attr_ns(frame, DRAWNS, "name") or "").lower()
-                
+
                 is_title = "title" in style_name or "title" in page_master or "title" in frame_name
-                
+
                 if is_title:
                     has_title = True
                     break
-            
+
             title = f"Slide {idx}" if not has_title else ""
-            
+
             results.append((idx, title, lines))
         except Exception as e:
             logger.warning("Error extracting slide %d: %s", idx, e)
@@ -420,7 +421,7 @@ def convert_odp_to_json(file_bytes: bytes) -> dict:
         Dict with slides and metadata in JSON structure.
     """
     results = _extract_odp_content(file_bytes)
-    
+
     return {
         "format": "odp",
         "slides": [
@@ -449,7 +450,7 @@ def convert_odp_to_jsonl(file_bytes: bytes) -> str:
         JSONL string with start, chunk, and end events.
     """
     results = _extract_odp_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -463,37 +464,37 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         JSONL string with start, chunk, and end events.
     """
     import json
-    
+
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "odp",
     }))
-    
+
     # Convert to text representation for chunking
     all_text = []
     for slide_num, title, slide_lines in results:
         all_text.append(f"Slide {slide_num}: {title}")
         all_text.extend(slide_lines)
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": "\n".join(chunk),
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "odp",
         "total_slides": len(results),
     }))
-    
+
     return "\n".join(lines)

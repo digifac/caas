@@ -5,8 +5,9 @@ assurant une cohérence entre PDF, DOCX, XLSX et autres formats.
 """
 
 from datetime import datetime
-from typing import Any, Optional, List
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class PageJson(BaseModel):
@@ -20,7 +21,7 @@ class PageJson(BaseModel):
 
     index: int = Field(..., description="Index de la page/section")
     content: str = Field(..., description="Contenu brut (Markdown ou texte)")
-    urls: List[str] = Field(default_factory=list, description="Liens extraits")
+    urls: list[str] = Field(default_factory=list, description="Liens extraits")
 
 
 class ConversionResponse(BaseModel):
@@ -33,10 +34,10 @@ class ConversionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     format: str = Field(..., description="Format source du document (pdf, docx, xlsx, etc.)")
-    pages: List[PageJson] = Field(default_factory=list, description="Liste des pages/sections avec contenu")
-    content: Optional[str] = Field(None, description="Contenu Markdown brut (alternative aux pages pour formats simples)")
+    pages: list[PageJson] = Field(default_factory=list, description="Liste des pages/sections avec contenu")
+    content: str | None = Field(None, description="Contenu Markdown brut (alternative aux pages pour formats simples)")
     metadata: dict = Field(default_factory=dict, description="Métadonnées spécifiques au format")
-    request_id: Optional[str] = Field(None, description="ID unique de la requête pour le tracing")
+    request_id: str | None = Field(None, description="ID unique de la requête pour le tracing")
     success: bool = Field(True, description="Statut de réussite")
     timestamp: datetime = Field(default=datetime.utcnow(), description="Horodatage UTC")
 
@@ -50,8 +51,8 @@ class SheetJson(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str = Field(..., description="Nom de la feuille")
-    data: List[List[Any]] = Field(default_factory=list, description="Données brutes (liste de listes)")
-    headers: Optional[List[str]] = Field(None, description="En-têtes de colonnes si disponibles")
+    data: list[list[Any]] = Field(default_factory=list, description="Données brutes (liste de listes)")
+    headers: list[str] | None = Field(None, description="En-têtes de colonnes si disponibles")
 
 
 class CellJson(BaseModel):
@@ -76,9 +77,9 @@ class SlideJson(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     index: int = Field(..., description="Index de la diapositive")
-    title: Optional[str] = Field(None, description="Titre de la diapositive")
-    content: List[str] = Field(default_factory=list, description="Liste des paragraphes/texte")
-    tables: List[List[List[Any]]] = Field(default_factory=list, description="Tableaux extraits")
+    title: str | None = Field(None, description="Titre de la diapositive")
+    content: list[str] = Field(default_factory=list, description="Liste des paragraphes/texte")
+    tables: list[list[list[Any]]] = Field(default_factory=list, description="Tableaux extraits")
 
 
 class HtmlElementJson(BaseModel):
@@ -92,7 +93,7 @@ class HtmlElementJson(BaseModel):
     tag: str = Field(..., description="Nom de la balise (div, p, h1, etc.)")
     content: str = Field(..., description="Contenu textuel de l'élément")
     attributes: dict = Field(default_factory=dict, description="Attributs HTML extraits")
-    children: List[dict] = Field(default_factory=list, description="Enfants récursifs (si applicable)")
+    children: list[dict] = Field(default_factory=list, description="Enfants récursifs (si applicable)")
 
 
 class OdtElementJson(BaseModel):
@@ -117,9 +118,9 @@ class OdpSlideJson(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     index: int = Field(..., description="Index de la diapositive")
-    title: Optional[str] = Field(None, description="Titre de la diapositive")
-    content: List[str] = Field(default_factory=list, description="Contenu textuel des frames")
-    lists: List[List[str]] = Field(default_factory=list, description="Listes à puces/numérotées")
+    title: str | None = Field(None, description="Titre de la diapositive")
+    content: list[str] = Field(default_factory=list, description="Contenu textuel des frames")
+    lists: list[list[str]] = Field(default_factory=list, description="Listes à puces/numérotées")
 
 
 # Événements JSONL standardisés (cohérents entre tous les convertisseurs)
@@ -133,7 +134,7 @@ class JsonlEvent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type: str = Field(..., pattern="^(start|chunk|end)$", description="Type d'événement")
-    index: Optional[int] = Field(None, description="Index de la page/section/diapositive")
+    index: int | None = Field(None, description="Index de la page/section/diapositive")
     content: str = Field("", description="Contenu du chunk ou données brutes")
     offset: int = Field(0, description="Décalage dans le document (pour chunking)")
     length: int = Field(0, description="Longueur du chunk")

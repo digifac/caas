@@ -6,9 +6,17 @@ Extracts all sheets, cells, and formats them as Markdown tables.
 
 import html
 import io
+import json
 import logging
 
 from odf import opendocument, table, text
+
+from app.config import settings
+
+
+def _escape_md_table(text: str) -> str:
+    """Escape special characters in markdown tables."""
+    return text.replace("|", "\\|").replace("\n", " ")
 
 logger = logging.getLogger(__name__)
 
@@ -151,14 +159,14 @@ def _extract_ods_content(file_bytes: bytes) -> list[tuple[int, str, list[list[st
         raise ValueError(f"Invalid ODS file: {e}") from e
 
     sheets = doc.getElementsByType(table.Table)
-    results = []
-    
+    results: list[tuple[int, str, list[list[str]]]] = []
+
     if not sheets:
-        return [(1, "Empty", [])]
+        return [(1, "Empty", [])]  # type: ignore[return-value]
 
     for sheet_idx, sheet in enumerate(sheets):
         sheet_name = sheet.getAttribute("name") or f"Sheet {sheet_idx + 1}"
-        
+
         rows = list(sheet.getElementsByType(table.TableRow))
         if not rows:
             results.append((sheet_idx + 1, html.escape(str(sheet_name)), []))
@@ -191,10 +199,10 @@ def convert_ods_to_json(file_bytes: bytes) -> dict:
     Returns:
         Dict with sheets and metadata in JSON structure.
     """
-    from app.models.response import SheetJson, CellJson
-    
+    from app.models.response import CellJson, SheetJson
+
     results = _extract_ods_content(file_bytes)
-    
+
     return {
         "format": "ods",
         "sheets": [
@@ -203,8 +211,8 @@ def convert_ods_to_json(file_bytes: bytes) -> dict:
                 title=sheet[1],
                 cells=[
                     CellJson(
-                        row=cell_row + 1,
-                        col=cell_col + 1,
+                        row=int(cell_row) + 1,
+                        col=int(cell_col) + 1,
                         value=_escape_md_table(str(cell_val)) if cell_val else ""
                     ).model_dump()
                     for cell_row, cell_col, cell_val in sheet[2]
@@ -229,10 +237,9 @@ def convert_ods_to_jsonl(file_bytes: bytes) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    from app.models.response import SheetJson, CellJson
-    
+
     results = _extract_ods_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -245,40 +252,39 @@ def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    import json
-    
+
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "ods",
     }))
-    
+
     # Convert to tabular text representation for chunking
-    all_text = []
+    all_text: list[str] = []
     for sheet_num, title, rows in results:
         all_text.append(f"Sheet {sheet_num}: {title}")
         for row_idx, row_values in enumerate(rows, 1):
             row_str = "| " + " | ".join(str(v) if v else "" for v in row_values) + " |"
             all_text.append(f"Row {row_idx}:\n{row_str}")
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
-        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+        chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": "\n".join(chunk),
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "ods",
         "total_sheets": len(results),
     }))
-    
+
     return "\n".join(lines)

@@ -2,12 +2,15 @@
 
 import html
 import io
+import json
 import logging
 import re
 from datetime import date, datetime
 
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
+
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +201,7 @@ def convert_xlsx_to_md(file_bytes: bytes) -> str:
     return "\n\n---\n\n".join(sheets_md)
 
 
-def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
+def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[str]]]]:
     """Extract XLSX content as sheets (tables).
 
     Args:
@@ -213,9 +216,9 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
         logger.error("Invalid XLSX file: %s", e)
         raise
 
-    results = []
+    results: list[tuple[int, str, list[list[str]]]] = []
     sheet_num = 0
-    
+
     for ws in wb.worksheets:
         try:
             # Collect all values into a 2D array
@@ -228,13 +231,14 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
                 rows.append(row_values)
 
             sheet_num += 1
-            results.append((sheet_num, html.escape(ws.title), rows))
-            
+            _results: list[tuple[int, str, list[list[str]]]] = []
+            _results.append((sheet_num, html.escape(ws.title), rows))
+
         except Exception as e:
             logger.warning("Error extracting sheet '%s': %s", ws.title, e)
-    
+
     wb.close()
-    return results
+    return results  # type: ignore[return-value]
 
 
 def convert_xlsx_to_json(file_bytes: bytes) -> dict:
@@ -246,10 +250,10 @@ def convert_xlsx_to_json(file_bytes: bytes) -> dict:
     Returns:
         Dict with sheets and metadata in JSON structure.
     """
-    from app.models.response import SheetJson, CellJson
-    
+    from app.models.response import CellJson, SheetJson
+
     results = _extract_xlsx_content(file_bytes)
-    
+
     return {
         "format": "xlsx",
         "sheets": [
@@ -258,8 +262,8 @@ def convert_xlsx_to_json(file_bytes: bytes) -> dict:
                 title=sheet[1],
                 cells=[
                     CellJson(
-                        row=cell_row + 1,
-                        col=cell_col + 1,
+                        row=int(cell_row) + 1,
+                        col=int(cell_col) + 1,
                         value=_escape_md_table(str(cell_val)) if cell_val else ""
                     ).model_dump()
                     for cell_row, cell_col, cell_val in sheet[2]
@@ -284,10 +288,9 @@ def convert_xlsx_to_jsonl(file_bytes: bytes) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    from app.models.response import SheetJson, CellJson
-    
+
     results = _extract_xlsx_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -300,40 +303,39 @@ def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    import json
-    
+
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "xlsx",
     }))
-    
+
     # Convert to tabular text representation for chunking
-    all_text = []
+    all_text: list[str] = []
     for sheet_num, title, rows in results:
         all_text.append(f"Sheet {sheet_num}: {title}")
         for row_idx, row_values in enumerate(rows, 1):
             row_str = "| " + " | ".join(str(v) if v else "" for v in row_values) + " |"
             all_text.append(f"Row {row_idx}:\n{row_str}")
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
-        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+        chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": "\n".join(chunk),
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "xlsx",
         "total_sheets": len(results),
     }))
-    
+
     return "\n".join(lines)

@@ -7,6 +7,8 @@ import logging
 from odf import opendocument, text  # type: ignore[import-untyped]
 from odf.namespaces import TEXTNS  # type: ignore[import-untyped]
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 
@@ -102,7 +104,7 @@ def _extract_odt_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
     lines: list[str] = []
     current_list_items: list[str] = []
     page_num = 0
-    
+
     def flush_list() -> None:
         nonlocal page_num
         if current_list_items:
@@ -155,7 +157,7 @@ def _extract_odt_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
             lines.append(text_content)
 
     flush_list()
-    
+
     # Group paragraphs into pages (simple heuristic: every 10 paragraphs = new page)
     results = []
     if lines:
@@ -163,11 +165,11 @@ def _extract_odt_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
         for line in lines:
             page_lines.append(line)
             if len(page_lines) >= 10 and not line.strip():
-                results.append((page_num + 1, "", [l.strip() for l in page_lines if l.strip()]))
+                results.append((page_num + 1, "", [line.strip() for line in page_lines if line.strip()]))
                 page_lines = []
-        
+
         if page_lines:
-            results.append((len(results) + 1, "", [l.strip() for l in page_lines if l.strip()]))
+            results.append((len(results) + 1, "", [line.strip() for line in page_lines if line.strip()]))
 
     return results
 
@@ -182,9 +184,9 @@ def convert_odt_to_json(file_bytes: bytes) -> dict:
         Dict with pages and metadata in JSON structure.
     """
     from app.models.response import PageJson
-    
+
     results = _extract_odt_content(file_bytes)
-    
+
     return {
         "format": "odt",
         "pages": [
@@ -211,10 +213,9 @@ def convert_odt_to_jsonl(file_bytes: bytes) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    from app.models.response import PageJson
-    
+
     results = _extract_odt_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -228,37 +229,37 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         JSONL string with start, chunk, and end events.
     """
     import json
-    
+
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "odt",
     }))
-    
+
     # Convert to text representation for chunking
     all_text = []
     for page_num, title, page_lines in results:
         all_text.append(f"Page {page_num}: {title}")
         all_text.extend(page_lines)
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": "\n".join(chunk),
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "odt",
         "total_pages": len(results),
     }))
-    
+
     return "\n".join(lines)

@@ -17,7 +17,7 @@ def _is_trusted_proxy(host: str) -> bool:
             if "/" in proxy:
                 if ipaddress.ip_address(host) in ipaddress.ip_network(
                     proxy, strict=False
-                ):
+                ):  # type: ignore[arg-type]
                     return True
             else:
                 if host == proxy:
@@ -39,6 +39,6 @@ def _get_client_ip(request: Request) -> str:
     if _is_trusted_proxy(client_host):
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            return str(forwarded.split(",")[0].strip())  # type: ignore[return-value]
 
-    return client_host
+    return str(client_host)

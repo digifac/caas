@@ -1,23 +1,23 @@
 """Common utilities shared by all converters."""
 
-from typing import Any, List, Dict
 import json
 import logging
 import re
+from typing import Any
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
 
-def clean_lines(lines: List[str]) -> List[str]:
+def clean_lines(lines: list[str]) -> list[str]:
     """Clean lines and detect basic Markdown structure.
 
     Heading detection is controlled by settings.markdown_heading_detection.
     When enabled, only short ALL-CAPS lines without punctuation are treated
     as headings, reducing false positives on normal uppercase paragraphs.
     """
-    cleaned: List[str] = []
+    cleaned: list[str] = []
     for line in lines:
         line = line.strip()
         if not line:
@@ -105,11 +105,11 @@ def is_uppercase_heading(line: str) -> bool:
     return line not in _KNOWN_ACRONYMS
 
 
-def _to_json_format(data: Dict[str, Any]) -> str:
+def _to_json_format(data: dict[str, Any]) -> str:
     """Convert unstructured data to JSON format.
 
     Args:
-        data: Dictionary containing the conversion result with keys like 'format', 
+        data: Dictionary containing the conversion result with keys like 'format',
               'pages' or 'content', and 'metadata'.
 
     Returns:
@@ -118,11 +118,11 @@ def _to_json_format(data: Dict[str, Any]) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def _to_jsonl_format(pages: List[Dict[str, Any]]) -> str:
+def _to_jsonl_format(pages: list[dict[str, Any]]) -> str:
     """Convert a list of pages/sections to JSONL format (one JSON object per line).
 
     Args:
-        pages: List of dictionaries representing pages or sections. Each dict should 
+        pages: List of dictionaries representing pages or sections. Each dict should
                contain keys like 'index', 'content', and optionally 'urls'.
 
     Returns:

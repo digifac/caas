@@ -6,6 +6,7 @@ import logging
 
 from pptx import Presentation
 
+from app.config import settings
 from app.converters.base import clean_lines
 from app.models.response import SlideJson
 
@@ -213,7 +214,7 @@ def _extract_pptx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
         raise
 
     results = []
-    
+
     for idx, slide in enumerate(prs.slides, start=1):
         try:
             lines = _extract_slide_text(slide, idx)
@@ -223,7 +224,7 @@ def _extract_pptx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
                 title = title_text if title_text else f"Slide {idx}"
             else:
                 title = f"Slide {idx}"
-            
+
             results.append((idx, title, lines))
         except Exception as e:
             logger.warning("Error extracting slide %d: %s", idx, e)
@@ -242,7 +243,7 @@ def convert_pptx_to_json(file_bytes: bytes) -> dict:
         Dict with slides and metadata in JSON structure.
     """
     results = _extract_pptx_content(file_bytes)
-    
+
     return {
         "format": "pptx",
         "slides": [
@@ -271,7 +272,7 @@ def convert_pptx_to_jsonl(file_bytes: bytes) -> str:
         JSONL string with start, chunk, and end events.
     """
     results = _extract_pptx_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -285,37 +286,37 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         JSONL string with start, chunk, and end events.
     """
     import json
-    
+
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "pptx",
     }))
-    
+
     # Convert to text representation for chunking
     all_text = []
     for slide_num, title, slide_lines in results:
         all_text.append(f"Slide {slide_num}: {title}")
         all_text.extend(slide_lines)
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": "\n".join(chunk),
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "pptx",
         "total_slides": len(results),
     }))
-    
+
     return "\n".join(lines)

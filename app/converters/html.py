@@ -6,6 +6,8 @@ import re
 
 from bs4 import BeautifulSoup
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Dangerous URL schemes that must be blocked to prevent injection attacks
@@ -405,33 +407,35 @@ def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
     # Remove dangerous elements and sanitize
     for tag in soup(_DANGEROUS_TAGS):
         tag.decompose()
-    
+
     _sanitize_soup(soup)
 
     sections: list = []
     section_num = 0
-    
+
     # Extract content from body or html if no body
-    container = soup.body if soup.body else soup.html
-    
-    for element in container.find_all(True):
-        tag = element.name
-        
+    container = soup.body if soup.body is not None else soup.html
+
+    if container is None:
+        return []
+
+    for element in container.find_all(True):  # type: ignore[arg-type]
+        tag_name = str(element.name)
+
         # Headings as section titles
-        if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
-            level = int(tag[1])
+        if tag_name in ("h1", "h2", "h3", "h4", "h5", "h6"):
             text = _get_text(element)
-            
+
             if text.strip():
                 section_num += 1
                 title = f"Section {section_num}: {text}"
-                
+
                 # Extract content after heading
                 lines = []
                 for child in element.children:
                     lines.extend(_convert_element(child))
-                
-                sections.append((section_num, title, lines))
+
+                sections.append((section_num, title, lines))  # type: ignore[list-item]
 
     return sections
 
@@ -446,9 +450,9 @@ def convert_html_to_json(file_bytes: bytes) -> dict:
         Dict with sections and metadata in JSON structure.
     """
     from app.models.response import HtmlElementJson
-    
+
     results = _extract_html_content(file_bytes)
-    
+
     return {
         "format": "html",
         "sections": [
@@ -476,10 +480,9 @@ def convert_html_to_jsonl(file_bytes: bytes) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    from app.models.response import HtmlElementJson
-    
+
     results = _extract_html_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -493,37 +496,37 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         JSONL string with start, chunk, and end events.
     """
     import json
-    
+
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "html",
     }))
-    
+
     # Convert to text representation for chunking
     all_text = []
     for section_num, title, section_lines in results:
         all_text.append(f"Section {section_num}: {title}")
         all_text.extend(section_lines)
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": "\n".join(chunk),
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "html",
         "total_sections": len(results),
     }))
-    
+
     return "\n".join(lines)

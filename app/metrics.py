@@ -28,15 +28,16 @@ class AppMetrics:
 
     @staticmethod
     def _escape_label(value: str) -> str:
-        return value.replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+        result: str = value.replace("\\", "\\\\").replace("\n", "\n").replace('"', '\\"')
+        return result
 
     @staticmethod
     def _route_label(request: Request) -> str:
         route = request.scope.get("route")
         route_path = getattr(route, "path", None)
         if isinstance(route_path, str):
-            return route_path
-        return request.url.path
+            return route_path  # type: ignore[return-value]
+        return str(request.url.path)
 
     def start_request(self, method: str, path: str) -> None:
         """Track an in-progress request for method/path."""

@@ -11,13 +11,11 @@ import logging
 import re
 from collections.abc import AsyncGenerator
 
-from pydantic import BaseModel, Field
-
 import pdfplumber
 
 from app.config import settings
 from app.converters.base import clean_lines
-from app.models.response import PageJson, JsonlEvent
+from app.models.response import JsonlEvent, PageJson
 from app.ocr import ocr_pdf_pages
 
 logger = logging.getLogger(__name__)
@@ -176,7 +174,7 @@ def _to_json(results: list[tuple[int, str, list[str]]]) -> dict:
         Dict JSON avec pages et métadonnées.
     """
     pages = [PageJson(index=p[0], content=p[1], urls=p[2]) for p in results]
-    
+
     return {
         "format": "pdf",
         "pages": pages,
@@ -197,31 +195,31 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         Chaîne JSONL prête à être streamée.
     """
     chunks = []
-    
-    for page_idx, page_md, links in results:
+
+    for page_idx, page_md, _links in results:
         # Événement start pour la page
         chunks.append(JsonlEvent(
-            type="start", 
-            index=page_idx, 
+            type="start",
+            index=page_idx,
             metadata={"source": "pdf_page"}
         ))
-        
+
         # Chunker le contenu textuel (Markdown) par blocs de CAAS_JSONL_CHUNK_SIZE
         content = page_md  # Markdown text
         chunk_size = settings.jsonl_chunk_size or 1024
-        
+
         for i in range(0, len(content), chunk_size):
             chunk_content = content[i:i+chunk_size]
             chunks.append(JsonlEvent(
-                type="chunk", 
+                type="chunk",
                 content=chunk_content,
                 offset=i,
                 length=len(chunk_content)
             ))
-        
+
         # Événement end pour la page
         chunks.append(JsonlEvent(type="end"))
-    
+
     return "\n".join(json.dumps(e.model_dump(), ensure_ascii=False) for e in chunks)
 
 

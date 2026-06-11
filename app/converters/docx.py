@@ -6,11 +6,10 @@ import json
 import logging
 import re
 
-from pydantic import BaseModel, Field
-
 import mammoth
 
-from app.models.response import PageJson, JsonlEvent
+from app.config import settings
+from app.models.response import PageJson
 
 logger = logging.getLogger(__name__)
 
@@ -100,16 +99,16 @@ def _extract_docx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
             logger.warning("DOCX Warning: %s", msg)
 
     markdown = result.value.strip()
-    
+
     # Split by double newlines to get "pages" (paragraph groups)
     pages = re.split(r'\n\n+', markdown) if markdown else []
-    
+
     results = []
     for i, page in enumerate(pages, 1):
         paragraphs = [p.strip() for p in page.split('\n') if p.strip()]
         if paragraphs:
             results.append((i, "", paragraphs))
-    
+
     return results
 
 
@@ -123,7 +122,7 @@ def convert_docx_to_json(file_bytes: bytes) -> dict:
         Dict with pages and metadata in JSON structure.
     """
     results = _extract_docx_content(file_bytes)
-    
+
     return {
         "format": "docx",
         "pages": [
@@ -151,7 +150,7 @@ def convert_docx_to_jsonl(file_bytes: bytes) -> str:
         JSONL string with start, chunk, and end events.
     """
     results = _extract_docx_content(file_bytes)
-    
+
     return _to_jsonl(results)
 
 
@@ -165,35 +164,35 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         JSONL string with start, chunk, and end events.
     """
     lines = []
-    
+
     # Start event
     lines.append(json.dumps({
         "type": "start",
         "format": "docx",
     }))
-    
+
     # Chunk text content
     all_text = "\n".join(
-        f"Page {page[0]}: {' '.join(page[2])}" 
+        f"Page {page[0]}: {' '.join(page[2])}"
         for page in results
     )
-    
+
     chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
-    
+
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
-        
+
         for chunk in chunks:
             lines.append(json.dumps({
                 "type": "chunk",
                 "content": chunk,
             }))
-    
+
     # End event
     lines.append(json.dumps({
         "type": "end",
         "format": "docx",
         "total_pages": len(results),
     }))
-    
+
     return "\n".join(lines)
