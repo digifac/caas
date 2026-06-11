@@ -54,14 +54,31 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
 
 ---
 
-### 1.2 Analyser les données de sortie
+### 1.2 Analyser les données de sortie ✅ **COMPLÉTÉ**
 
 **Objectif**: Comprendre la structure des données brutes avant conversion en Markdown.
 
-**Actions**:
-- [ ] Pour PDF: identifier la structure `(page_idx, markdown_text, urls)`
-- [ ] Pour DOCX/ODT/XLSX/PPTX/HTML: identifier les structures de données retournées
-- [ ] Documenter le format JSON attendu pour chaque type de fichier
+**Actions réalisées**:
+- [x] Pour PDF: identifier la structure `(page_idx, markdown_text, urls)` via `_extract_pdf_content()`
+- [x] Pour DOCX: retourne une chaîne Markdown brute via `mammoth.convert_to_markdown()`
+- [x] Pour ODT: retourne une liste de lignes `lines: list[str]` avec gestion des listes
+- [x] Pour XLSX: retourne une chaîne Markdown avec tableaux via `_build_sheet_md()`
+- [x] Pour PPTX: retourne une liste de lignes `all_lines` avec séparateurs entre diapositives
+- [x] Pour HTML: utilise BeautifulSoup + html2text pour conversion directe en Markdown
+- [x] Pour ODP: retourne une chaîne Markdown via `clean_lines(all_lines)`
+
+**Structures de données découvertes**:
+
+| Converteur | Structure brute | Type | Description |
+|------------|-----------------|------|-------------|
+| PDF | `list[tuple[int, str, list[str]]]` | Liste de tuples | `(page_idx, markdown_text, [urls])` par page |
+| DOCX | `str` | Chaîne Markdown | Résultat brut de mammoth avec liens/images |
+| ODT | `list[str]` | Liste de lignes | Paragraphes et listes, joint en `\n`.join(lines) |
+| XLSX | `str` | Chaîne Markdown | Tableaux par feuille, séparés par `---` |
+| PPTX | `list[str]` | Liste de lignes | Titres, paragraphes, tableaux avec `---` entre slides |
+| HTML | `str` | Chaîne Markdown | Résultat html2text + post-processing BeautifulSoup |
+| ODP | `str` | Chaîne Markdown | Contenu des frames textuelles via clean_lines() |
+| ODS | `list[str]` | Liste de lignes | Tableaux par feuille, séparés par `---`, gestion des cellules vides |
 
 **Format JSON cible**:
 ```json
@@ -81,6 +98,15 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
 **Format JSONL cible**:
 - Une ligne JSON par page/changement de section
 - Format: `{"page": N, "content": "...", "urls": [...]}`
+
+**Pattern unifié pour tous les convertisseurs**:
+1. **PDF/ODT/PPTX/HTML/ODP**: Extraction → Liste structurée → Nettoyage → Agrégation en Markdown
+2. **DOCX/XLSX**: Conversion directe en chaîne Markdown (pas de liste intermédiaire)
+
+**Adaptations nécessaires pour JSON/JSONL**:
+- PDF: Utiliser directement la structure `(page_idx, content, urls)` existante ✅
+- DOCX: Wrapper autour du résultat mammoth avec indexation implicite par ordre d'apparition
+- ODT/XLSX/PPTX/HTML/ODP/ODS: Transformer la liste de lignes en blocs logiques (paragraphes, tableaux)
 
 ---
 
