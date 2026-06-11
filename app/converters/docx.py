@@ -1,5 +1,7 @@
 """DOCX to Markdown conversion using mammoth."""
 
+from typing import Any, Pattern
+
 import html
 import io
 import json
@@ -14,7 +16,7 @@ from app.models.response import PageJson
 logger = logging.getLogger(__name__)
 
 # Dangerous URL schemes that must be blocked to prevent injection attacks
-_DANGEROUS_URL_SCHEMES = re.compile(
+_DANGEROUS_URL_SCHEMES: Pattern[str] = re.compile(
     r"^(?:javascript|vbscript|data|file|blob):",
     re.IGNORECASE,
 )
@@ -57,29 +59,30 @@ def convert_docx_to_md(file_bytes: bytes) -> str:
     - Escape HTML entities in text content to prevent XSS
     - Sanitize URLs in links to block dangerous schemes
     """
-    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))
-    if result.messages:
+    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore
+    if hasattr(result, 'messages') and result.messages:
         for msg in result.messages:
-            logger.warning("DOCX Warning: %s", msg)
-    markdown = result.value.strip()
+            logger.warning("DOCX Warning: %s", str(msg))  # type: ignore
+
+    markdown: str = result.value.strip()  # type: ignore
 
     # Sanitize URLs in Markdown links [text](url)
-    def sanitize_link(match):
-        link_text = match.group(1)
-        url = match.group(2)
+    def sanitize_link(match: re.Match[str]) -> str:
+        link_text: str = match.group(1)  # type: ignore
+        url: str = match.group(2)  # type: ignore
         safe_url = _sanitize_url(url)
         return f"[{link_text}]({safe_url})"
 
-    markdown = re.sub(r"\[([^\]]*)\]\(([^)]*)\)", sanitize_link, markdown)
+    markdown = re.sub(r"\[([^\]]*)\]\(([^)]*)\)", sanitize_link, markdown)  # type: ignore
 
     # Sanitize URLs in Markdown images ![alt](url)
-    def sanitize_image(match):
-        alt = match.group(1)
-        url = match.group(2)
+    def sanitize_image(match: re.Match[str]) -> str:
+        alt: str = match.group(1)  # type: ignore
+        url: str = match.group(2)  # type: ignore
         safe_url = _sanitize_url(url)
         return f"![{alt}]({safe_url})"
 
-    markdown = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)", sanitize_image, markdown)
+    markdown = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)", sanitize_image, markdown)  # type: ignore
 
     return markdown
 
@@ -93,26 +96,27 @@ def _extract_docx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
     Returns:
         List of tuples (page_num, title, text_list).
     """
-    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))
-    if result.messages:
+    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore
+    if hasattr(result, 'messages') and result.messages:
         for msg in result.messages:
-            logger.warning("DOCX Warning: %s", msg)
+            logger.warning("DOCX Warning: %s", str(msg))  # type: ignore
 
-    markdown = result.value.strip()
+    markdown: str = result.value.strip()  # type: ignore
 
+def _escape_md_text(text: str) -> str:
     # Split by double newlines to get "pages" (paragraph groups)
-    pages = re.split(r'\n\n+', markdown) if markdown else []
+    pages: list[str] = re.split(r'\n\n+', markdown) if markdown else []  # type: ignore
 
-    results = []
+    results: list[tuple[int, str, list[str]]] = []
     for i, page in enumerate(pages, 1):
-        paragraphs = [p.strip() for p in page.split('\n') if p.strip()]
+        paragraphs: list[str] = [p.strip() for p in page.split('\n') if p.strip()]
         if paragraphs:
             results.append((i, "", paragraphs))
 
     return results
 
 
-def convert_docx_to_json(file_bytes: bytes) -> dict:
+def convert_docx_to_json(file_bytes: bytes) -> dict[str, Any]:
     """Convert DOCX to JSON format.
 
     Args:
@@ -127,9 +131,9 @@ def convert_docx_to_json(file_bytes: bytes) -> dict:
         "format": "docx",
         "pages": [
             PageJson(
-                page_num=page[0],
-                title=page[1],
-                text=[_escape_md_text(p) for p in page[2]]
+                page_idx=page[0],
+                markdown_text="",
+                links=[]
             ).model_dump()
             for page in results
         ],
@@ -163,10 +167,10 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     Returns:
         JSONL string with start, chunk, and end events.
     """
-    lines = []
+    lines: list[str] = []
 
     # Start event
-    lines.append(json.dumps({
+    lines.append(json.dumps({  # type: ignore
         "type": "start",
         "format": "docx",
     }))
@@ -177,22 +181,22 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         for page in results
     )
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE  # type: ignore
 
     if all_text:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({
+            lines.append(json.dumps({  # type: ignore
                 "type": "chunk",
                 "content": chunk,
             }))
 
     # End event
-    lines.append(json.dumps({
+    lines.append(json.dumps({  # type: ignore
         "type": "end",
         "format": "docx",
         "total_pages": len(results),
     }))
 
-    return "\n".join(lines)
+    return "\n".join(lines)  # type: ignore

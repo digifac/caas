@@ -1892,92 +1892,175 @@ async def convert_pdf_stream_jsonl(file_bytes: bytes) -> AsyncGenerator[str, Non
 
 ---
 
-## 3.4 Mettre à jour les routes ✅ **À FAIRE**
+## 3.4 Mettre à jour les routes ✅ **COMPLÉTÉ**
 
 **Objectif**: Modifier `app/routes/convert.py` pour accepter le paramètre format.
+
+**Actions réalisées**:
+- [x] Ajouter validation du paramètre format avec `Literal["markdown", "json", "jsonl"]`
+- [x] Modifier l'appel au convertisseur avec le paramètre format
+- [x] Gérer les réponses HTTP selon le format (JSON, Markdown, JSONL)
+
+**Implémentation dans [`app/routes/convert.py`](d:\Projets\caas\app\routes\convert.py)**:
+
+```python
+from typing import Literal
+from fastapi import Query, Response
+from app.converter import convert_file
+
+async def convert_endpoint(
+    file: UploadFile, 
+    format: str = "markdown",  # markdown | json | jsonl
+):
+    """Endpoint de conversion avec support JSON/JSONL."""
+    
+    # Validation du paramètre format
+    if format not in ["markdown", "json", "jsonl"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Format invalide. Doit être 'markdown', 'json' ou 'jsonl'."
+        )
+    
+    # Conversion selon le format demandé
+    file_bytes = await file.read()
+    ext = file.filename.split(".")[-1].lower() if file.filename else "pdf"
+    
+    result = await convert_file(file_bytes, ext, format=format)
+    
+    # Gestion des réponses HTTP selon le format
+    if format == "jsonl":
+        # JSONL: retourne text/plain avec une ligne JSON par événement
+        return Response(
+            content=result, 
+            media_type="text/plain; charset=utf-8"
+        )
+    elif format == "json":
+        # JSON structuré: retourne application/json
+        from app.models.response import ConversionResponse
+        response = ConversionResponse(format=ext, pages=result.get("pages", []))
+        return JSONResponse(
+            content=response.model_dump(), 
+            media_type="application/json"
+        )
+    else:  # markdown (défaut)
+        # Markdown brut: retourne text/plain
+        return Response(
+            content=result, 
+            media_type="text/markdown; charset=utf-8"
+        )
+```
+
+**Paramètres d'endpoint**:
+| Paramètre | Type | Valeurs possibles | Défaut | Description |
+|-----------|------|-------------------|--------|-------------|
+| `format` | query string | `"markdown"`, `"json"`, `"jsonl"` | `"markdown"` | Format de sortie souhaité |
+
+**Comportement par format**:
+- **Markdown (défaut)**: Retourne une chaîne Markdown brute (`text/markdown`)
+- **JSON**: Retourne un objet JSON structuré avec métadonnées et contenu paginé (`application/json`)
+- **JSONL**: Retourne du texte brut avec une ligne JSON par événement pour le streaming (`text/plain; charset=utf-8`)
+
+**Exemples d'utilisation**:
+```bash
+# Export en Markdown (défaut)
+curl -X POST "http://localhost:8000/convert" \
+     -F "file=@document.pdf"
+
+# Export en JSON structuré
+curl -X POST "http://localhost:8000/convert?format=json" \
+     -F "file=@document.pdf"
+
+# Export en JSONL (streaming)
+curl -X POST "http://localhost:8000/convert?format=jsonl" \
+     -F "file=@document.pdf"
+```
+
+**Validation du paramètre format**:
+```python
+from typing import Literal
+
+def convert_endpoint(file, format: str = "markdown"):
+    if format not in ["markdown", "json", "jsonl"]:
+        raise HTTPException(
+            status_code=400, 
+            detail="Format invalide. Doit être 'markdown', 'json' ou 'jsonl'."
+        )
+```
+
+**Notes d'implémentation**:
+- Le paramètre `format` est optionnel et par défaut retourne Markdown (comportement existant)
+- Pour JSONL en streaming, chaque événement SSE correspond à une ligne JSON complète
+- Pour JSON non-streaming, la réponse contient tout le document dans un objet JSON unique
+- La validation Pydantic garantit l'intégrité des données avant sérialisation
+
+---
+
+### 3.5 Mettre à jour les routes batch ✅ **À FAIRE**
+
+**Objectif**: Modifier `app/routes/batch.py` pour accepter le paramètre format.
 
 **Actions**:
 - [ ] Ajouter validation du paramètre format:
   ```python
   from typing import Literal
   
-  def convert_endpoint(file, format: str = "markdown"):
+  def batch_endpoint(files, format: str = "markdown"):
       if format not in ["markdown", "json", "jsonl"]:
           raise HTTPException(status_code=400, detail="Format invalide")
   ```
-- [ ] Modifier l'appel au convertisseur:
+- [ ] Modifier l'appel au convertisseur batch:
   ```python
-  result = converter.convert_file(file_bytes, file_type, format=format)
+  results = await converter.convert_batch(files, file_types, format=format)
   
   if format == "jsonl":
-      return Response(content=result, media_type="text/plain; charset=utf-8")
+      return StreamingResponse(
+          generate_jsonl_response(results), 
+          media_type="text/plain; charset=utf-8"
+      )
   else:
-      return JSONResponse(content=ConversionResponse(format=format, content=result))
+      return JSONResponse(content=batch_results)
   ```
 
 ---
 
-**Objectif**: Modifier `app/routes/convert.py` pour accepter le paramètre format.
+## ✅ Checklist de validation finale
 
-**Actions**:
-- [ ] **Étape 3.4.1**: Ajouter validation du paramètre format:
-  ```python
-  from typing import Literal
-  
-  def convert_endpoint(file, format: str = "markdown"):
-      if format not in ["markdown", "json", "jsonl"]:
-          raise HTTPException(status_code=400, detail="Format invalide")
-  ```
-- [ ] **Étape 3.4.2**: Modifier l'appel au convertisseur:
-  ```python
-  result = converter.convert_file(file_bytes, file_type, format=format)
-  
-  if format == "jsonl":
-      return Response(content=result, media_type="text/plain; charset=utf-8")
-  else:
-      return JSONResponse(content=ConversionResponse(format=format, content=result))
-  ```
+- [ ] Tous les convertisseurs supportent `format=json`
+- [ ] Tous les convertisseurs supportent `format=jsonl`
+- [ ] Le streaming fonctionne pour JSON et JSONL
+- [ ] Les tests unitaires passent (100% coverage souhaité)
+- [ ] Les tests d'intégration passent
+- [ ] La documentation README.md est à jour
+- [ ] Le CHANGELOG.md est mis à jour
+- [ ] Les benchmarks sont documentés
+- [ ] Aucune régression sur le format Markdown par défaut
 
 ---
 
----
+## 🔄 Plan de rollback (si problème)
 
-### 3.2 Modifier le orchestrateur de conversion
+Si une étape échoue, revenir en arrière:
 
-**Objectif**: Mettre à jour `app/converter.py` pour supporter les nouveaux formats.
+1. **Problème dans un convertisseur**: 
+   - Commit séparé pour chaque convertisseur
+   - Rollback facile avec `git revert` du commit spécifique
 
-**Actions**:
-- [ ] Ajouter paramètre `format: Literal["markdown", "json", "jsonl"] = "markdown"`
-- [ ] Modifier la logique de routage vers les convertisseurs
-- [ ] Pour JSON/JSONL, appeler les nouvelles méthodes des convertisseurs
-- [ ] Gérer le cas où aucun format n'est spécifié (défaut: markdown)
+2. **Problème d'API**:
+   - Le paramètre format est optionnel (défaut: markdown)
+   - Si cassure, retirer le paramètre et revenir à l'ancien comportement
 
----
-
-### 3.3 Modifier le streaming pour JSON/JSONL
-
-**Objectif**: Adapter `app/streaming.py` pour supporter le streaming JSON.
-
-**Actions**:
-- [ ] Ajouter support de streaming pour format JSON (chunks de pages)
-- [ ] Ajouter support de streaming pour format JSONL (une ligne par événement SSE)
-- [ ] Modifier `_convert_pdf_stream()` et autres méthodes de streaming
-- [ ] Pour JSON: envoyer des événements avec le chunk JSON complet
-- [ ] Pour JSONL: envoyer une ligne JSON par événement SSE
+3. **Problème de tests**:
+   - Les nouveaux tests sont dans des fichiers séparés ou sections distinctes
+   - Possibilité de désactiver les nouveaux tests temporairement
 
 ---
 
-### 3.4 Mettre à jour les routes
+## 📝 Notes d'implémentation
 
-**Objectif**: Modifier `app/routes/convert.py` pour accepter le paramètre format.
-
-**Actions**:
-- [ ] Ajouter `format=markdown|json|jsonl` aux endpoints `/convert` et `/convert/batch`
-- [ ] Passer le format au convertisseur
-- [ ] Gérer les réponses JSON vs Markdown dans la réponse HTTP
-- [ ] Pour JSONL: retourner `text/plain; charset=utf-8` avec une ligne par ligne
-
----
+- **Priorité**: Commencer par PDF (le plus complexe), puis les autres formats
+- **Pattern**: Utiliser le même pattern pour tous les convertisseurs (cohérence)
+- **Backward compatibility**: Le format Markdown reste la valeur par défaut
+- **Performance**: JSONL est préférable pour les grands documents (> 10 pages)
 
 ## 4. Tests unitaires et d'intégration
 

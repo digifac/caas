@@ -98,6 +98,10 @@ class Settings(BaseSettings):
 
     # --- Markdown Conversion ---
     markdown_heading_detection: bool = True
+
+    # --- JSONL Chunking ---
+    jsonl_chunk_size: int = 1024
+    """Maximum characters per chunk for JSONL streaming (default: 1024)."""
     """Enable/disable automatic heading detection for uppercase short lines during conversion."""
 
     # --- Security ---
@@ -129,6 +133,10 @@ class Settings(BaseSettings):
 
     streaming_chunk_size: int = 1024
     """Minimum chunk size in bytes before yielding a streaming event."""
+
+    # --- JSONL Chunking ---
+    jsonl_chunk_size: int = 1024
+    """Chunk size for splitting PDF content into JSONL events (default: 1024 chars)."""
 
     # --- Server ---
     host: str = "0.0.0.0"

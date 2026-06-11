@@ -3,6 +3,7 @@
 import html
 import io
 import logging
+from typing import Any
 
 from odf import opendocument  # type: ignore[import-untyped]
 from odf.namespaces import DRAWNS, STYLENS  # type: ignore[import-untyped]
@@ -14,7 +15,7 @@ from app.models.response import SlideJson
 logger = logging.getLogger(__name__)
 
 
-def _get_attr_ns(element, namespace_local: str, attr_name: str) -> str | None:
+def _get_attr_ns(element: Any, namespace_local: str, attr_name: str) -> str | None:
     """Get an attribute value using namespace and local name.
 
     Args:
@@ -42,7 +43,7 @@ def _escape_md_text(text: str) -> str:
     return html.escape(text, quote=False)
 
 
-def _get_local_name(element) -> str | None:
+def _get_local_name(element: Any) -> str | None:
     """Get the local name of an ODF element.
 
     Args:
@@ -51,12 +52,12 @@ def _get_local_name(element) -> str | None:
     Returns:
         The local name (without namespace) or None if not available.
     """
-    if hasattr(element, "qname") and element.qname:
+    if hasattr(element, "qname") and element.qname is not None:
         return element.qname[1]  # type: ignore[no-any-return]
     return None
 
 
-def _extract_text_frame(element) -> str:
+def _extract_text_frame(element: Any) -> str:
     """Extract text content from a draw:text-frame element.
 
     Recursively walks child nodes to collect all text paragraphs.
@@ -68,7 +69,7 @@ def _extract_text_frame(element) -> str:
         Concatenated text from all child paragraphs.
     """
     parts: list[str] = []
-    if hasattr(element, "childNodes"):
+    if hasattr(element, "childNodes") and element.childNodes is not None:
         for child in element.childNodes:
             local_name = _get_local_name(child)
             if local_name == "p":
@@ -88,7 +89,7 @@ def _extract_text_frame(element) -> str:
     return "".join(parts)
 
 
-def _get_text_recursive(element) -> str:
+def _get_text_recursive(element: Any) -> str:
     """Recursively extract all text content from an ODF element and its children.
 
     Args:
@@ -98,7 +99,7 @@ def _get_text_recursive(element) -> str:
         Concatenated text from all text nodes in the subtree.
     """
     parts: list[str] = []
-    if hasattr(element, "data") and element.data:
+    if hasattr(element, "data") and (element.data is not None and element.data):
         parts.append(element.data)
     elif hasattr(element, "childNodes"):
         for child in element.childNodes:
@@ -106,7 +107,7 @@ def _get_text_recursive(element) -> str:
     return "".join(parts)
 
 
-def _get_paragraph_text(paragraph) -> str:
+def _get_paragraph_text(paragraph: Any) -> str:
     """Extract text content from a text:p element.
 
     Args:
@@ -116,7 +117,7 @@ def _get_paragraph_text(paragraph) -> str:
         The text content of the paragraph.
     """
     parts: list[str] = []
-    if hasattr(paragraph, "childNodes"):
+    if hasattr(paragraph, "childNodes") and paragraph.childNodes is not None:
         for element in paragraph.childNodes:
             if hasattr(element, "data"):
                 text_val = element.data or ""
@@ -137,7 +138,7 @@ def _get_paragraph_text(paragraph) -> str:
     return "".join(parts)
 
 
-def _collect_frames(element) -> list:
+def _collect_frames(element: Any) -> list[Any]:
     """Recursively collect all draw:frame elements from an element and its children.
 
     Handles both direct frames and frames nested inside draw:g (group) elements,
@@ -149,8 +150,8 @@ def _collect_frames(element) -> list:
     Returns:
         A list of draw:frame elements found in the subtree.
     """
-    frames: list = []
-    if not hasattr(element, "childNodes"):
+    frames: list[Any] = []
+    if not hasattr(element, "childNodes") or element.childNodes is None:
         return frames
 
     for child in element.childNodes:
@@ -163,7 +164,7 @@ def _collect_frames(element) -> list:
     return frames
 
 
-def _extract_slide_text(page, slide_number: int) -> list[str]:
+def _extract_slide_text(page: Any, slide_number: int) -> list[str]:
     """Extract text content from a single ODP slide (draw:page).
 
     Walks all draw:frame elements looking for text frames and shapes.
@@ -226,7 +227,7 @@ def _extract_slide_text(page, slide_number: int) -> list[str]:
     return lines
 
 
-def _extract_odp_table(table_element) -> str:
+def _extract_odp_table(table_element: Any) -> str:
     """Extract text from an ODP table and convert to Markdown table.
 
     Args:
@@ -237,7 +238,7 @@ def _extract_odp_table(table_element) -> str:
     """
     rows: list[list[str]] = []
 
-    if hasattr(table_element, "childNodes"):
+    if hasattr(table_element, "childNodes") and table_element.childNodes is not None:
         for row_elem in table_element.childNodes:
             row_name = _get_local_name(row_elem)
             if row_name != "table-row":
@@ -257,7 +258,7 @@ def _extract_odp_table(table_element) -> str:
     if not rows:
         return ""
 
-    md_lines = []
+    md_lines: list[str] = []
     # Header row
     header = "| " + " | ".join(rows[0]) + " |"
     md_lines.append(header)
@@ -294,20 +295,20 @@ def convert_odp_to_md(file_bytes: bytes) -> str:
         Exception: If the file is not a valid ODP.
     """
     try:
-        doc = opendocument.load(io.BytesIO(file_bytes))
+        doc = opendocument.load(io.BytesIO(file_bytes))  # type: ignore[assignment]
     except Exception as e:
         logger.error("Invalid ODP file: %s", e)
         raise
 
     all_lines: list[str] = []
     slide_count = 0
-    slides: list = []
+    slides: list[Any] = []
 
     # Collect all draw:page elements (slides) from the presentation body
     if hasattr(doc, "body"):
-        for child in doc.body.childNodes:
+        for child in getattr(doc.body, 'childNodes', []):  # type: ignore[attr-defined]
             if _get_local_name(child) == "presentation":
-                for page in child.childNodes:
+                for page in getattr(child, 'childNodes', []):  # type: ignore[attr-defined]
                     if _get_local_name(page) == "page":
                         slides.append(page)
 
@@ -336,15 +337,16 @@ def convert_odp_to_md(file_bytes: bytes) -> str:
 
     # Log warnings for unsupported elements
     for idx, page in enumerate(slides, start=1):
-        if hasattr(page, "childNodes"):
+        if hasattr(page, "childNodes") and page.childNodes is not None:
             for frame in page.childNodes:
-                if hasattr(frame, "localName"):
-                    if frame.localName == "image":
+                local_name = getattr(frame, "localName", None)
+                if local_name is not None:
+                    if local_name == "image":
                         logger.warning(
                             "Slide %d contains an image which is not supported in Markdown conversion",
                             idx,
                         )
-                    elif frame.localName == "graphic-frame":
+                    elif local_name == "graphic-frame":
                         logger.warning(
                             "Slide %d contains a graphic which is not supported in Markdown conversion",
                             idx,
@@ -366,21 +368,21 @@ def _extract_odp_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
         List of tuples (slide_num, title, text_lines).
     """
     try:
-        doc = opendocument.load(io.BytesIO(file_bytes))
+        doc = opendocument.load(io.BytesIO(file_bytes))  # type: ignore[assignment]
     except Exception as e:
         logger.error("Invalid ODP file: %s", e)
         raise
 
-    slides: list = []
+    slides: list[Any] = []
 
     if hasattr(doc, "body"):
-        for child in doc.body.childNodes:
+        for child in getattr(doc.body, 'childNodes', []):  # type: ignore[attr-defined]
             if _get_local_name(child) == "presentation":
-                for page in child.childNodes:
+                for page in getattr(child, 'childNodes', []):  # type: ignore[attr-defined]
                     if _get_local_name(page) == "page":
                         slides.append(page)
 
-    results = []
+    results: list[tuple[int, str, list[str]]] = []
 
     for idx, page in enumerate(slides, start=1):
         try:
@@ -411,7 +413,7 @@ def _extract_odp_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
     return results
 
 
-def convert_odp_to_json(file_bytes: bytes) -> dict:
+def convert_odp_to_json(file_bytes: bytes) -> dict[str, Any]:
     """Convert ODP to JSON format.
 
     Args:
@@ -426,9 +428,9 @@ def convert_odp_to_json(file_bytes: bytes) -> dict:
         "format": "odp",
         "slides": [
             SlideJson(
-                slide_num=slide[0],
-                title=slide[1],
-                text=[line for line in slide[2] if line.strip()]
+                index=slide[0],
+                title=slide[1] if slide[1] else None,
+                content=[line for line in slide[2] if line.strip()]
             ).model_dump()
             for slide in results
         ],
@@ -465,7 +467,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     """
     import json
 
-    lines = []
+    lines: list[str] = []
 
     # Start event
     lines.append(json.dumps({
@@ -474,15 +476,15 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     }))
 
     # Convert to text representation for chunking
-    all_text = []
+    all_text: list[str] = []
     for slide_num, title, slide_lines in results:
         all_text.append(f"Slide {slide_num}: {title}")
         all_text.extend(slide_lines)
 
-    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    chunk_size = settings.jsonl_chunk_size
 
     if all_text:
-        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+        chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
             lines.append(json.dumps({

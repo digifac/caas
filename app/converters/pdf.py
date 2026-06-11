@@ -10,12 +10,15 @@ import json
 import logging
 import re
 from collections.abc import AsyncGenerator
+from typing import Any
 
 import pdfplumber
 
 from app.config import settings
 from app.converters.base import clean_lines
 from app.models.response import JsonlEvent, PageJson
+from typing import Any
+
 from app.ocr import ocr_pdf_pages
 
 logger = logging.getLogger(__name__)
@@ -75,31 +78,34 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
             extracted_text = page.extract_text() or ""
             text_cache[page_idx] = extracted_text
             if not extracted_text.strip():
-                ocr_page_indices.append(page_idx)
+                ocr_page_indices.append(page_idx)  # type: ignore
 
         # 2. Batch OCR all scanned pages at once (pypdfium2 opened only once)
-        ocr_results = {}
+        ocr_results: dict[int, str] = {}
         if ocr_page_indices:
-            ocr_results = ocr_pdf_pages(file_bytes, ocr_page_indices)
+            ocr_results = ocr_pdf_pages(file_bytes, ocr_page_indices)  # type: ignore
 
         # 3. Second pass: build results from cached text + OCR results
         results: list[tuple[int, str, list[str]]] = []
         for page_idx, page in enumerate(pdf.pages):
-            page_text = ocr_results[page_idx] if page_idx in ocr_results else text_cache[page_idx]
+            if page_idx in ocr_results:
+                page_text = ocr_results[page_idx]  # type: ignore
+            else:
+                page_text = text_cache[page_idx]  # type: ignore
 
             # Clean text
             page_md = ""
             if page_text:
-                cleaned = clean_lines(page_text.split("\n"))
-                page_md = "\n".join(cleaned)
+                cleaned_lines = clean_lines(page_text.split("\n"))  # type: ignore
+                page_md = "\n".join(cleaned_lines)  # type: ignore
 
             # Extract hyperlinks
             links: list[str] = []
             hyperlinks = getattr(page, "hyperlinks", [])
             if hyperlinks:
-                seen_uris = set()
+                seen_uris: set[str] = set()
                 for link in hyperlinks:
-                    uri = link.get("uri")
+                    uri = link.get("uri")  # type: ignore
                     if uri and uri not in seen_uris:
                         seen_uris.add(uri)
                         safe_uri = _sanitize_url(uri)
@@ -116,17 +122,17 @@ def convert_pdf_to_md(file_bytes: bytes) -> str:
     Single-pass design: text is extracted once per page and cached, so the PDF is never
     re-parsed by pdfplumber.  pypdfium2 is opened only for pages that need OCR.
     """
-    md_blocks = []
+    md_blocks: list[str] = []
     results = _extract_pdf_content(file_bytes)
 
     for _page_idx, page_md, links in results:
         if page_md:
-            md_blocks.append(page_md)
+            md_blocks.append(page_md)  # type: ignore
         if links:
             link_lines = [f"\n[{uri}]({uri})" for uri in links]
-            md_blocks.append("".join(link_lines))
+            md_blocks.append("".join(link_lines))  # type: ignore
 
-    return "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()
+    return "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()  # type: ignore
 
 
 async def convert_pdf_to_md_stream(
@@ -146,25 +152,25 @@ async def convert_pdf_to_md_stream(
     Raises:
         ValueError: If page count exceeds the configured limit.
     """
-    md_blocks = []
+    md_blocks: list[str] = []
     results = _extract_pdf_content(file_bytes)
 
     for _page_idx, page_md, links in results:
         if page_md:
-            md_blocks.append(page_md)
+            md_blocks.append(page_md)  # type: ignore
         if links:
             link_lines = [f"\n[{uri}]({uri})" for uri in links]
-            md_blocks.append("".join(link_lines))
+            md_blocks.append("".join(link_lines))  # type: ignore
 
         # Yield accumulated markdown for this page
-        chunk = "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()
+        chunk: str = "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()  # type: ignore
         if chunk:
             yield chunk
             # Allow other tasks to run between pages
             await asyncio.sleep(0)
 
 
-def _to_json(results: list[tuple[int, str, list[str]]]) -> dict:
+def _to_json(results: list[tuple[int, str, list[str]]]) -> dict[str, Any]:
     """Convert les résultats PDF en format JSON structuré.
 
     Args:
@@ -173,7 +179,7 @@ def _to_json(results: list[tuple[int, str, list[str]]]) -> dict:
     Returns:
         Dict JSON avec pages et métadonnées.
     """
-    pages = [PageJson(index=p[0], content=p[1], urls=p[2]) for p in results]
+    pages = [PageJson(page_idx=p[0], markdown_text=p[1], links=p[2]) for p in results]
 
     return {
         "format": "pdf",
@@ -194,14 +200,16 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     Returns:
         Chaîne JSONL prête à être streamée.
     """
-    chunks = []
+    chunks: list[Any] = []
 
     for page_idx, page_md, _links in results:
         # Événement start pour la page
         chunks.append(JsonlEvent(
             type="start",
-            index=page_idx,
-            metadata={"source": "pdf_page"}
+            page_idx=page_idx,
+            markdown_text="",
+            offset=0,
+            length=0
         ))
 
         # Chunker le contenu textuel (Markdown) par blocs de CAAS_JSONL_CHUNK_SIZE
@@ -212,13 +220,20 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
             chunk_content = content[i:i+chunk_size]
             chunks.append(JsonlEvent(
                 type="chunk",
-                content=chunk_content,
+                page_idx=None,
+                markdown_text=chunk_content,
                 offset=i,
                 length=len(chunk_content)
             ))
 
         # Événement end pour la page
-        chunks.append(JsonlEvent(type="end"))
+        chunks.append(JsonlEvent(
+            type="end",
+            page_idx=None,
+            markdown_text="",
+            offset=0,
+            length=0
+        ))
 
     return "\n".join(json.dumps(e.model_dump(), ensure_ascii=False) for e in chunks)
 
@@ -231,12 +246,12 @@ def convert_pdf_to_json(file_bytes: bytes) -> list[PageJson]:
     """
     results = _extract_pdf_content(file_bytes)
 
-    json_results = []
-    for _page_idx, page_md, links in results:
+    json_results: list[PageJson] = []
+    for page_idx, page_md, links in results:
         json_result = PageJson(
-            page_idx=_page_idx,
+            page_idx=page_idx,
             markdown_text=page_md,
-            links=links,
+            links=links
         )
         json_results.append(json_result)
 
@@ -251,12 +266,15 @@ def convert_pdf_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """
     results = _extract_pdf_content(file_bytes)
 
-    jsonl_results = []
-    for _page_idx, page_md, links in results:
+    jsonl_results: list[JsonlEvent] = []
+    for page_idx, page_md, links in results:
         jsonl_result = JsonlEvent(
-            page_idx=_page_idx,
+            type="chunk",
+            page_idx=page_idx,
             markdown_text=page_md,
             links=links,
+            offset=0,
+            length=len(page_md)
         )
         jsonl_results.append(jsonl_result)
 

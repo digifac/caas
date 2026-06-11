@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates
 
 from app.config import settings
@@ -36,16 +36,23 @@ def register_convert_routes(app: FastAPI) -> None:
     async def convert_document(
         request: Request,
         file: UploadFile = File(...),  # noqa: B008
+        format: str | None = Query(default=None, alias="format"),
+        output_format: str | None = Query(default=None, alias="output_format"),
         async_mode: str | None = Query(default=None, alias="async"),
         streaming: str | None = Query(default=None),
     ):
         """
-        Convert a PDF, DOCX, ODT, ODP, ODS, HTML, XLSX, or PPTX document to Markdown.
+        Convert a PDF, DOCX, ODT, ODP, ODS, HTML, XLSX, or PPTX document to Markdown, JSON, or JSONL.
 
-        - Without `async=true` parameter: synchronous conversion (default behavior).
-        - With `?async=true`: the task is submitted in the background and a task_id is returned.
-        - With `?streaming=true`: the result is streamed back via Server-Sent Events (SSE).
+        - `format`: Format de sortie (markdown, json, jsonl). Par défaut: markdown.
+        - `async=true`: soumet la tâche en arrière-plan et retourne un task_id.
+        - `streaming=true`: le résultat est streamé via Server-Sent Events (SSE).
+
+        Exemples:
+        - /convert?file=doc.pdf&format=json
+        - /convert?file=doc.pdf&output_format=jsonl&async=true
         """
+
         client_ip = _get_client_ip(request)
         if not await app.state.rate_limiter.is_allowed(client_ip):
             error(429, "RATE_LIMIT_EXCEEDED")
@@ -74,6 +81,18 @@ def register_convert_routes(app: FastAPI) -> None:
             if len(content) > max_bytes:
                 error(400, "FILE_TOO_LARGE")
 
+            # Déterminer le format de sortie (priorité: output_format > format > markdown)
+            if output_format:
+                result_format = output_format.lower()
+            elif format:
+                result_format = format.lower()
+            else:
+                result_format = "markdown"
+
+            # Valider le format de sortie
+            if result_format not in ["markdown", "json", "jsonl"]:
+                error(400, "INVALID_FORMAT", detail=f"Format '{result_format}' non supporté. Formats valides: markdown, json, jsonl")
+
             validation_error = validate_file_content(content, ext)
             if validation_error:
                 logger.warning(
@@ -94,7 +113,7 @@ def register_convert_routes(app: FastAPI) -> None:
             # Streaming mode: return a StreamingResponse with SSE events
             if use_streaming:
                 return StreamingResponse(
-                    _streaming_generator(content, ext),
+                    _streaming_generator(content, ext, result_format),
                     media_type="text/event-stream",
                     headers={
                         "Cache-Control": "no-cache",
@@ -104,20 +123,25 @@ def register_convert_routes(app: FastAPI) -> None:
                 )
 
             try:
-                result = await _convert_worker(content, ext)
-            except ValueError as e:
-                error_msg = str(e).lower()
-                if "exceeding the limit" in error_msg or "too many pages" in error_msg:
-                    logger.warning("PDF page limit exceeded for %s: %s", file.filename, e)
-                    error(400, "PDF_TOO_MANY_PAGES", detail=str(e))
-                raise
-            except Exception as e:
-                # Catch all conversion errors and convert to unified error format
-                logger.error("Conversion failed for %s: %s", file.filename, e)
-                error(500, "CONVERSION_FAILED", detail=str(e))
-            finally:
-                content = None  # type: ignore[assignment]  # Explicit memory release
-            return result
+                if result_format == "jsonl":
+                    # Convertir en JSONL et retourner comme texte brut
+                    result_content = await _convert_worker(content, ext, format="jsonl")
+                    return Response(
+                        content=result_content,
+                        media_type="text/plain; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{file.filename}.jsonl"'}
+                    )
+                elif result_format == "json":
+                    # Convertir en JSON structuré
+                    result_content = await _convert_worker(content, ext, format="json")
+                    return JSONResponse(
+                        content=result_content,
+                        headers={"Content-Disposition": f'attachment; filename="{file.filename}.json"'}
+                    )
+                else:
+                    # Format markdown par défaut
+                    result = await _convert_worker(content, ext)
+                    return result
 
         except HTTPException:
             # Re-raise HTTPException (from error()) without catching it
@@ -158,10 +182,10 @@ def register_convert_routes(app: FastAPI) -> None:
         }
 
 
-async def _streaming_generator(content: bytes, ext: str) -> AsyncGenerator[str, None]:
+async def _streaming_generator(content: bytes, ext: str, format: str = "markdown") -> AsyncGenerator[str, None]:
     """Async generator that wraps the streaming converter for StreamingResponse."""
     try:
-        async for chunk in convert_stream(content, ext):
+        async for chunk in convert_stream(content, ext, format=format):
             yield chunk
     except Exception as e:
         logger.exception("Streaming error for format %s: %s", ext, e)

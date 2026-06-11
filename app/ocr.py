@@ -56,8 +56,8 @@ def ocr_pdf_page(pdf_doc, page_number: int, lang: str | None = None) -> str:
 
 
 def ocr_pdf_pages(
-    file_bytes: bytes, page_numbers: list, lang: str | None = None
-) -> dict:
+    file_bytes: bytes, page_numbers: list[int], lang: str | None = None
+) -> dict[int, str]:
     """Render multiple PDF pages to images and run OCR on all of them.
 
     Opens the PDF document only once, then processes all requested pages.

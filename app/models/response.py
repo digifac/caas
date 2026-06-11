@@ -19,9 +19,9 @@ class PageJson(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    index: int = Field(..., description="Index de la page/section")
-    content: str = Field(..., description="Contenu brut (Markdown ou texte)")
-    urls: list[str] = Field(default_factory=list, description="Liens extraits")
+    page_idx: int | None = Field(None, description="Index de la page/section")
+    markdown_text: str = Field(..., description="Contenu brut (Markdown ou texte)")
+    links: list[str] = Field(default_factory=list, description="Liens extraits")
 
 
 class ConversionResponse(BaseModel):
@@ -134,8 +134,9 @@ class JsonlEvent(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     type: str = Field(..., pattern="^(start|chunk|end)$", description="Type d'événement")
-    index: int | None = Field(None, description="Index de la page/section/diapositive")
-    content: str = Field("", description="Contenu du chunk ou données brutes")
+    page_idx: int | None = Field(None, description="Index de la page/section/diapositive")
+    markdown_text: str = Field("", description="Contenu du chunk ou données brutes")
+    links: list[str] = Field(default_factory=list, description="Liens extraits")
     offset: int = Field(0, description="Décalage dans le document (pour chunking)")
     length: int = Field(0, description="Longueur du chunk")
     metadata: dict = Field(default_factory=dict, description="Métadonnées spécifiques")
