@@ -7,6 +7,7 @@ import logging
 from pptx import Presentation
 
 from app.converters.base import clean_lines
+from app.models.response import SlideJson
 
 logger = logging.getLogger(__name__)
 
@@ -194,3 +195,127 @@ def convert_pptx_to_md(file_bytes: bytes) -> str:
     result_lines = clean_lines(all_lines)
 
     return "\n".join(result_lines)
+
+
+def _extract_pptx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
+    """Extract PPTX content as slides.
+
+    Args:
+        file_bytes: Raw PPTX file bytes.
+
+    Returns:
+        List of tuples (slide_num, title, text_lines).
+    """
+    try:
+        prs = Presentation(io.BytesIO(file_bytes))
+    except Exception as e:
+        logger.error("Invalid PPTX file: %s", e)
+        raise
+
+    results = []
+    
+    for idx, slide in enumerate(prs.slides, start=1):
+        try:
+            lines = _extract_slide_text(slide, idx)
+            # Get title or default to slide number
+            if slide.shapes.title:
+                title_text = html.escape(slide.shapes.title.text).strip()
+                title = title_text if title_text else f"Slide {idx}"
+            else:
+                title = f"Slide {idx}"
+            
+            results.append((idx, title, lines))
+        except Exception as e:
+            logger.warning("Error extracting slide %d: %s", idx, e)
+            results.append((idx, f"Slide {idx}", [f"_(error converting slide: {e})_"]))
+
+    return results
+
+
+def convert_pptx_to_json(file_bytes: bytes) -> dict:
+    """Convert PPTX to JSON format.
+
+    Args:
+        file_bytes: Raw PPTX file bytes.
+
+    Returns:
+        Dict with slides and metadata in JSON structure.
+    """
+    results = _extract_pptx_content(file_bytes)
+    
+    return {
+        "format": "pptx",
+        "slides": [
+            SlideJson(
+                slide_num=slide[0],
+                title=slide[1],
+                text=[line for line in slide[2] if line.strip()]
+            ).model_dump()
+            for slide in results
+        ],
+        "metadata": {
+            "format": "pptx",
+            "size_bytes": len(file_bytes),
+            "slide_count": len(results),
+        },
+    }
+
+
+def convert_pptx_to_jsonl(file_bytes: bytes) -> str:
+    """Convert PPTX to JSONL format with chunking.
+
+    Args:
+        file_bytes: Raw PPTX file bytes.
+
+    Returns:
+        JSONL string with start, chunk, and end events.
+    """
+    results = _extract_pptx_content(file_bytes)
+    
+    return _to_jsonl(results)
+
+
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+    """Convert extraction results to JSONL format with chunking.
+
+    Args:
+        results: List of (slide_num, title, text_lines) tuples.
+
+    Returns:
+        JSONL string with start, chunk, and end events.
+    """
+    import json
+    
+    lines = []
+    
+    # Start event
+    lines.append(json.dumps({
+        "type": "start",
+        "format": "pptx",
+    }))
+    
+    # Convert to text representation for chunking
+    all_text = []
+    for slide_num, title, slide_lines in results:
+        all_text.append(f"Slide {slide_num}: {title}")
+        all_text.extend(slide_lines)
+    
+    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    
+    if all_text:
+        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+        
+        for chunk in chunks:
+            lines.append(json.dumps({
+                "type": "chunk",
+                "content": "\n".join(chunk),
+            }))
+    
+    # End event
+    lines.append(json.dumps({
+        "type": "end",
+        "format": "pptx",
+        "total_slides": len(results),
+    }))
+    
+    return "\n".join(lines)

@@ -582,11 +582,11 @@ jsonl_output = _to_jsonl_format([
 ])
 ```
 
-#### `app/converters/pdf.py` - PDF → JSON/JSONL
+#### `app/converters/pdf.py` - PDF → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Chunk textuel par blocs de `CAAS_JSONL_CHUNK_SIZE` caractères (défaut: 1024)
 
-- [ ] **Étape 3.1.4**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.4**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class PageJson(BaseModel):
       index: int
@@ -603,14 +603,14 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.5**: Modifier `_extract_pdf_content()` pour extraire données brutes + Markdown:
+- [x] **Étape 3.1.5**: Modifier `_extract_pdf_content()` pour extraire données brutes + Markdown:
   ```python
   def _extract_pdf_data(file_bytes: bytes) -> tuple[list[tuple[int, str, list[str]]], int]:
       # ... extraction existante ...
       return results, total_pages
   ```
 
-- [ ] **Étape 3.1.6**: Ajouter méthode `_to_json()` dans `convert_pdf()`:
+- [x] **Étape 3.1.6**: Ajouter méthode `_to_json()` dans `convert_pdf()`:
   ```python
   def convert_pdf(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -622,7 +622,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.7**: Ajouter méthode `_to_jsonl()` dans `convert_pdf()` avec chunking textuel:
+- [x] **Étape 3.1.7**: Ajouter méthode `_to_jsonl()` dans `convert_pdf()` avec chunking textuel:
   ```python
   def convert_pdf(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":
@@ -683,11 +683,11 @@ jsonl_output = _to_jsonl_format([
 - Streaming progressif sans attendre toute la page
 - Reconstituer le document complet en mémoire si nécessaire
 
-#### `app/converters/docx.py` - DOCX → JSON/JSONL
+#### `app/converters/docx.py` - DOCX → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Chunk textuel par blocs de `CAAS_JSONL_CHUNK_SIZE` caractères (défaut: 1024)
 
-- [ ] **Étape 3.1.8**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.8**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class DocxSectionJson(BaseModel):
       index: int
@@ -704,7 +704,7 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.9**: Modifier `_convert_docx()` pour extraire données brutes + Markdown:
+- [x] **Étape 3.1.9**: Modifier `_convert_docx()` pour extraire données brutes + Markdown:
   ```python
   def _extract_docx_data(file_bytes: bytes) -> tuple[list[dict], str]:
       # ... extraction existante ...
@@ -712,7 +712,7 @@ jsonl_output = _to_jsonl_format([
       return sections, markdown_text
   ```
 
-- [ ] **Étape 3.1.10**: Ajouter méthode `_to_json()` dans `convert_docx()`:
+- [x] **Étape 3.1.10**: Ajouter méthode `_to_json()` dans `convert_docx()`:
   ```python
   def convert_docx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -724,7 +724,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.11**: Ajouter méthode `_to_jsonl()` dans `convert_docx()` avec chunking textuel:
+- [x] **Étape 3.1.11**: Ajouter méthode `_to_jsonl()` dans `convert_docx()` avec chunking textuel:
   ```python
   def convert_docx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":
@@ -760,11 +760,11 @@ jsonl_output = _to_jsonl_format([
 
 **Note**: Le chunking s'applique au contenu textuel (paragraphes, titres). Les tables sont incluses dans le metadata de chaque section.
 
-#### `app/converters/odt.py` - ODT → JSON/JSONL
+#### `app/converters/odt.py` - ODT → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Chunk textuel par blocs de `CAAS_JSONL_CHUNK_SIZE` caractères (défaut: 1024)
 
-- [ ] **Étape 3.1.11**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.11**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class OdtElementJson(BaseModel):
       type: str  # "paragraph", "heading", "list"
@@ -781,7 +781,7 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.12**: Modifier `_convert_odt()` pour extraire éléments bruts + Markdown:
+- [x] **Étape 3.1.12**: Modifier `_convert_odt()` pour extraire éléments bruts + Markdown:
   ```python
   def _extract_odt_data(file_bytes: bytes) -> tuple[list[dict], str]:
       elements = []
@@ -790,7 +790,7 @@ jsonl_output = _to_jsonl_format([
       return elements, markdown
   ```
 
-- [ ] **Étape 3.1.13**: Ajouter méthode `_to_json()` dans `convert_odt()`:
+- [x] **Étape 3.1.13**: Ajouter méthode `_to_json()` dans `convert_odt()`:
   ```python
   def convert_odt(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -802,7 +802,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.14**: Ajouter méthode `_to_jsonl()` dans `convert_odt()` avec chunking textuel:
+- [x] **Étape 3.1.14**: Ajouter méthode `_to_jsonl()` dans `convert_odt()` avec chunking textuel:
   ```python
   def convert_odt(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":
@@ -837,11 +837,11 @@ jsonl_output = _to_jsonl_format([
 
 **Note**: Le chunking s'applique au contenu textuel de chaque élément (paragraphes, titres, listes).
 
-#### `app/converters/xlsx.py` - XLSX → JSON/JSONL
+#### `app/converters/xlsx.py` - XLSX → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Une ligne JSONL par ligne de données (données structurées). Chunking optionnel si une ligne dépasse `CAAS_JSONL_CHUNK_SIZE`.
 
-- [ ] **Étape 3.1.14**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.14**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class SheetJson(BaseModel):
       name: str
@@ -858,7 +858,7 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.15**: Modifier `_convert_xlsx()` pour extraire les feuilles brutes:
+- [x] **Étape 3.1.15**: Modifier `_convert_xlsx()` pour extraire les feuilles brutes:
   ```python
   def _extract_xlsx_data(file_bytes: bytes) -> list[dict]:
       sheets = []
@@ -869,7 +869,7 @@ jsonl_output = _to_jsonl_format([
       return sheets
   ```
 
-- [ ] **Étape 3.1.16**: Ajouter méthode `_to_json()` dans `convert_xlsx()`:
+- [x] **Étape 3.1.16**: Ajouter méthode `_to_json()` dans `convert_xlsx()`:
   ```python
   def convert_xlsx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -881,7 +881,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.17**: Ajouter méthode `_to_jsonl()` dans `convert_xlsx()` (une ligne par ligne):
+- [x] **Étape 3.1.17**: Ajouter méthode `_to_jsonl()` dans `convert_xlsx()` (une ligne par ligne):
   ```python
   def convert_xlsx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":
@@ -922,11 +922,11 @@ jsonl_output = _to_jsonl_format([
 
 **Note**: Pour XLSX/ODS (données structurées), le chunking est optionnel et désactivé par défaut. Une ligne JSONL par ligne de données est la norme, avec chunking uniquement si nécessaire pour des lignes très longues (> 1024 chars).
 
-#### `app/converters/ods.py` - ODS → JSON/JSONL
+#### `app/converters/ods.py` - ODS → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Une ligne JSONL par ligne de données (données structurées). Chunking optionnel si une ligne dépasse `CAAS_JSONL_CHUNK_SIZE`.
 
-- [ ] **Étape 3.1.17**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.17**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class OdsCellJson(BaseModel):
       row: int
@@ -943,7 +943,7 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.18**: Modifier `_convert_ods()` pour extraire les cellules brutes:
+- [x] **Étape 3.1.18**: Modifier `_convert_ods()` pour extraire les cellules brutes:
   ```python
   def _extract_ods_data(file_bytes: bytes) -> list[dict]:
       cells = []
@@ -951,7 +951,7 @@ jsonl_output = _to_jsonl_format([
       return cells
   ```
 
-- [ ] **Étape 3.1.19**: Ajouter méthode `_to_json()` dans `convert_ods()`:
+- [x] **Étape 3.1.19**: Ajouter méthode `_to_json()` dans `convert_ods()`:
   ```python
   def convert_ods(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -963,7 +963,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.20**: Ajouter méthode `_to_jsonl()` dans `convert_ods()` (une ligne par ligne):
+- [x] **Étape 3.1.20**: Ajouter méthode `_to_jsonl()` dans `convert_ods()` (une ligne par ligne):
   ```python
   def convert_ods(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":
@@ -1007,14 +1007,14 @@ jsonl_output = _to_jsonl_format([
       offset: int = 0
       length: int = 0
   ```
-- [ ] **Étape 3.1.18**: Modifier `_convert_ods()` pour extraire les cellules brutes:
+- [x] **Étape 3.1.18**: Modifier `_convert_ods()` pour extraire les cellules brutes:
   ```python
   def _extract_ods_data(file_bytes: bytes) -> list[dict]:
       cells = []
       # ... extraction existante ...
       return cells
   ```
-- [ ] **Étape 3.1.19**: Ajouter méthodes `_to_json()` et `_to_jsonl()` dans `convert_ods()`:
+- [x] **Étape 3.1.19**: Ajouter méthodes `_to_json()` et `_to_jsonl()` dans `convert_ods()`:
   ```python
   def convert_ods(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -1046,11 +1046,11 @@ jsonl_output = _to_jsonl_format([
           return "\n".join(json.dumps(c, ensure_ascii=False) for c in chunks)
   ```
 
-#### `app/converters/pptx.py` - PPTX → JSON/JSONL
+#### `app/converters/pptx.py` - PPTX → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Chunk textuel par diapositive (comme PDF/DOCX). Chaque diapositive est chunkée en blocs de `CAAS_JSONL_CHUNK_SIZE`.
 
-- [ ] **Étape 3.1.20**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.20**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class SlideJson(BaseModel):
       index: int
@@ -1068,7 +1068,7 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.21**: Modifier `_convert_pptx()` pour extraire les diapositives brutes:
+- [x] **Étape 3.1.21**: Modifier `_convert_pptx()` pour extraire les diapositives brutes:
   ```python
   def _extract_pptx_data(file_bytes: bytes) -> list[dict]:
       slides = []
@@ -1076,7 +1076,7 @@ jsonl_output = _to_jsonl_format([
       return slides
   ```
 
-- [ ] **Étape 3.1.22**: Ajouter méthode `_to_json()` dans `convert_pptx()`:
+- [x] **Étape 3.1.22**: Ajouter méthode `_to_json()` dans `convert_pptx()`:
   ```python
   def convert_pptx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -1088,7 +1088,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.23**: Ajouter méthode `_to_jsonl()` dans `convert_pptx()` (chunk textuel):
+- [x] **Étape 3.1.23**: Ajouter méthode `_to_jsonl()` dans `convert_pptx()` (chunk textuel):
   ```python
   def convert_pptx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":
@@ -1131,14 +1131,14 @@ jsonl_output = _to_jsonl_format([
       offset: int = 0
       length: int = 0
   ```
-- [ ] **Étape 3.1.21**: Modifier `_convert_pptx()` pour extraire les diapositives brutes:
+- [x] **Étape 3.1.21**: Modifier `_convert_pptx()` pour extraire les diapositives brutes:
   ```python
   def _extract_pptx_data(file_bytes: bytes) -> list[dict]:
       slides = []
       # ... extraction existante ...
       return slides
   ```
-- [ ] **Étape 3.1.22**: Ajouter méthodes `_to_json()` et `_to_jsonl()` dans `convert_pptx()`:
+- [x] **Étape 3.1.22**: Ajouter méthodes `_to_json()` et `_to_jsonl()` dans `convert_pptx()`:
   ```python
   def convert_pptx(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -1168,8 +1168,9 @@ jsonl_output = _to_jsonl_format([
           return "\n".join(json.dumps(c, ensure_ascii=False) for c in chunks)
   ```
 
-#### `app/converters/odp.py` - ODP → JSON/JSONL
-- [ ] **Étape 3.1.23**: Créer modèle Pydantic `OdpSlideJson`:
+#### `app/converters/odp.py` - ODP → JSON/JSONL ✅ **COMPLÉTÉ**
+
+- [x] **Étape 3.1.23**: Créer modèle Pydantic `OdpSlideJson`:
   ```python
   class OdpSlideJson(BaseModel):
       index: int
@@ -1185,14 +1186,14 @@ jsonl_output = _to_jsonl_format([
       offset: int = 0
       length: int = 0
   ```
-- [ ] **Étape 3.1.24**: Modifier `_convert_odp()` pour extraire les slides brutes:
+- [x] **Étape 3.1.24**: Modifier `_convert_odp()` pour extraire les slides brutes:
   ```python
   def _extract_odp_data(file_bytes: bytes) -> list[dict]:
       slides = []
       # ... extraction existante ...
       return slides
   ```
-- [ ] **Étape 3.1.25**: Ajouter méthodes `_to_json()` et `_to_jsonl()` dans `convert_odp()`:
+- [x] **Étape 3.1.25**: Ajouter méthodes `_to_json()` et `_to_jsonl()` dans `convert_odp()`:
   ```python
   def convert_odp(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -1222,11 +1223,11 @@ jsonl_output = _to_jsonl_format([
           return "\n".join(json.dumps(c, ensure_ascii=False) for c in chunks)
   ```
 
-#### `app/converters/html.py` - HTML → JSON/JSONL
+#### `app/converters/html.py` - HTML → JSON/JSONL ✅ **COMPLÉTÉ**
 
 **Approche**: Chunk textuel par élément HTML (comme PDF/PPTX/ODP). Chaque élément est chunké en blocs de `CAAS_JSONL_CHUNK_SIZE`.
 
-- [ ] **Étape 3.1.26**: Créer modèles Pydantic dans `app/models/response.py`:
+- [x] **Étape 3.1.26**: Créer modèles Pydantic dans `app/models/response.py`:
   ```python
   class HtmlElementJson(BaseModel):
       tag: str
@@ -1244,7 +1245,7 @@ jsonl_output = _to_jsonl_format([
       metadata: dict = {}
   ```
 
-- [ ] **Étape 3.1.27**: Modifier `_convert_html()` pour extraire les éléments bruts:
+- [x] **Étape 3.1.27**: Modifier `_convert_html()` pour extraire les éléments bruts:
   ```python
   def _extract_html_data(file_bytes: bytes) -> list[dict]:
       elements = []
@@ -1252,7 +1253,7 @@ jsonl_output = _to_jsonl_format([
       return elements
   ```
 
-- [ ] **Étape 3.1.28**: Ajouter méthode `_to_json()` dans `convert_html()`:
+- [x] **Étape 3.1.28**: Ajouter méthode `_to_json()` dans `convert_html()`:
   ```python
   def convert_html(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "json":
@@ -1264,7 +1265,7 @@ jsonl_output = _to_jsonl_format([
           }
   ```
 
-- [ ] **Étape 3.1.29**: Ajouter méthode `_to_jsonl()` dans `convert_html()` (chunk textuel):
+- [x] **Étape 3.1.29**: Ajouter méthode `_to_jsonl()` dans `convert_html()` (chunk textuel):
   ```python
   def convert_html(file_bytes: bytes, format: str = "markdown") -> dict | str:
       if format == "jsonl":

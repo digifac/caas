@@ -380,3 +380,150 @@ def _convert_table(element) -> list[str]:
 
     md_lines.append("")
     return md_lines
+
+
+def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
+    """Extract HTML content as sections.
+
+    Args:
+        file_bytes: Raw HTML file bytes.
+
+    Returns:
+        List of tuples (section_num, title, text_lines).
+    """
+    try:
+        html_content = file_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        try:
+            html_content = file_bytes.decode("latin-1")
+        except UnicodeDecodeError as e:
+            logger.error("Failed to decode HTML file: %s", e)
+            raise ValueError("Unable to decode HTML file content") from e
+
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Remove dangerous elements and sanitize
+    for tag in soup(_DANGEROUS_TAGS):
+        tag.decompose()
+    
+    _sanitize_soup(soup)
+
+    sections: list = []
+    section_num = 0
+    
+    # Extract content from body or html if no body
+    container = soup.body if soup.body else soup.html
+    
+    for element in container.find_all(True):
+        tag = element.name
+        
+        # Headings as section titles
+        if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
+            level = int(tag[1])
+            text = _get_text(element)
+            
+            if text.strip():
+                section_num += 1
+                title = f"Section {section_num}: {text}"
+                
+                # Extract content after heading
+                lines = []
+                for child in element.children:
+                    lines.extend(_convert_element(child))
+                
+                sections.append((section_num, title, lines))
+
+    return sections
+
+
+def convert_html_to_json(file_bytes: bytes) -> dict:
+    """Convert HTML to JSON format.
+
+    Args:
+        file_bytes: Raw HTML file bytes.
+
+    Returns:
+        Dict with sections and metadata in JSON structure.
+    """
+    from app.models.response import HtmlElementJson
+    
+    results = _extract_html_content(file_bytes)
+    
+    return {
+        "format": "html",
+        "sections": [
+            HtmlElementJson(
+                section_num=section[0],
+                title=section[1],
+                text=[line for line in section[2] if line.strip()]
+            ).model_dump()
+            for section in results
+        ],
+        "metadata": {
+            "format": "html",
+            "size_bytes": len(file_bytes),
+            "section_count": len(results),
+        },
+    }
+
+
+def convert_html_to_jsonl(file_bytes: bytes) -> str:
+    """Convert HTML to JSONL format with chunking.
+
+    Args:
+        file_bytes: Raw HTML file bytes.
+
+    Returns:
+        JSONL string with start, chunk, and end events.
+    """
+    from app.models.response import HtmlElementJson
+    
+    results = _extract_html_content(file_bytes)
+    
+    return _to_jsonl(results)
+
+
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+    """Convert extraction results to JSONL format with chunking.
+
+    Args:
+        results: List of (section_num, title, text_lines) tuples.
+
+    Returns:
+        JSONL string with start, chunk, and end events.
+    """
+    import json
+    
+    lines = []
+    
+    # Start event
+    lines.append(json.dumps({
+        "type": "start",
+        "format": "html",
+    }))
+    
+    # Convert to text representation for chunking
+    all_text = []
+    for section_num, title, section_lines in results:
+        all_text.append(f"Section {section_num}: {title}")
+        all_text.extend(section_lines)
+    
+    chunk_size = settings.CAAS_JSONL_CHUNK_SIZE
+    
+    if all_text:
+        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+        
+        for chunk in chunks:
+            lines.append(json.dumps({
+                "type": "chunk",
+                "content": "\n".join(chunk),
+            }))
+    
+    # End event
+    lines.append(json.dumps({
+        "type": "end",
+        "format": "html",
+        "total_sections": len(results),
+    }))
+    
+    return "\n".join(lines)

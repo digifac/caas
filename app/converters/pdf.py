@@ -6,14 +6,18 @@ extraction core to avoid code duplication.
 
 import asyncio
 import io
+import json
 import logging
 import re
 from collections.abc import AsyncGenerator
+
+from pydantic import BaseModel, Field
 
 import pdfplumber
 
 from app.config import settings
 from app.converters.base import clean_lines
+from app.models.response import PageJson, JsonlEvent
 from app.ocr import ocr_pdf_pages
 
 logger = logging.getLogger(__name__)
@@ -160,3 +164,102 @@ async def convert_pdf_to_md_stream(
             yield chunk
             # Allow other tasks to run between pages
             await asyncio.sleep(0)
+
+
+def _to_json(results: list[tuple[int, str, list[str]]]) -> dict:
+    """Convert les résultats PDF en format JSON structuré.
+
+    Args:
+        results: Liste de tuples (page_idx, page_md, [urls]) retournée par _extract_pdf_content().
+
+    Returns:
+        Dict JSON avec pages et métadonnées.
+    """
+    pages = [PageJson(index=p[0], content=p[1], urls=p[2]) for p in results]
+    
+    return {
+        "format": "pdf",
+        "pages": pages,
+        "metadata": {"total_pages": len(pages)},
+    }
+
+
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+    """Convert les résultats PDF en format JSONL avec chunking textuel.
+
+    Chaque page est chunkée en blocs de CAAS_JSONL_CHUNK_SIZE caractères (défaut: 1024).
+    Retourne une chaîne avec une ligne JSON par événement (start, chunk×N, end).
+
+    Args:
+        results: Liste de tuples (page_idx, page_md, [urls]) retournée par _extract_pdf_content().
+
+    Returns:
+        Chaîne JSONL prête à être streamée.
+    """
+    chunks = []
+    
+    for page_idx, page_md, links in results:
+        # Événement start pour la page
+        chunks.append(JsonlEvent(
+            type="start", 
+            index=page_idx, 
+            metadata={"source": "pdf_page"}
+        ))
+        
+        # Chunker le contenu textuel (Markdown) par blocs de CAAS_JSONL_CHUNK_SIZE
+        content = page_md  # Markdown text
+        chunk_size = settings.jsonl_chunk_size or 1024
+        
+        for i in range(0, len(content), chunk_size):
+            chunk_content = content[i:i+chunk_size]
+            chunks.append(JsonlEvent(
+                type="chunk", 
+                content=chunk_content,
+                offset=i,
+                length=len(chunk_content)
+            ))
+        
+        # Événement end pour la page
+        chunks.append(JsonlEvent(type="end"))
+    
+    return "\n".join(json.dumps(e.model_dump(), ensure_ascii=False) for e in chunks)
+
+
+def convert_pdf_to_json(file_bytes: bytes) -> list[PageJson]:
+    """Extract text in memory via pdfplumber, with OCR for scanned pages and link extraction.
+
+    Single-pass design: text is extracted once per page and cached, so the PDF is never
+    re-parsed by pdfplumber.  pypdfium2 is opened only for pages that need OCR.
+    """
+    results = _extract_pdf_content(file_bytes)
+
+    json_results = []
+    for _page_idx, page_md, links in results:
+        json_result = PageJson(
+            page_idx=_page_idx,
+            markdown_text=page_md,
+            links=links,
+        )
+        json_results.append(json_result)
+
+    return json_results
+
+
+def convert_pdf_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
+    """Extract text in memory via pdfplumber, with OCR for scanned pages and link extraction.
+
+    Single-pass design: text is extracted once per page and cached, so the PDF is never
+    re-parsed by pdfplumber.  pypdfium2 is opened only for pages that need OCR.
+    """
+    results = _extract_pdf_content(file_bytes)
+
+    jsonl_results = []
+    for _page_idx, page_md, links in results:
+        jsonl_result = JsonlEvent(
+            page_idx=_page_idx,
+            markdown_text=page_md,
+            links=links,
+        )
+        jsonl_results.append(jsonl_result)
+
+    return jsonl_results

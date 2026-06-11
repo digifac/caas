@@ -1,18 +1,51 @@
 """Conversion orchestration: delegates to converter modules."""
 
 import asyncio
+import json
 import logging
 import re
 
 from app.config import settings
-from app.converters.docx import convert_docx_to_md
-from app.converters.html import convert_html_to_md
-from app.converters.odp import convert_odp_to_md
-from app.converters.ods import convert_ods_to_md
-from app.converters.odt import convert_odt_to_md
-from app.converters.pdf import convert_pdf_to_md
-from app.converters.pptx import convert_pptx_to_md
-from app.converters.xlsx import convert_xlsx_to_md
+from app.converters.docx import (
+    convert_docx_to_md,
+    convert_docx_to_json,
+    convert_docx_to_jsonl,
+)
+from app.converters.html import (
+    convert_html_to_md,
+    convert_html_to_json,
+    convert_html_to_jsonl,
+)
+from app.converters.odp import (
+    convert_odp_to_md,
+    convert_odp_to_json,
+    convert_odp_to_jsonl,
+)
+from app.converters.ods import (
+    convert_ods_to_md,
+    convert_ods_to_json,
+    convert_ods_to_jsonl,
+)
+from app.converters.odt import (
+    convert_odt_to_md,
+    convert_odt_to_json,
+    convert_odt_to_jsonl,
+)
+from app.converters.pdf import (
+    convert_pdf_to_md,
+    convert_pdf_to_json,
+    convert_pdf_to_jsonl,
+)
+from app.converters.pptx import (
+    convert_pptx_to_md,
+    convert_pptx_to_json,
+    convert_pptx_to_jsonl,
+)
+from app.converters.xlsx import (
+    convert_xlsx_to_md,
+    convert_xlsx_to_json,
+    convert_xlsx_to_jsonl,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +86,17 @@ def _clean_lines(lines: list[str]) -> list[str]:
     return result
 
 
-async def _convert_worker(file_bytes: bytes, ext: str) -> dict:
-    """Worker that runs conversion in a thread (used by TaskManager)."""
+async def _convert_worker(file_bytes: bytes, ext: str, output_format: str = "markdown") -> dict:
+    """Worker that runs conversion in a thread (used by TaskManager).
+
+    Args:
+        file_bytes: Raw file bytes.
+        ext: File extension (pdf, docx, xlsx, etc.).
+        output_format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
+
+    Returns:
+        Dict with conversion result in the requested format.
+    """
     converters = {
         "pdf": convert_pdf_to_md,
         "docx": convert_docx_to_md,
@@ -65,13 +107,48 @@ async def _convert_worker(file_bytes: bytes, ext: str) -> dict:
         "xlsx": convert_xlsx_to_md,
         "pptx": convert_pptx_to_md,
     }
+
+    json_converters = {
+        "pdf": convert_pdf_to_json,
+        "docx": convert_docx_to_json,
+        "odt": convert_odt_to_json,
+        "ods": convert_ods_to_json,
+        "odp": convert_odp_to_json,
+        "html": convert_html_to_json,
+        "xlsx": convert_xlsx_to_json,
+        "pptx": convert_pptx_to_json,
+    }
+
+    jsonl_converters = {
+        "pdf": convert_pdf_to_jsonl,
+        "docx": convert_docx_to_jsonl,
+        "odt": convert_odt_to_jsonl,
+        "ods": convert_ods_to_jsonl,
+        "odp": convert_odp_to_jsonl,
+        "html": convert_html_to_jsonl,
+        "xlsx": convert_xlsx_to_jsonl,
+        "pptx": convert_pptx_to_jsonl,
+    }
+
     converter = converters.get(ext)
+    json_converter = json_converters.get(ext)
+    jsonl_converter = jsonl_converters.get(ext)
+
     if not converter:
         raise ValueError(f"Unsupported format: {ext}")
-    markdown = await asyncio.to_thread(converter, file_bytes)
+
+    if output_format == "json":
+        result = await asyncio.to_thread(json_converter, file_bytes)
+    elif output_format == "jsonl":
+        result = await asyncio.to_thread(jsonl_converter, file_bytes)
+    else:  # markdown (default)
+        result = await asyncio.to_thread(converter, file_bytes)
+
     return {
         "success": True,
-        "markdown": markdown,
+        "markdown": result if output_format == "markdown" else None,
+        "json": result if output_format == "json" else None,
+        "jsonl": result if output_format == "jsonl" else None,
         "format": ext,
         "size_bytes": len(file_bytes),
     }
