@@ -180,22 +180,221 @@ def convert_endpoint(file, format: str = "markdown"):
 
 ### 2.2 Définir le contrat de réponse JSON
 
-**Objectif**: Spécifier la structure exacte du JSON retourné.
+**Objectif**: Spécifier la structure exacte du JSON retourné pour tous les convertisseurs. ✅ **COMPLÉTÉ**
 
-**Actions**:
-- [ ] Créer un modèle Pydantic pour la réponse JSON (`app/models/response.py`)
-- [ ] Inclure: `format`, `pages` (ou `content`), `metadata`, `request_id`
-- [ ] Définir les champs optionnels et leurs types
+**Actions réalisées**:
+- [x] Créer un modèle Pydantic pour la réponse JSON (`app/models/response.py`)
+- [x] Inclure: `format`, `pages` (ou `content`), `metadata`, `request_id`
+- [x] Définir les champs optionnels et leurs types
 
-**Modèle proposé**:
+**Modèles Pydantic définis**:
+
+#### 1. Modèle principal de réponse JSON (`app/models/response.py`)
 ```python
+from pydantic import BaseModel, Field
+from typing import Union, Optional, List, Dict, Any
+from datetime import datetime
+
+class PageJson(BaseModel):
+    """Représente une page ou unité logique du document."""
+    index: int = Field(..., description="Index de la page/section")
+    content: str = Field(..., description="Contenu brut (Markdown ou texte)")
+    urls: List[str] = Field(default_factory=list, description="Liens extraits")
+
 class ConversionResponse(BaseModel):
-    format: str = "markdown"
-    content: Union[str, list[dict]]  # Markdown string ou liste de pages JSON
-    metadata: dict = {}
-    request_id: str | None = None
-    success: bool = True
+    """Réponse JSON structurée pour l'API de conversion."""
+    format: str = Field("json", description="Format de sortie ('pdf', 'docx', etc.)")
+    pages: List[PageJson] = Field(default_factory=list, description="Liste des pages/sections")
+    content: Optional[str] = Field(None, description="Contenu Markdown brut (alternative aux pages)")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées du document")
+    request_id: Optional[str] = Field(None, description="ID de la requête pour le tracing")
+    success: bool = Field(True, description="Statut de réussite")
+    timestamp: datetime = Field(default=datetime.utcnow(), description="Horodatage")
 ```
+
+#### 2. Modèle JSONL standardisé (`app/models/response.py`)
+```python
+class JsonlEvent(BaseModel):
+    """Événement JSONL pour le streaming granulaire."""
+    type: str = Field(..., pattern="^(start|chunk|end)$", description="Type d'événement")
+    index: Optional[int] = Field(None, description="Index de la page/section")
+    content: str = Field("", description="Contenu du chunk")
+    offset: int = Field(0, description="Décalage dans le document")
+    length: int = Field(0, description="Longueur du chunk")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées")
+
+class JsonlStartEvent(JsonlEvent):
+    """Événement de début de document."""
+    type: str = "start"
+    
+class JsonlChunkEvent(JsonlEvent):
+    """Événement de chunk de contenu."""
+    type: str = "chunk"
+    
+class JsonlEndEvent(JsonlEvent):
+    """Événement de fin de document."""
+    type: str = "end"
+```
+
+**Structure complète du JSON retourné**:
+
+#### Format pour PDF (exemple complet):
+```json
+{
+  "format": "pdf",
+  "pages": [
+    {
+      "index": 0,
+      "content": "# Titre de la page\n\nContenu de la première page...",
+      "urls": ["https://example.com/link1"]
+    },
+    {
+      "index": 1,
+      "content": "# Deuxième page\n\nPlus de contenu ici...",
+      "urls": []
+    }
+  ],
+  "metadata": {
+    "total_pages": 2,
+    "file_size_bytes": 1048576,
+    "created_at": "2026-06-11T10:30:00Z",
+    "title": "Document PDF"
+  },
+  "request_id": "req_abc123xyz",
+  "success": true,
+  "timestamp": "2026-06-11T10:30:05.123456Z"
+}
+```
+
+#### Format pour DOCX (exemple):
+```json
+{
+  "format": "docx",
+  "pages": [
+    {
+      "index": 0,
+      "content": "# Titre du document\n\nIntroduction...",
+      "urls": []
+    }
+  ],
+  "metadata": {
+    "total_pages": 1,
+    "word_count": 250,
+    "paragraphs": 5,
+    "author": "Jean Dupont"
+  },
+  "request_id": "req_def456uvw",
+  "success": true,
+  "timestamp": "2026-06-11T10:30:05.234567Z"
+}
+```
+
+#### Format pour XLSX (exemple):
+```json
+{
+  "format": "xlsx",
+  "pages": [
+    {
+      "index": 0,
+      "content": "| Nom | Prénom | Âge |\n|-----|--------|-----|\n| Jean | Dupont | 30 |",
+      "urls": []
+    }
+  ],
+  "metadata": {
+    "total_pages": 1,
+    "sheets": ["Feuil1"],
+    "rows_count": 4,
+    "columns_count": 3
+  },
+  "request_id": "req_ghi789rst",
+  "success": true,
+  "timestamp": "2026-06-11T10:30:05.345678Z"
+}
+```
+
+**Champs obligatoires vs optionnels**:
+
+| Champ | Type | Obligatoire | Description |
+|-------|------|-------------|-------------|
+| `format` | str | ✅ Oui | Format source du document (pdf, docx, xlsx, etc.) |
+| `pages` | List[PageJson] | ✅ Oui | Liste des pages/sections avec contenu |
+| `content` | Optional[str] | ❌ Non | Alternative pour les formats simples (DOCX) |
+| `metadata` | Dict[str, Any] | ✅ Oui (vide par défaut) | Métadonnées spécifiques au format |
+| `request_id` | Optional[str] | ❌ Non | ID unique de la requête |
+| `success` | bool | ✅ Oui (True par défaut) | Statut de réussite |
+| `timestamp` | datetime | ✅ Oui | Horodatage UTC |
+
+**Validation des données**:
+```python
+from pydantic import ValidationError, field_validator
+
+class ConversionResponse(BaseModel):
+    # ... autres champs ...
+    
+    @field_validator('pages')
+    def validate_pages(cls, v: List[PageJson]) -> List[PageJson]:
+        if not v:
+            raise ValueError("Le champ 'pages' ne peut pas être vide")
+        for i, page in enumerate(v):
+            if not page.content.strip():
+                raise ValueError(f"La page {i} doit contenir du contenu non vide")
+        return v
+    
+    @field_validator('metadata')
+    def validate_metadata(cls, v: Dict[str, Any]) -> Dict[str, Any]:
+        # Validation optionnelle des métadonnées selon le format
+        if 'total_pages' in v and isinstance(v['total_pages'], int):
+            if v['total_pages'] < 1:
+                raise ValueError("Le nombre de pages doit être >= 1")
+        return v
+```
+
+**Sérialisation JSON**:
+```python
+import json
+from pydantic import BaseModel
+
+def serialize_response(response: ConversionResponse) -> str:
+    """Sérialise la réponse en JSON avec encodage UTF-8."""
+    return response.model_dump_json(
+        indent=2, 
+        ensure_ascii=False, 
+        by_alias=True
+    )
+
+# Exemple d'utilisation:
+response = ConversionResponse(
+    format="pdf",
+    pages=[PageJson(index=0, content="# Titre\n\nContenu")],
+    metadata={"total_pages": 1}
+)
+json_str = serialize_response(response)  # Retourne JSON formaté
+```
+
+**Gestion des erreurs dans la réponse**:
+```python
+from fastapi import HTTPException
+
+def handle_conversion_error(error: Exception, request_id: str | None = None) -> dict:
+    """Retourne une erreur structurée en JSON."""
+    return {
+        "format": "error",
+        "pages": [],
+        "content": None,
+        "metadata": {},
+        "request_id": request_id,
+        "success": False,
+        "timestamp": datetime.utcnow(),
+        "error": str(error) if not isinstance(error, HTTPException) else error.detail
+    }
+```
+
+**Notes d'implémentation**:
+- Le champ `content` est une alternative à `pages` pour les formats simples (DOCX, HTML) qui retournent directement du Markdown
+- Pour les formats complexes (PDF, XLSX), utiliser uniquement le champ `pages` avec la liste des sections
+- Les métadonnées doivent être spécifiques au format source et inclure au minimum: `total_pages`, `file_size_bytes`
+- L'horodatage doit toujours être en UTC pour la cohérence internationale
+- La validation Pydantic garantit l'intégrité des données avant sérialisation
 
 ---
 
