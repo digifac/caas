@@ -122,30 +122,32 @@ def register_convert_routes(app: FastAPI) -> None:
                     },
                 )
 
-            try:
-                if result_format == "jsonl":
-                    # Convertir en JSONL et retourner comme texte brut
-                    result_content = await _convert_worker(content, ext, format="jsonl")
-                    return Response(
-                        content=result_content,
-                        media_type="text/plain; charset=utf-8",
-                        headers={"Content-Disposition": f'attachment; filename="{file.filename}.jsonl"'}
-                    )
-                elif result_format == "json":
-                    # Convertir en JSON structuré
-                    result_content = await _convert_worker(content, ext, format="json")
-                    return JSONResponse(
-                        content=result_content,
-                        headers={"Content-Disposition": f'attachment; filename="{file.filename}.json"'}
-                    )
-                else:
-                    # Default to markdown format
-                    result = await _convert_worker(content, ext)
-                    return result
+            if result_format == "jsonl":
+                # Convertir en JSONL et retourner comme texte brut
+                result_content = await _convert_worker(content, ext, format="jsonl")
+                return Response(
+                    content=result_content,
+                    media_type="text/plain; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{file.filename}.jsonl"'}
+                )
+            elif result_format == "json":
+                # Convertir en JSON structuré
+                result_content = await _convert_worker(content, ext, format="json")
+                return JSONResponse(
+                    content=result_content,
+                    headers={"Content-Disposition": f'attachment; filename="{file.filename}.json"'}
+                )
+            else:
+                # Default to markdown format
+                result = await _convert_worker(content, ext)
+                return result
 
         except HTTPException:
             # Re-raise HTTPException (from error()) without catching it
             raise
+        except Exception as e:
+            logger.error("Error during conversion: %s", str(e))
+            error(500, "CONVERSION_ERROR", detail=str(e))
 
     @app.get("/task/{task_id}", response_model=dict[str, Any])
     async def get_task_status(task_id: str):

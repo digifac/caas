@@ -134,10 +134,6 @@ class Settings(BaseSettings):
     streaming_chunk_size: int = 1024
     """Minimum chunk size in bytes before yielding a streaming event."""
 
-    # --- JSONL Chunking ---
-    jsonl_chunk_size: int = 1024
-    """Chunk size for splitting PDF content into JSONL events (default: 1024 chars)."""
-
     # --- Server ---
     host: str = "0.0.0.0"
     """Server listening IP address."""

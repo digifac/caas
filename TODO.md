@@ -2160,15 +2160,21 @@ Si une étape échoue, revenir en arrière:
 
 ## 4. Tests unitaires et d'intégration
 
-### 4.1 Créer des fixtures de test
+### 4.1 Créer des fixtures de test ✅
 
 **Objectif**: Préparer les données de test pour les nouveaux formats.
 
 **Actions**:
-- [ ] Dans `tests/conftest.py`: ajouter fixtures pour JSON/JSONL
-- [ ] Créer fixture `sample_pdf_bytes` (déjà existant)
-- [ ] Créer fixture `expected_json_output` pour chaque type de fichier
-- [ ] Créer fixture `expected_jsonl_output` pour chaque type de fichier
+- [x] Dans `tests/conftest.py`: ajouter fixtures pour JSON/JSONL
+- [x] Fixture `sample_pdf_bytes` (déjà existant)
+- [x] Créer fixture `expected_json_output` pour chaque type de fichier (PDF, DOCX, ODT, XLSX, PPTX, HTML, ODS, ODP)
+- [x] Créer fixture `expected_jsonl_output` pour chaque type de fichier avec structure d'événements complète
+
+**Détails**:
+- Ajout de 16 fixtures dans `tests/conftest.py`:
+  - 8 fixtures JSON (`expected_json_output_*`) pour chaque format supporté
+  - 8 fixtures JSONL (`expected_jsonl_output_*`) avec événements start/chunk/end
+  - Structures adaptées aux formats tabulaires (XLSX/ODS) et présentations (PPTX/ODP)
 
 ---
 

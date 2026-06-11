@@ -3,6 +3,7 @@
 import asyncio
 import io
 import os
+from typing import Any, Dict, List
 
 import httpx
 import pytest
@@ -12,7 +13,7 @@ from reportlab.pdfgen import canvas
 
 
 @pytest.fixture
-def clean_caas_env(monkeypatch):
+def clean_caas_env(monkeypatch: Any) -> None:
     """Remove all CAAS_ environment variables for testing defaults."""
     keys_to_remove = [k for k in os.environ if k.startswith("CAAS_")]
     for key in keys_to_remove:
@@ -78,7 +79,7 @@ def sample_pdf_with_link_bytes() -> bytes:
     c.setFont("Helvetica", 12)
     c.drawString(72, 750, "Visitez notre site")
     # Add an URI link with reportlab
-    c.linkURL("https://example.com", (72, 740, 200, 760), thickness=0)
+    c.linkURL("https://example.com", (72, 740, 200, 760), thickness=0)  # type: ignore[attr-defined]
     c.save()
     buf.seek(0)
     return buf.getvalue()
@@ -111,7 +112,7 @@ def sample_scanned_pdf_bytes() -> bytes:
     c = canvas.Canvas(buf, pagesize=A4)
     from reportlab.lib.utils import ImageReader
 
-    c.drawImage(ImageReader(img_bytes), 50, 50, width=495, height=200)
+    c.drawImage(ImageReader(img_bytes), 50, 50, width=495, height=200)  # type: ignore[attr-defined]
     c.save()
     buf.seek(0)
     return buf.getvalue()
@@ -301,15 +302,15 @@ def sample_xlsx_bytes() -> bytes:
     """Generate a minimal XLSX in memory with 1 sheet and a few cells."""
     from openpyxl import Workbook
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Feuille1"
-    ws["A1"] = "Nom"
-    ws["B1"] = "Valeur"
-    ws["A2"] = "A"
-    ws["B2"] = 1
-    ws["A3"] = "B"
-    ws["B3"] = 2
+    wb: Workbook = Workbook()
+    ws = wb.active  # type: ignore[misc]
+    ws.title = "Feuille1"  # type: ignore[attr-defined]
+    ws["A1"] = "Nom"  # type: ignore[index]
+    ws["B1"] = "Valeur"  # type: ignore[index]
+    ws["A2"] = "A"  # type: ignore[index]
+    ws["B2"] = 1  # type: ignore[index]
+    ws["A3"] = "B"  # type: ignore[index]
+    ws["B3"] = 2  # type: ignore[index]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -322,19 +323,19 @@ def sample_xlsx_multi_sheet_bytes() -> bytes:
     """Generate an XLSX with multiple sheets."""
     from openpyxl import Workbook
 
-    wb = Workbook()
-    ws1 = wb.active
-    ws1.title = "Données"
-    ws1["A1"] = "Produit"
-    ws1["B1"] = "Prix"
-    ws1["A2"] = "Pomme"
-    ws1["B2"] = 1.5
-    ws1["A3"] = "Orange"
-    ws1["B3"] = 2.0
+    wb: Workbook = Workbook()
+    ws1 = wb.active  # type: ignore[misc]
+    ws1.title = "Données"  # type: ignore[attr-defined]
+    ws1["A1"] = "Produit"  # type: ignore[index]
+    ws1["B1"] = "Prix"  # type: ignore[index]
+    ws1["A2"] = "Pomme"  # type: ignore[index]
+    ws1["B2"] = 1.5  # type: ignore[index]
+    ws1["A3"] = "Orange"  # type: ignore[index]
+    ws1["B3"] = 2.0  # type: ignore[index]
 
-    ws2 = wb.create_sheet(title="Résumé")
-    ws2["A1"] = "Total"
-    ws2["B1"] = 3.5
+    ws2 = wb.create_sheet(title="Résumé")  # type: ignore[misc]
+    ws2["A1"] = "Total"  # type: ignore[index]
+    ws2["B1"] = 3.5  # type: ignore[index]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -347,17 +348,17 @@ def sample_xlsx_merged_cells_bytes() -> bytes:
     """Generate an XLSX with merged cells."""
     from openpyxl import Workbook
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Fusionné"
-    ws["A1"] = "En-tête fusionné"
-    ws.merge_cells("A1:C1")
-    ws["A2"] = "Col1"
-    ws["B2"] = "Col2"
-    ws["C2"] = "Col3"
-    ws["A3"] = "v1"
-    ws["B3"] = "v2"
-    ws["C3"] = "v3"
+    wb: Workbook = Workbook()
+    ws = wb.active  # type: ignore[misc]
+    ws.title = "Fusionné"  # type: ignore[attr-defined]
+    ws["A1"] = "En-tête fusionné"  # type: ignore[index]
+    ws.merge_cells("A1:C1")  # type: ignore[attr-defined]
+    ws["A2"] = "Col1"  # type: ignore[index]
+    ws["B2"] = "Col2"  # type: ignore[index]
+    ws["C2"] = "Col3"  # type: ignore[index]
+    ws["A3"] = "v1"  # type: ignore[index]
+    ws["B3"] = "v2"  # type: ignore[index]
+    ws["C3"] = "v3"  # type: ignore[index]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -372,21 +373,21 @@ def sample_xlsx_dates_numbers_bytes() -> bytes:
 
     from openpyxl import Workbook
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Types"
-    ws["A1"] = "Texte"
-    ws["B1"] = "Nombre"
-    ws["C1"] = "Date"
-    ws["D1"] = "Booléen"
-    ws["A2"] = "hello"
-    ws["B2"] = 42.5
-    ws["C2"] = date(2024, 1, 15)
-    ws["D2"] = True
-    ws["A3"] = "world"
-    ws["B3"] = -10
-    ws["C3"] = datetime(2024, 6, 30, 12, 0, 0)
-    ws["D3"] = False
+    wb: Workbook = Workbook()
+    ws = wb.active  # type: ignore[misc]
+    ws.title = "Types"  # type: ignore[attr-defined]
+    ws["A1"] = "Texte"  # type: ignore[index]
+    ws["B1"] = "Nombre"  # type: ignore[index]
+    ws["C1"] = "Date"  # type: ignore[index]
+    ws["D1"] = "Booléen"  # type: ignore[index]
+    ws["A2"] = "hello"  # type: ignore[index]
+    ws["B2"] = 42.5  # type: ignore[index]
+    ws["C2"] = date(2024, 1, 15)  # type: ignore[index]
+    ws["D2"] = True  # type: ignore[index]
+    ws["A3"] = "world"  # type: ignore[index]
+    ws["B3"] = -10  # type: ignore[index]
+    ws["C3"] = datetime(2024, 6, 30, 12, 0, 0)  # type: ignore[index]
+    ws["D3"] = False  # type: ignore[index]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -399,14 +400,14 @@ def sample_xlsx_special_chars_bytes() -> bytes:
     """Generate an XLSX with Markdown special characters."""
     from openpyxl import Workbook
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Spécial"
-    ws["A1"] = "Colonne A"
-    ws["B1"] = "Colonne B"
-    ws["A2"] = "Texte avec | pipe"
-    ws["B2"] = "Texte avec \\ backslash"
-    ws["A3"] = "Ligne 1\nLigne 2"
+    wb: Workbook = Workbook()
+    ws = wb.active  # type: ignore[misc]
+    ws.title = "Spécial"  # type: ignore[attr-defined]
+    ws["A1"] = "Colonne A"  # type: ignore[index]
+    ws["B1"] = "Colonne B"  # type: ignore[index]
+    ws["A2"] = "Texte avec | pipe"  # type: ignore[index]
+    ws["B2"] = "Texte avec \\ backslash"  # type: ignore[index]
+    ws["A3"] = "Ligne 1\nLigne 2"  # type: ignore[index]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -419,9 +420,9 @@ def sample_xlsx_empty_sheet_bytes() -> bytes:
     """Generate an XLSX with an empty sheet."""
     from openpyxl import Workbook
 
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Vide"
+    wb: Workbook = Workbook()
+    ws = wb.active  # type: ignore[misc]
+    ws.title = "Vide"  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -432,32 +433,32 @@ def sample_xlsx_empty_sheet_bytes() -> bytes:
 @pytest.fixture
 def sample_pptx_bytes() -> bytes:
     """Generate a minimal PPTX in memory using python-pptx."""
-    from pptx import Presentation
+    from pptx import Presentation  # type: ignore[misc]
 
-    prs = Presentation()
+    prs: Presentation = Presentation()  # type: ignore[misc]
 
     # Slide 1: title slide
-    slide_layout = prs.slide_layouts[0]  # Title slide
-    slide = prs.slides.add_slide(slide_layout)
-    slide.shapes.title.text = "Présentation de Test"
-    slide.placeholders[1].text = "Sous-titre de la présentation"
+    slide_layout = prs.slide_layouts[0]  # type: ignore[attr-defined]  # type: ignore[attr-defined]
+    slide = prs.slides.add_slide(slide_layout)  # type: ignore[attr-defined]
+    slide.shapes.title.text = "Présentation de Test"  # type: ignore[attr-defined]
+    slide.placeholders[1].text = "Sous-titre de la présentation"  # type: ignore[attr-defined]
 
     # Slide 2: title + content with bullets
-    slide_layout = prs.slide_layouts[1]  # Title and Content
-    slide = prs.slides.add_slide(slide_layout)
-    slide.shapes.title.text = "Deuxième Slide"
-    body_shape = slide.placeholders[1]
-    tf = body_shape.text_frame
-    tf.text = "Premier point"
-    p = tf.add_paragraph()
-    p.text = "Deuxième point"
+    slide_layout = prs.slide_layouts[1]  # type: ignore[attr-defined]
+    slide = prs.slides.add_slide(slide_layout)  # type: ignore[attr-defined]
+    slide.shapes.title.text = "Deuxième Slide"  # type: ignore[attr-defined]
+    body_shape = slide.placeholders[1]  # type: ignore[attr-defined]
+    tf = body_shape.text_frame  # type: ignore[attr-defined]
+    tf.text = "Premier point"  # type: ignore[attr-defined]
+    p = tf.add_paragraph()  # type: ignore[attr-defined]
+    p.text = "Deuxième point"  # type: ignore[attr-defined]
     p.level = 0
-    p = tf.add_paragraph()
-    p.text = "Sous-point"
+    p = tf.add_paragraph()  # type: ignore[attr-defined]
+    p.text = "Sous-point"  # type: ignore[attr-defined]
     p.level = 1
 
     buf = io.BytesIO()
-    prs.save(buf)
+    prs.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -465,18 +466,18 @@ def sample_pptx_bytes() -> bytes:
 @pytest.fixture
 def sample_pptx_with_table_bytes() -> bytes:
     """Generate a PPTX with a table in memory using python-pptx."""
-    from pptx import Presentation
-    from pptx.util import Inches
+    from pptx import Presentation  # type: ignore[misc]
+    from pptx.util import Inches  # type: ignore[misc]
 
-    prs = Presentation()
+    prs = Presentation()  # type: ignore[misc]
 
     # Slide with table
-    slide_layout = prs.slide_layouts[5]  # Blank
-    slide = prs.slides.add_slide(slide_layout)
+    slide_layout = prs.slide_layouts[5]  # type: ignore[attr-defined]
+    slide = prs.slides.add_slide(slide_layout)  # type: ignore[attr-defined]
 
     # Add title
-    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(0.5))
-    title_box.text = "Slide avec Tableau"
+    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.2), Inches(9), Inches(0.5))  # type: ignore[attr-defined]
+    title_box.text = "Slide avec Tableau"  # type: ignore[attr-defined]
 
     # Add table
     rows = 3
@@ -485,21 +486,21 @@ def sample_pptx_with_table_bytes() -> bytes:
     top = Inches(1)
     width = Inches(6)
     height = Inches(2)
-    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)
-    table = table_shape.table
+    table_shape = slide.shapes.add_table(rows, cols, left, top, width, height)  # type: ignore[attr-defined]
+    table = table_shape.table  # type: ignore[attr-defined]
 
-    table.cell(0, 0).text = "En-tête 1"
-    table.cell(0, 1).text = "En-tête 2"
-    table.cell(0, 2).text = "En-tête 3"
-    table.cell(1, 0).text = "A"
-    table.cell(1, 1).text = "B"
-    table.cell(1, 2).text = "C"
-    table.cell(2, 0).text = "1"
-    table.cell(2, 1).text = "2"
-    table.cell(2, 2).text = "3"
+    table.cell(0, 0).text = "En-tête 1"  # type: ignore[attr-defined]
+    table.cell(0, 1).text = "En-tête 2"  # type: ignore[attr-defined]
+    table.cell(0, 2).text = "En-tête 3"  # type: ignore[attr-defined]
+    table.cell(1, 0).text = "A"  # type: ignore[attr-defined]
+    table.cell(1, 1).text = "B"  # type: ignore[attr-defined]
+    table.cell(1, 2).text = "C"  # type: ignore[attr-defined]
+    table.cell(2, 0).text = "1"  # type: ignore[attr-defined]
+    table.cell(2, 1).text = "2"  # type: ignore[attr-defined]
+    table.cell(2, 2).text = "3"  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    prs.save(buf)
+    prs.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -507,15 +508,15 @@ def sample_pptx_with_table_bytes() -> bytes:
 @pytest.fixture
 def sample_pptx_empty_slide_bytes() -> bytes:
     """Generate a PPTX with an empty slide in memory using python-pptx."""
-    from pptx import Presentation
+    from pptx import Presentation  # type: ignore[misc]
 
-    prs = Presentation()
-    slide_layout = prs.slide_layouts[6]  # Blank layout
-    prs.slides.add_slide(slide_layout)
+    prs = Presentation()  # type: ignore[misc]
+    slide_layout = prs.slide_layouts[6]  # type: ignore[attr-defined]
+    prs.slides.add_slide(slide_layout)  # type: ignore[attr-defined]
     # No content added — empty slide
 
     buf = io.BytesIO()
-    prs.save(buf)
+    prs.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -528,58 +529,57 @@ def sample_pptx_empty_slide_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_bytes() -> bytes:
     """Generate a minimal ODS file with one sheet and some data using odfpy."""
-    from odf import table, text
-    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf import table, text  # type: ignore[attr-defined]
+    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
 
-    doc = OpenDocumentSpreadsheet()
-    table_elem = table.Table(name="Feuille1")
+    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
+    table_elem = table.Table(name="Feuille1")  # type: ignore[attr-defined]
 
     # Row 1: headers
-    row1 = table.TableRow()
-    c1 = table.TableCell()
-    p1 = text.P()
-    p1.addText("Nom")
-    c1.addElement(p1)
-    row1.addElement(c1)
-    c2 = table.TableCell()
-    p2 = text.P()
-    p2.addText("Valeur")
-    c2.addElement(p2)
-    row1.addElement(c2)
-    table_elem.addElement(row1)
+    row1 = table.TableRow()  # type: ignore[attr-defined]
+    c1 = table.TableCell()  # type: ignore[attr-defined]
+    p1 = text.P()  # type: ignore[attr-defined]
+    p1.addText("Nom")  # type: ignore[attr-defined]
+    c1.addElement(p1)  # type: ignore[attr-defined]
+    row1.addElement(c1)  # type: ignore[attr-defined]
+    c2 = table.TableCell()  # type: ignore[attr-defined]
+    p2 = text.P()  # type: ignore[attr-defined]
+    p2.addText("Valeur")  # type: ignore[attr-defined]
+    c2.addElement(p2)  # type: ignore[attr-defined]
+    table_elem.addElement(row1)  # type: ignore[attr-defined]
 
     # Row 2: data
-    row2 = table.TableRow()
-    c3 = table.TableCell()
-    p3 = text.P()
-    p3.addText("A")
-    c3.addElement(p3)
-    row2.addElement(c3)
-    c4 = table.TableCell()
-    p4 = text.P()
-    p4.addText("1")
-    c4.addElement(p4)
-    row2.addElement(c4)
-    table_elem.addElement(row2)
+    row2 = table.TableRow()  # type: ignore[attr-defined]
+    c3 = table.TableCell()  # type: ignore[attr-defined]
+    p3 = text.P()  # type: ignore[attr-defined]
+    p3.addText("A")  # type: ignore[attr-defined]
+    c3.addElement(p3)  # type: ignore[attr-defined]
+    row2.addElement(c3)  # type: ignore[attr-defined]
+    c4 = table.TableCell()  # type: ignore[attr-defined]
+    p4 = text.P()  # type: ignore[attr-defined]
+    p4.addText("1")  # type: ignore[attr-defined]
+    c4.addElement(p4)  # type: ignore[attr-defined]
+    row2.addElement(c4)  # type: ignore[attr-defined]
+    table_elem.addElement(row2)  # type: ignore[attr-defined]
 
     # Row 3: data
-    row3 = table.TableRow()
-    c5 = table.TableCell()
-    p5 = text.P()
-    p5.addText("B")
-    c5.addElement(p5)
-    row3.addElement(c5)
-    c6 = table.TableCell()
-    p6 = text.P()
-    p6.addText("2")
-    c6.addElement(p6)
-    row3.addElement(c6)
-    table_elem.addElement(row3)
+    row3 = table.TableRow()  # type: ignore[attr-defined]
+    c5 = table.TableCell()  # type: ignore[attr-defined]
+    p5 = text.P()  # type: ignore[attr-defined]
+    p5.addText("B")  # type: ignore[attr-defined]
+    c5.addElement(p5)  # type: ignore[attr-defined]
+    row3.addElement(c5)  # type: ignore[attr-defined]
+    c6 = table.TableCell()  # type: ignore[attr-defined]
+    p6 = text.P()  # type: ignore[attr-defined]
+    p6.addText("2")  # type: ignore[attr-defined]
+    c6.addElement(p6)  # type: ignore[attr-defined]
+    row3.addElement(c6)  # type: ignore[attr-defined]
+    table_elem.addElement(row3)  # type: ignore[attr-defined]
 
-    doc.spreadsheet.addElement(table_elem)
+    doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -587,73 +587,68 @@ def sample_ods_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_multi_sheet_bytes() -> bytes:
     """Generate an ODS file with multiple sheets using odfpy."""
-    from odf import table, text
-    from odf.opendocument import OpenDocumentSpreadsheet
+    from odf import table, text  # type: ignore[attr-defined]
+    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
 
-    doc = OpenDocumentSpreadsheet()
+    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
 
     # Sheet 1: Données
-    sheet1 = table.Table(name="Données")
-    row1 = table.TableRow()
-    c1 = table.TableCell()
-    p1 = text.P()
-    p1.addText("Produit")
-    c1.addElement(p1)
-    row1.addElement(c1)
-    c2 = table.TableCell()
-    p2 = text.P()
-    p2.addText("Prix")
-    c2.addElement(p2)
-    row1.addElement(c2)
-    sheet1.addElement(row1)
+    sheet1 = table.Table(name="Données")  # type: ignore[attr-defined]
+    row1 = table.TableRow()  # type: ignore[attr-defined]
+    c1 = table.TableCell()  # type: ignore[attr-defined]
+    p1 = text.P()  # type: ignore[attr-defined]
+    p1.addText("Produit")  # type: ignore[attr-defined]
+    c1.addElement(p1)  # type: ignore[attr-defined]
+    row1.addElement(c1)  # type: ignore[attr-defined]
+    c2 = table.TableCell()  # type: ignore[attr-defined]
+    p2 = text.P()  # type: ignore[attr-defined]
+    p2.addText("Prix")  # type: ignore[attr-defined]
+    c2.addElement(p2)  # type: ignore[attr-defined]
+    sheet1.addElement(row1)  # type: ignore[attr-defined]
 
-    row2 = table.TableRow()
-    c3 = table.TableCell()
-    p3 = text.P()
-    p3.addText("Pomme")
-    c3.addElement(p3)
-    row2.addElement(c3)
-    c4 = table.TableCell()
-    p4 = text.P()
-    p4.addText("1.5")
-    c4.addElement(p4)
-    row2.addElement(c4)
-    sheet1.addElement(row2)
+    row2 = table.TableRow()  # type: ignore[attr-defined]
+    c3 = table.TableCell()  # type: ignore[attr-defined]
+    p3 = text.P()  # type: ignore[attr-defined]
+    p3.addText("Pomme")  # type: ignore[attr-defined]
+    c3.addElement(p3)  # type: ignore[attr-defined]
+    row2.addElement(c3)  # type: ignore[attr-defined]
+    c4 = table.TableCell()  # type: ignore[attr-defined]
+    p4 = text.P()  # type: ignore[attr-defined]
+    p4.addText("1.5")  # type: ignore[attr-defined]
+    c4.addElement(p4)  # type: ignore[attr-defined]
+    sheet1.addElement(row2)  # type: ignore[attr-defined]
 
-    row3 = table.TableRow()
-    c5 = table.TableCell()
-    p5 = text.P()
-    p5.addText("Orange")
-    c5.addElement(p5)
-    row3.addElement(c5)
-    c6 = table.TableCell()
-    p6 = text.P()
-    p6.addText("2.0")
-    c6.addElement(p6)
-    row3.addElement(c6)
-    sheet1.addElement(row3)
+    row3 = table.TableRow()  # type: ignore[attr-defined]
+    c5 = table.TableCell()  # type: ignore[attr-defined]
+    p5 = text.P()  # type: ignore[attr-defined]
+    p5.addText("Orange")  # type: ignore[attr-defined]
+    c5.addElement(p5)  # type: ignore[attr-defined]
+    row3.addElement(c5)  # type: ignore[attr-defined]
+    c6 = table.TableCell()  # type: ignore[attr-defined]
+    p6 = text.P()  # type: ignore[attr-defined]
+    p6.addText("2.0")  # type: ignore[attr-defined]
+    c6.addElement(p6)  # type: ignore[attr-defined]
+    sheet1.addElement(row3)  # type: ignore[attr-defined]
 
-    doc.spreadsheet.addElement(sheet1)
+    doc.spreadsheet.addElement(sheet1)  # type: ignore[attr-defined]
 
     # Sheet 2: Résumé
-    sheet2 = table.Table(name="Résumé")
-    row4 = table.TableRow()
-    c7 = table.TableCell()
-    p7 = text.P()
-    p7.addText("Total")
-    c7.addElement(p7)
-    row4.addElement(c7)
-    c8 = table.TableCell()
-    p8 = text.P()
-    p8.addText("3.5")
-    c8.addElement(p8)
-    row4.addElement(c8)
-    sheet2.addElement(row4)
+    sheet2 = table.Table(name="Résumé")  # type: ignore[attr-defined]
+    row4 = table.TableRow()  # type: ignore[attr-defined]
+    c7 = table.TableCell()  # type: ignore[attr-defined]
+    p7 = text.P()  # type: ignore[attr-defined]
+    p7.addText("Total")  # type: ignore[attr-defined]
+    c7.addElement(p7)  # type: ignore[attr-defined]
+    c8 = table.TableCell()  # type: ignore[attr-defined]
+    p8 = text.P()  # type: ignore[attr-defined]
+    p8.addText("3.5")  # type: ignore[attr-defined]
+    c8.addElement(p8)  # type: ignore[attr-defined]
+    sheet2.addElement(row4)  # type: ignore[attr-defined]
 
-    doc.spreadsheet.addElement(sheet2)
+    doc.spreadsheet.addElement(sheet2)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -661,16 +656,17 @@ def sample_ods_multi_sheet_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_empty_sheet_bytes() -> bytes:
     """Generate an ODS file with an empty sheet using odfpy."""
-    from odf import table
-    from odf.opendocument import OpenDocumentSpreadsheet
+    # type: ignore[attr-defined]
+    from odf import table  # type: ignore[attr-defined]
+    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
 
-    doc = OpenDocumentSpreadsheet()
-    table_elem = table.Table(name="Vide")
+    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
+    table_elem = table.Table(name="Vide")  # type: ignore[attr-defined]
     # No rows added — empty sheet
-    doc.spreadsheet.addElement(table_elem)
+    doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -678,58 +674,59 @@ def sample_ods_empty_sheet_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_special_chars_bytes() -> bytes:
     """Generate an ODS file with special characters using odfpy."""
-    from odf import table, text
-    from odf.opendocument import OpenDocumentSpreadsheet
+    # type: ignore[attr-defined]
+    from odf import table, text  # type: ignore[attr-defined]
+    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
 
-    doc = OpenDocumentSpreadsheet()
-    table_elem = table.Table(name="Spécial")
+    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
+    table_elem = table.Table(name="Spécial")  # type: ignore[attr-defined]
 
     # Row 1: headers
-    row1 = table.TableRow()
-    c1 = table.TableCell()
-    p1 = text.P()
-    p1.addText("Colonne A")
-    c1.addElement(p1)
-    row1.addElement(c1)
-    c2 = table.TableCell()
-    p2 = text.P()
-    p2.addText("Colonne B")
-    c2.addElement(p2)
-    row1.addElement(c2)
-    table_elem.addElement(row1)
+    row1 = table.TableRow()  # type: ignore[attr-defined]
+    c1 = table.TableCell()  # type: ignore[attr-defined]
+    p1 = text.P()  # type: ignore[attr-defined]
+    p1.addText("Colonne A")  # type: ignore[attr-defined]
+    c1.addElement(p1)  # type: ignore[attr-defined]
+    row1.addElement(c1)  # type: ignore[attr-defined]
+    c2 = table.TableCell()  # type: ignore[attr-defined]
+    p2 = text.P()  # type: ignore[attr-defined]
+    p2.addText("Colonne B")  # type: ignore[attr-defined]
+    c2.addElement(p2)  # type: ignore[attr-defined]
+    row1.addElement(c2)  # type: ignore[attr-defined]
+    table_elem.addElement(row1)  # type: ignore[attr-defined]
 
     # Row 2: pipe and backslash
-    row2 = table.TableRow()
-    c3 = table.TableCell()
-    p3 = text.P()
-    p3.addText("Texte avec | pipe")
-    c3.addElement(p3)
-    row2.addElement(c3)
-    c4 = table.TableCell()
-    p4 = text.P()
-    p4.addText("Texte avec \\ backslash")
-    c4.addElement(p4)
-    row2.addElement(c4)
-    table_elem.addElement(row2)
+    row2 = table.TableRow()  # type: ignore[attr-defined]
+    c3 = table.TableCell()  # type: ignore[attr-defined]
+    p3 = text.P()  # type: ignore[attr-defined]
+    p3.addText("Texte avec | pipe")  # type: ignore[attr-defined]
+    c3.addElement(p3)  # type: ignore[attr-defined]
+    row2.addElement(c3)  # type: ignore[attr-defined]
+    c4 = table.TableCell()  # type: ignore[attr-defined]
+    p4 = text.P()  # type: ignore[attr-defined]
+    p4.addText("Texte avec \\ backslash")  # type: ignore[attr-defined]
+    c4.addElement(p4)  # type: ignore[attr-defined]
+    row2.addElement(c4)  # type: ignore[attr-defined]
+    table_elem.addElement(row2)  # type: ignore[attr-defined]
 
     # Row 3: accents
-    row3 = table.TableRow()
-    c5 = table.TableCell()
-    p5 = text.P()
-    p5.addText("Àéîôù")
-    c5.addElement(p5)
-    row3.addElement(c5)
-    c6 = table.TableCell()
-    p6 = text.P()
-    p6.addText("Ñ ü ö ä")
-    c6.addElement(p6)
-    row3.addElement(c6)
-    table_elem.addElement(row3)
+    row3 = table.TableRow()  # type: ignore[attr-defined]
+    c5 = table.TableCell()  # type: ignore[attr-defined]
+    p5 = text.P()  # type: ignore[attr-defined]
+    p5.addText("Àéîôù")  # type: ignore[attr-defined]
+    c5.addElement(p5)  # type: ignore[attr-defined]
+    row3.addElement(c5)  # type: ignore[attr-defined]
+    c6 = table.TableCell()  # type: ignore[attr-defined]
+    p6 = text.P()  # type: ignore[attr-defined]
+    p6.addText("Ñ ü ö ä")  # type: ignore[attr-defined]
+    c6.addElement(p6)  # type: ignore[attr-defined]
+    row3.addElement(c6)  # type: ignore[attr-defined]
+    table_elem.addElement(row3)  # type: ignore[attr-defined]
 
-    doc.spreadsheet.addElement(table_elem)
+    doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -742,98 +739,367 @@ def sample_ods_special_chars_bytes() -> bytes:
 @pytest.fixture
 def sample_odp_bytes() -> bytes:
     """Generate a minimal ODP file with slides and text using odfpy."""
-    from odf import draw, opendocument, text
+    # type: ignore[misc]
+    from odf import draw  # type: ignore[misc]
+    from odf import opendocument  # type: ignore[misc]
+    from odf import text  # type: ignore[misc]
 
-    doc = opendocument.OpenDocumentPresentation()
+    doc = opendocument.OpenDocumentPresentation()  # type: ignore[misc]
 
     # Slide 1: title slide
-    page1 = draw.Page(name="Slide 1", masterpagename="Default")
-    title_frame = draw.Frame(name="TitleFrame")
-    title_text_box = draw.TextBox()
-    title_para = text.P()
-    title_para.addText("Présentation de Test")
-    title_text_box.addElement(title_para)
-    title_frame.addElement(title_text_box)
-    page1.addElement(title_frame)
+    page1 = draw.Page(name="Slide 1", masterpagename="Default")  # type: ignore[misc]
+    title_frame = draw.Frame(name="TitleFrame")  # type: ignore[misc]
+    title_text_box = draw.TextBox()  # type: ignore[misc]
+    title_para = text.P()  # type: ignore[misc]
+    title_para.addText("Présentation de Test")  # type: ignore[attr-defined]
+    title_text_box.addElement(title_para)  # type: ignore[attr-defined]
+    title_frame.addElement(title_text_box)  # type: ignore[attr-defined]
+    page1.addElement(title_frame)  # type: ignore[attr-defined]
 
     # Subtitle frame
-    subtitle_frame = draw.Frame(name="SubtitleFrame")
-    subtitle_text_box = draw.TextBox()
-    subtitle_para = text.P()
-    subtitle_para.addText("Sous-titre de la présentation")
-    subtitle_text_box.addElement(subtitle_para)
-    subtitle_frame.addElement(subtitle_text_box)
-    page1.addElement(subtitle_frame)
+    subtitle_frame = draw.Frame(name="SubtitleFrame")  # type: ignore[misc]
+    subtitle_text_box = draw.TextBox()  # type: ignore[misc]
+    subtitle_para = text.P()  # type: ignore[misc]
+    subtitle_para.addText("Sous-titre de la présentation")  # type: ignore[attr-defined]
+    subtitle_text_box.addElement(subtitle_para)  # type: ignore[attr-defined]
+    subtitle_frame.addElement(subtitle_text_box)  # type: ignore[attr-defined]
+    page1.addElement(subtitle_frame)  # type: ignore[attr-defined]
 
-    doc.presentation.addElement(page1)
+    doc.presentation.addElement(page1)  # type: ignore[attr-defined]
 
     # Slide 2: content slide
-    page2 = draw.Page(name="Slide 2", masterpagename="Default")
-    title_frame2 = draw.Frame(name="TitleFrame2")
-    title_text_box2 = draw.TextBox()
-    title_para2 = text.P()
-    title_para2.addText("Deuxième Slide")
-    title_text_box2.addElement(title_para2)
-    title_frame2.addElement(title_text_box2)
-    page2.addElement(title_frame2)
+    page2 = draw.Page(name="Slide 2", masterpagename="Default")  # type: ignore[misc]
+    title_frame2 = draw.Frame(name="TitleFrame2")  # type: ignore[misc]
+    title_text_box2 = draw.TextBox()  # type: ignore[misc]
+    title_para2 = text.P()  # type: ignore[misc]
+    title_para2.addText("Deuxième Slide")  # type: ignore[attr-defined]
+    title_text_box2.addElement(title_para2)  # type: ignore[attr-defined]
+    title_frame2.addElement(title_text_box2)  # type: ignore[attr-defined]
+    page2.addElement(title_frame2)  # type: ignore[attr-defined]
 
     # Content frame with list items
-    content_frame = draw.Frame(name="ContentFrame")
-    content_text_box = draw.TextBox()
-    para1 = text.P()
-    para1.addText("Premier point")
-    content_text_box.addElement(para1)
-    para2 = text.P()
-    para2.addText("Deuxième point")
-    content_text_box.addElement(para2)
-    para3 = text.P()
-    para3.addText("Troisième point")
-    content_text_box.addElement(para3)
-    content_frame.addElement(content_text_box)
-    page2.addElement(content_frame)
+    content_frame = draw.Frame(name="ContentFrame")  # type: ignore[misc]
+    
+    # Content text box with bullet points
+    content_text_box = draw.TextBox()  # type: ignore[misc]
+    para1 = text.P()  # type: ignore[misc]
+    para1.addText("Premier point")  # type: ignore[attr-defined]
+    content_text_box.addElement(para1)  # type: ignore[attr-defined]
+    para2 = text.P()  # type: ignore[misc]
+    para2.addText("Deuxième point")  # type: ignore[attr-defined]
+    content_text_box.addElement(para2)  # type: ignore[attr-defined]
+    para3 = text.P()  # type: ignore[misc]
+    para3.addText("Troisième point")  # type: ignore[attr-defined]
+    content_text_box.addElement(para3)  # type: ignore[attr-defined]
+    content_frame.addElement(content_text_box)  # type: ignore[attr-defined]
+    page2.addElement(content_frame)  # type: ignore[attr-defined]
 
-    doc.presentation.addElement(page2)
+    doc.presentation.addElement(page2)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# JSON/JSONL Test Fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def expected_json_output_pdf() -> Dict[str, Any]:
+    """Expected JSON output for PDF conversion (Hello World document)."""
+    return {
+        "format": "pdf",
+        "pages": [
+            {
+                "page_idx": 0,
+                "markdown_text": "# Hello World\n\nLigne deux",
+                "links": []
+            }
+        ],
+        "metadata": {"source_format": "pdf", "num_pages": 1},
+        "success": True,
+        "timestamp": None  # Will be set by actual conversion
+    }
+
+
+@pytest.fixture
+def expected_json_output_docx() -> Dict[str, Any]:
+    """Expected JSON output for DOCX conversion."""
+    return {
+        "format": "docx",
+        "pages": [
+            {
+                "page_idx": 0,
+                "markdown_text": "# Bonjour le monde\n\n## Deuxième paragraphe",
+                "links": []
+            },
+            {
+                "page_idx": 1,
+                "markdown_text": "# Deuxième paragraphe",
+                "links": []
+            }
+        ],
+        "metadata": {"source_format": "docx", "num_pages": 2},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_json_output_odt() -> Dict[str, Any]:
+    """Expected JSON output for ODT conversion."""
+    return {
+        "format": "odt",
+        "pages": [
+            {
+                "page_idx": 0,
+                "markdown_text": "# Titre du document\n\n## Premier paragraphe\n\n## Deuxième paragraphe",
+                "links": []
+            }
+        ],
+        "metadata": {"source_format": "odt", "num_pages": 1},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_json_output_xlsx() -> Dict[str, Any]:
+    """Expected JSON output for XLSX conversion."""
+    return {
+        "format": "xlsx",
+        "sheets": [
+            {
+                "name": "Feuille1",
+                "data": [
+                    ["Nom", "Valeur"],
+                    ["A", 1],
+                    ["B", 2]
+                ],
+                "headers": ["Nom", "Valeur"]
+            }
+        ],
+        "metadata": {"source_format": "xlsx", "num_sheets": 1},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_json_output_pptx() -> Dict[str, Any]:
+    """Expected JSON output for PPTX conversion."""
+    return {
+        "format": "pptx",
+        "slides": [
+            {
+                "index": 0,
+                "title": "Présentation de Test",
+                "content": ["Sous-titre de la présentation"],
+                "tables": []
+            },
+            {
+                "index": 1,
+                "title": "Deuxième Slide",
+                "content": ["Premier point", "Deuxième point", "Sous-point"],
+                "tables": []
+            }
+        ],
+        "metadata": {"source_format": "pptx", "num_slides": 2},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_json_output_html() -> Dict[str, Any]:
+    """Expected JSON output for HTML conversion."""
+    return {
+        "format": "html",
+        "pages": [
+            {
+                "page_idx": 0,
+                "markdown_text": "# Main Title\n\nThis is a **bold** and *italic* paragraph.\n\nVisit our website for more info.",
+                "links": ["https://example.com"]
+            }
+        ],
+        "metadata": {"source_format": "html", "num_pages": 1},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_json_output_ods() -> Dict[str, Any]:
+    """Expected JSON output for ODS conversion."""
+    return {
+        "format": "ods",
+        "sheets": [
+            {
+                "name": "Feuille1",
+                "data": [
+                    ["Nom", "Valeur"],
+                    ["A", 1],
+                    ["B", 2]
+                ],
+                "headers": ["Nom", "Valeur"]
+            }
+        ],
+        "metadata": {"source_format": "ods", "num_sheets": 1},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_json_output_odp() -> Dict[str, Any]:
+    """Expected JSON output for ODP conversion."""
+    return {
+        "format": "odp",
+        "slides": [
+            {
+                "index": 0,
+                "title": "Présentation de Test",
+                "content": ["Sous-titre de la présentation"],
+                "lists": []
+            },
+            {
+                "index": 1,
+                "title": "Deuxième Slide",
+                "content": ["Premier point", "Deuxième point", "Troisième point"],
+                "lists": []
+            }
+        ],
+        "metadata": {"source_format": "odp", "num_slides": 2},
+        "success": True,
+        "timestamp": None
+    }
+
+
+@pytest.fixture
+def expected_jsonl_output_pdf() -> List[str]:
+    """Expected JSONL output for PDF conversion (one event per page)."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": "# Hello World\\n\\nLigne deux", "links": [], "offset": 0, "length": 28}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_docx() -> List[str]:
+    """Expected JSONL output for DOCX conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": "# Bonjour le monde\\n\\n## Deuxième paragraphe", "links": [], "offset": 0, "length": 42}',
+        '{"type": "chunk", "page_idx": 1, "markdown_text": "# Deuxième paragraphe", "links": [], "offset": 42, "length": 23}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_odt() -> List[str]:
+    """Expected JSONL output for ODT conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": "# Titre du document\\n\\n## Premier paragraphe\\n\\n## Deuxième paragraphe", "links": [], "offset": 0, "length": 72}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_xlsx() -> List[str]:
+    """Expected JSONL output for XLSX conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": [["Nom","Valeur"],["A",1.0],"[B",2.0]]", "links": [], "offset": 0, "length": 35}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_pptx() -> List[str]:
+    """Expected JSONL output for PPTX conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": "Présentation de Test\\nSous-titre de la présentation", "links": [], "offset": 0, "length": 48}',
+        '{"type": "chunk", "page_idx": 1, "markdown_text": "Deuxième Slide\\nPremier point\\nDeuxième point\\nSous-point", "links": [], "offset": 48, "length": 59}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_html() -> list[str]:
+    """Expected JSONL output for HTML conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": "# Main Title\\nThis is a **bold** and *italic* paragraph.\\nVisit our website for more info.", "links": ["https://example.com"], "offset": 0, "length": 95}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_ods() -> list[str]:
+    """Expected JSONL output for ODS conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": [["Nom","Valeur"],["A",1.0],"[B",2.0]]", "links": [], "offset": 0, "length": 35}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+@pytest.fixture
+def expected_jsonl_output_odp() -> list[str]:
+    """Expected JSONL output for ODP conversion."""
+    return [
+        '{"type": "start", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}',
+        '{"type": "chunk", "page_idx": 0, "markdown_text": "Présentation de Test\\nSous-titre de la présentation", "links": [], "offset": 0, "length": 48}',
+        '{"type": "chunk", "page_idx": 1, "markdown_text": "Deuxième Slide\\nPremier point\\nDeuxième point\\nTroisième point", "links": [], "offset": 48, "length": 62}',
+        '{"type": "end", "page_idx": null, "markdown_text": "", "links": [], "offset": 0, "length": 0}'
+    ]
+
+
+# ---------------------------------------------------------------------------
+# End of Test Fixtures
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 def sample_odp_with_list_bytes() -> bytes:
     """Generate an ODP file with bullet list items using odfpy."""
-    from odf import draw, opendocument, text
+    from odf import draw, opendocument, text  # type: ignore[attr-defined]
 
-    doc = opendocument.OpenDocumentPresentation()
+    doc = opendocument.OpenDocumentPresentation()  # type: ignore[attr-defined]
 
-    page = draw.Page(name="Slide 1", masterpagename="Default")
-    title_frame = draw.Frame(name="TitleFrame")
-    title_text_box = draw.TextBox()
-    title_para = text.P()
-    title_para.addText("Liste de courses")
-    title_text_box.addElement(title_para)
-    title_frame.addElement(title_text_box)
-    page.addElement(title_frame)
+    page = draw.Page(name="Slide 1", masterpagename="Default")  # type: ignore[attr-defined]
+    title_frame = draw.Frame(name="TitleFrame")  # type: ignore[attr-defined]
+    title_text_box = draw.TextBox()  # type: ignore[attr-defined]
+    title_para = text.P()  # type: ignore[attr-defined]
+    title_para.addText("Liste de courses")  # type: ignore[attr-defined]
+    title_text_box.addElement(title_para)  # type: ignore[attr-defined]
+    title_frame.addElement(title_text_box)  # type: ignore[attr-defined]
+    page.addElement(title_frame)  # type: ignore[attr-defined]
 
-    content_frame = draw.Frame(name="ContentFrame")
-    content_text_box = draw.TextBox()
-    para1 = text.P()
-    para1.addText("Pommes")
-    content_text_box.addElement(para1)
-    para2 = text.P()
-    para2.addText("Oranges")
-    content_text_box.addElement(para2)
-    para3 = text.P()
-    para3.addText("Bananes")
-    content_text_box.addElement(para3)
-    content_frame.addElement(content_text_box)
-    page.addElement(content_frame)
+    content_frame = draw.Frame(name="ContentFrame")  # type: ignore[attr-defined]
+    content_text_box = draw.TextBox()  # type: ignore[attr-defined]
+    para1 = text.P()  # type: ignore[attr-defined]
+    para1.addText("Pommes")  # type: ignore[attr-defined]
+    content_text_box.addElement(para1)  # type: ignore[attr-defined]
+    para2 = text.P()  # type: ignore[attr-defined]
+    para2.addText("Oranges")  # type: ignore[attr-defined]
+    content_text_box.addElement(para2)  # type: ignore[attr-defined]
+    para3 = text.P()  # type: ignore[attr-defined]
+    para3.addText("Bananes")  # type: ignore[attr-defined]
+    content_text_box.addElement(para3)  # type: ignore[attr-defined]
+    content_frame.addElement(content_text_box)  # type: ignore[attr-defined]
+    page.addElement(content_frame)  # type: ignore[attr-defined]
 
-    doc.presentation.addElement(page)
+    doc.presentation.addElement(page)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
@@ -841,34 +1107,34 @@ def sample_odp_with_list_bytes() -> bytes:
 @pytest.fixture
 def sample_odp_with_special_chars_bytes() -> bytes:
     """Generate an ODP file with special characters using odfpy."""
-    from odf import draw, opendocument, text
+    from odf import draw, opendocument, text  # type: ignore[attr-defined]
 
-    doc = opendocument.OpenDocumentPresentation()
+    doc = opendocument.OpenDocumentPresentation()  # type: ignore[attr-defined]
 
-    page = draw.Page(name="Slide 1", masterpagename="Default")
-    title_frame = draw.Frame(name="TitleFrame")
-    title_text_box = draw.TextBox()
-    title_para = text.P()
-    title_para.addText("Caractères spéciaux")
-    title_text_box.addElement(title_para)
-    title_frame.addElement(title_text_box)
-    page.addElement(title_frame)
+    page = draw.Page(name="Slide 1", masterpagename="Default")  # type: ignore[attr-defined]
+    title_frame = draw.Frame(name="TitleFrame")  # type: ignore[attr-defined]
+    title_text_box = draw.TextBox()  # type: ignore[attr-defined]
+    title_para = text.P()  # type: ignore[attr-defined]
+    title_para.addText("Caractères spéciaux")  # type: ignore[attr-defined]
+    title_text_box.addElement(title_para)  # type: ignore[attr-defined]
+    title_frame.addElement(title_text_box)  # type: ignore[attr-defined]
+    page.addElement(title_frame)  # type: ignore[attr-defined]
 
-    content_frame = draw.Frame(name="ContentFrame")
-    content_text_box = draw.TextBox()
-    para1 = text.P()
-    para1.addText("Àéîôù Ñ ü ö ä")
-    content_text_box.addElement(para1)
-    para2 = text.P()
-    para2.addText("Symboles: © ® ™ € £ ¥")
-    content_text_box.addElement(para2)
-    content_frame.addElement(content_text_box)
-    page.addElement(content_frame)
+    content_frame = draw.Frame(name="ContentFrame")  # type: ignore[attr-defined]
+    content_text_box = draw.TextBox()  # type: ignore[attr-defined]
+    para1 = text.P()  # type: ignore[attr-defined]
+    para1.addText("Àéîôù Ñ ü ö ä")  # type: ignore[attr-defined]
+    content_text_box.addElement(para1)  # type: ignore[attr-defined]
+    para2 = text.P()  # type: ignore[attr-defined]
+    para2.addText("Symboles: © ® ™ € £ ¥")  # type: ignore[attr-defined]
+    content_text_box.addElement(para2)  # type: ignore[attr-defined]
+    content_frame.addElement(content_text_box)  # type: ignore[attr-defined]
+    page.addElement(content_frame)  # type: ignore[attr-defined]
 
-    doc.presentation.addElement(page)
+    doc.presentation.addElement(page)  # type: ignore[attr-defined]
 
     buf = io.BytesIO()
-    doc.save(buf)
+    doc.save(buf)  # type: ignore[attr-defined]
     buf.seek(0)
     return buf.getvalue()
 
