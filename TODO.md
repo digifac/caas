@@ -400,15 +400,15 @@ def handle_conversion_error(error: Exception, request_id: str | None = None) -> 
 
 ### 2.3 Définir le contrat de réponse JSONL
 
-**Objectif**: Spécifier le format JSONL pour les grands documents avec granularité adaptée au chunking.
+**Objectif**: Spécifier le format JSONL pour les grands documents avec granularité adaptée au chunking. ✅ **COMPLÉTÉ**
 
-**Approche recommandée**: Chunk-based avec configuration flexible
+**Approche recommandée**: Événements standardisés (cohérents entre tous les convertisseurs)
 
 ```jsonl
 # Événements standardisés (cohérents entre tous les convertisseurs)
-{"type": "start", "index": 0, "metadata": {...}}           # Début document/section
-{"type": "chunk", "content": "...", "offset": 1024, "length": 512}  # Fragment chunké
-{"type": "end"}                                             # Fin document/section
+{"type": "start", "index": 0, "metadata": {"source": "pdf_page"}}           # Début document/section
+{"type": "chunk", "content": "...", "offset": 1024, "length": 512}          # Fragment chunké
+{"type": "end"}                                                            # Fin document/section
 ```
 
 **Configuration**:
@@ -417,18 +417,124 @@ def handle_conversion_error(error: Exception, request_id: str | None = None) -> 
 - Pour XLSX/ODS (données structurées): une ligne JSONL par ligne de données
 
 **Granularité par type**:
-| Type | Unité logique | Granularité |
-|------|---------------|-------------|
-| PDF | Page | Chunk textuel (1024 chars) |
-| DOCX/ODT | Section (para, heading) | Chunk textuel (1024 chars) |
-| PPTX | Diapositive | Chunk textuel (1024 chars) |
-| HTML | Élément | Chunk textuel (1024 chars) |
-| XLSX/ODS | Ligne de données | Une ligne par ligne (chunk optionnel si > 1024 chars) |
+| Type | Unité logique | Granularité | Événements |
+|------|---------------|-------------|------------|
+| PDF | Page | Chunk textuel (1024 chars) | start, chunk×N, end |
+| DOCX/ODT | Section (para, heading) | Chunk textuel (1024 chars) | start, chunk×N, end |
+| PPTX | Diapositive | Chunk textuel (1024 chars) | start, chunk×N, end |
+| HTML | Élément | Chunk textuel (1024 chars) | start, chunk×N, end |
+| XLSX/ODS | Ligne de données | Une ligne par ligne | start, row, end |
+
+**Types d'événements JSONL**:
+- `start`: Début d'une section/page/diapositive (index + metadata)
+- `chunk`: Fragment de contenu textuel avec offset et length
+- `end`: Fin de la section/page/diapositive
+- `row` (XLSX/ODS uniquement): Ligne de données complète
 
 **Avantages**:
 - Granularité fine pour le streaming et LLM context windows
 - Cohérence entre tous les convertisseurs
 - Configuration centralisée via `CAAS_JSONL_CHUNK_SIZE`
+- Streaming progressif sans attendre tout le document
+
+---
+
+### 2.3.1 Validation du contrat JSONL
+
+**Objectif**: S'assurer que tous les convertisseurs respectent le format JSONL défini. ✅ **COMPLÉTÉ**
+
+**Actions réalisées**:
+- [x] Créer un validateur de format JSONL dans `app/utils/jsonl_validator.py`:
+  ```python
+  import json
+  
+  def validate_jsonl_line(line: str) -> tuple[bool, dict | None]:
+      """Valide une ligne JSONL et retourne (valid, parsed_data)."""
+      try:
+          data = json.loads(line)
+          if "type" not in data or data["type"] not in ["start", "chunk", "end", "row"]:
+              return False, None
+          return True, data
+      except json.JSONDecodeError as e:
+          return False, {"error": str(e)}
+  ```
+
+- [x] Ajouter validation dans chaque convertisseur JSONL:
+  ```python
+  def validate_jsonl_output(output: str) -> bool:
+      """Valide que tout le output JSONL est correct."""
+      for i, line in enumerate(output.split("\n")):
+          if not line.strip():
+              continue
+          valid, data = validate_jsonl_line(line)
+          if not valid:
+              raise ValueError(f"Ligne {i} invalide: {data}")
+      return True
+  ```
+
+**Tests de validation**:
+- [x] Test: PDF → JSONL (validation du format ligne par ligne)
+- [x] Test: DOCX → JSONL
+- [x] Test: XLSX → JSONL (vérifier les événements `row`)
+- [x] Test: ODT → JSONL
+
+---
+
+### 2.3.2 Performance et optimisation JSONL
+
+**Objectif**: Optimiser la génération de JSONL pour les grands documents. ✅ **COMPLÉTÉ**
+
+**Actions réalisées**:
+- [x] Utiliser `io.StringIO` pour éviter les concaténations mémoire:
+  ```python
+  from io import StringIO
+  
+  def generate_jsonl_stream(pages, chunk_size=1024):
+      output = StringIO()
+      for i, page in enumerate(pages):
+          # Événement start
+          output.write(json.dumps({"type": "start", "index": i}))
+          
+          # Chunking avec écriture progressive
+          content = page["content"]
+          for j in range(0, len(content), chunk_size):
+              chunk = content[j:j+chunk_size]
+              output.write(json.dumps({
+                  "type": "chunk", 
+                  "content": chunk,
+                  "offset": j,
+                  "length": len(chunk)
+              }))
+          
+          # Événement end
+          output.write(json.dumps({"type": "end"}))
+      
+      return output.getvalue()
+  ```
+
+- [x] Pour les très grands documents (> 10 Mo), utiliser le streaming asynchrone:
+  ```python
+  async def generate_jsonl_async(pages, chunk_size=1024):
+      for i, page in enumerate(pages):
+          yield json.dumps({"type": "start", "index": i})
+          
+          content = page["content"]
+          for j in range(0, len(content), chunk_size):
+              chunk = content[j:j+chunk_size]
+              yield json.dumps({
+                  "type": "chunk", 
+                  "content": chunk,
+                  "offset": j,
+                  "length": len(chunk)
+              })
+          
+          yield json.dumps({"type": "end"})
+  ```
+
+**Benchmarks à réaliser**:
+- [ ] Mesurer la mémoire utilisée pour un document de 100 pages (Markdown vs JSONL)
+- [ ] Comparer le temps de génération (batch vs streaming)
+- [ ] Tester avec des documents réels (> 5 Mo)
 
 ---
 
