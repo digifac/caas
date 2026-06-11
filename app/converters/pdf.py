@@ -171,13 +171,13 @@ async def convert_pdf_to_md_stream(
 
 
 def _to_json(results: list[tuple[int, str, list[str]]]) -> dict[str, Any]:
-    """Convert les résultats PDF en format JSON structuré.
+    """Convert PDF results to structured JSON format.
 
     Args:
-        results: Liste de tuples (page_idx, page_md, [urls]) retournée par _extract_pdf_content().
+        results: List of tuples (page_idx, page_md, [urls]) returned by _extract_pdf_content().
 
     Returns:
-        Dict JSON avec pages et métadonnées.
+        JSON Dict with pages and metadata.
     """
     pages = [PageJson(page_idx=p[0], markdown_text=p[1], links=p[2]) for p in results]
 
@@ -189,16 +189,16 @@ def _to_json(results: list[tuple[int, str, list[str]]]) -> dict[str, Any]:
 
 
 def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
-    """Convert les résultats PDF en format JSONL avec chunking textuel.
+    """Convert PDF results to JSONL format with textual chunking.
 
-    Chaque page est chunkée en blocs de CAAS_JSONL_CHUNK_SIZE caractères (défaut: 1024).
-    Retourne une chaîne avec une ligne JSON par événement (start, chunk×N, end).
+    Each page is chunked into blocks of CAAS_JSONL_CHUNK_SIZE characters (default: 1024).
+    Returns a string with one JSON line per event (start, chunk×N, end).
 
     Args:
-        results: Liste de tuples (page_idx, page_md, [urls]) retournée par _extract_pdf_content().
+        results: List of tuples (page_idx, page_md, [urls]) returned by _extract_pdf_content().
 
     Returns:
-        Chaîne JSONL prête à être streamée.
+        JSONL string ready to be streamed.
     """
     chunks: list[Any] = []
 

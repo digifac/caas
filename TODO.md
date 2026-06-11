@@ -1,6 +1,6 @@
-# TODO: Ajouter la conversion en JSON/JSONL
+# TODO: Add JSON/JSONL conversion
 
-Ce fichier liste les étapes pour ajouter le support de l'export JSON et JSONL aux conversions existantes (actuellement Markdown). Chaque étape est courte, simple et réversible.
+This file lists the steps to add support for JSON and JSONL export to existing conversions (currently Markdown). Each step is short, simple, and reversible.
 
 ---
 
@@ -23,18 +23,18 @@ Ce fichier liste les étapes pour ajouter le support de l'export JSON et JSONL a
 **Objectif**: Identifier comment les convertisseurs Markdown sont implémentés pour réutiliser le pattern. ✅ **COMPLÉTÉ**
 
 **Actions réalisées**:
-- [x] Lire `app/converters/base.py` - utilitaires partagés (`clean_lines`, détection d'en-têtes, listes)
+- [x] Read `app/converters/base.py` - shared utilities (`clean_lines`, heading detection, lists)
 - [x] Examiner `app/converters/pdf.py` - convertisseur PDF → Markdown avec OCR et extraction de liens
 - [x] Vérifier la structure des données retournées par chaque convertisseur
 
 **Structure de données découverte**:
 ```python
-# Format interne utilisé par tous les convertisseurs:
-results = [(page_idx, markdown_text, urls)]  # tuple (index_page, texte_markdown, liste_urls)
+# Internal format used by all converters:
+results = [(page_idx, markdown_text, urls)]  # tuple (page_index, markdown_text, url_list)
 
 # Exemple PDF:
 def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
-    """Retourne une liste de tuples (page_idx, page_md, [urls])"""
+    """Returns a list of tuples (page_idx, page_md, [urls])""
 ```
 
 **Format de sortie actuel**:
@@ -42,10 +42,10 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
 - Format: `"\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()`
 - Les liens sont ajoutés comme `[uri](uri)` à la fin du markdown
 
-**Pattern identifié pour réutilisation**:
-1. Extraction des données brutes → liste de tuples `(page_idx, content, metadata)`
-2. Nettoyage et conversion en Markdown via `clean_lines()`
-3. Agrégation finale en chaîne unique
+**Identified pattern for reuse**:
+1. Extract raw data → list of tuples `(page_idx, content, metadata)`
+2. Clean and convert to Markdown via `clean_lines()`
+3. Final aggregation into single string
 
 **Référence**: 
 - `app/converters/base.py` - utilitaires communs (`clean_lines`, `is_uppercase_heading`)
@@ -60,10 +60,10 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
 
 **Actions réalisées**:
 - [x] Pour PDF: identifier la structure `(page_idx, markdown_text, urls)` via `_extract_pdf_content()`
-- [x] Pour DOCX: retourne une chaîne Markdown brute via `mammoth.convert_to_markdown()`
-- [x] Pour ODT: retourne une liste de lignes `lines: list[str]` avec gestion des listes
-- [x] Pour XLSX: retourne une chaîne Markdown avec tableaux via `_build_sheet_md()`
-- [x] Pour PPTX: retourne une liste de lignes `all_lines` avec séparateurs entre diapositives
+- [x] For DOCX: returns a raw Markdown string via `mammoth.convert_to_markdown()`
+- [x] For ODT: returns a list of lines `lines: list[str]` with list handling
+- [x] For XLSX: returns a Markdown string with tables via `_build_sheet_md()`
+- [x] For PPTX: returns a list of lines `all_lines` with separators between slides
 - [x] Pour HTML: utilise BeautifulSoup + html2text pour conversion directe en Markdown
 - [x] Pour ODP: retourne une chaîne Markdown via `clean_lines(all_lines)`
 
@@ -71,14 +71,14 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
 
 | Converteur | Structure brute | Type | Description |
 |------------|-----------------|------|-------------|
-| PDF | `list[tuple[int, str, list[str]]]` | Liste de tuples | `(page_idx, markdown_text, [urls])` par page |
-| DOCX | `str` | Chaîne Markdown | Résultat brut de mammoth avec liens/images |
-| ODT | `list[str]` | Liste de lignes | Paragraphes et listes, joint en `\n`.join(lines) |
+| PDF | `list[tuple[int, str, list[str]]]` | List of tuples | `(page_idx, markdown_text, [urls])` per page |
+| DOCX | `str` | Markdown string | Raw mammoth result with links/images |
+| ODT | `list[str]` | List of lines | Paragraphs and lists, joined with `\n`.join(lines) |
 | XLSX | `str` | Chaîne Markdown | Tableaux par feuille, séparés par `---` |
-| PPTX | `list[str]` | Liste de lignes | Titres, paragraphes, tableaux avec `---` entre slides |
-| HTML | `str` | Chaîne Markdown | Résultat html2text + post-processing BeautifulSoup |
-| ODP | `str` | Chaîne Markdown | Contenu des frames textuelles via clean_lines() |
-| ODS | `list[str]` | Liste de lignes | Tableaux par feuille, séparés par `---`, gestion des cellules vides |
+| PPTX | `list[str]` | List of lines | Titles, paragraphs, tables with `---` between slides |
+| HTML | `str` | Markdown string | html2text result + post-processing BeautifulSoup |
+| ODP | `str` | Markdown string | Content of text frames via clean_lines() |
+| ODS | `list[str]` | List of lines | Tables per sheet, separated by `---`, empty cell handling |
 
 **Format JSON cible**:
 ```json
@@ -138,9 +138,9 @@ GET /convert?file=&format=jsonl → JSONL stream (SSE ou raw text)
 | `format` | query string | `"markdown"`, `"json"`, `"jsonl"` | `"markdown"` | Format de sortie souhaité |
 
 **Comportement par format**:
-- **Markdown (défaut)**: Retourne une chaîne Markdown brute
-- **JSON**: Retourne un objet JSON structuré avec métadonnées et contenu paginé
-- **JSONL**: Retourne du texte brut avec une ligne JSON par événement (pour streaming)
+- **Markdown (default)**: Returns a raw Markdown string
+- **JSON**: Returns a structured JSON object with metadata and paginated content
+- **JSONL**: Returns raw text with one JSON line per event (for streaming)
 
 **Exemples d'utilisation**:
 ```bash
@@ -197,15 +197,15 @@ from datetime import datetime
 
 class PageJson(BaseModel):
     """Représente une page ou unité logique du document."""
-    index: int = Field(..., description="Index de la page/section")
-    content: str = Field(..., description="Contenu brut (Markdown ou texte)")
+    index: int = Field(..., description="Page/section index")
+    content: str = Field(..., description="Raw content (Markdown or text)")
     urls: List[str] = Field(default_factory=list, description="Liens extraits")
 
 class ConversionResponse(BaseModel):
     """Réponse JSON structurée pour l'API de conversion."""
     format: str = Field("json", description="Format de sortie ('pdf', 'docx', etc.)")
     pages: List[PageJson] = Field(default_factory=list, description="Liste des pages/sections")
-    content: Optional[str] = Field(None, description="Contenu Markdown brut (alternative aux pages)")
+    content: Optional[str] = Field(None, description="Raw Markdown content (alternative to pages)")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées du document")
     request_id: Optional[str] = Field(None, description="ID de la requête pour le tracing")
     success: bool = Field(True, description="Statut de réussite")
@@ -217,8 +217,8 @@ class ConversionResponse(BaseModel):
 class JsonlEvent(BaseModel):
     """Événement JSONL pour le streaming granulaire."""
     type: str = Field(..., pattern="^(start|chunk|end)$", description="Type d'événement")
-    index: Optional[int] = Field(None, description="Index de la page/section")
-    content: str = Field("", description="Contenu du chunk")
+    index: Optional[int] = Field(None, description="Page/section index")
+    content: str = Field("", description="Chunk content")
     offset: int = Field(0, description="Décalage dans le document")
     length: int = Field(0, description="Longueur du chunk")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées")
@@ -228,7 +228,7 @@ class JsonlStartEvent(JsonlEvent):
     type: str = "start"
     
 class JsonlChunkEvent(JsonlEvent):
-    """Événement de chunk de contenu."""
+    """Content chunk event."""
     type: str = "chunk"
     
 class JsonlEndEvent(JsonlEvent):
@@ -337,7 +337,7 @@ class ConversionResponse(BaseModel):
             raise ValueError("Le champ 'pages' ne peut pas être vide")
         for i, page in enumerate(v):
             if not page.content.strip():
-                raise ValueError(f"La page {i} doit contenir du contenu non vide")
+                raise ValueError(f"Page {i} must contain non-empty content")
         return v
     
     @field_validator('metadata')
@@ -368,7 +368,7 @@ response = ConversionResponse(
     pages=[PageJson(index=0, content="# Titre\n\nContenu")],
     metadata={"total_pages": 1}
 )
-json_str = serialize_response(response)  # Retourne JSON formaté
+json_str = serialize_response(response)  # Returns formatted JSON
 ```
 
 **Gestion des erreurs dans la réponse**:
@@ -376,7 +376,7 @@ json_str = serialize_response(response)  # Retourne JSON formaté
 from fastapi import HTTPException
 
 def handle_conversion_error(error: Exception, request_id: str | None = None) -> dict:
-    """Retourne une erreur structurée en JSON."""
+    """Returns a structured error in JSON."""
     return {
         "format": "error",
         "pages": [],
@@ -390,7 +390,7 @@ def handle_conversion_error(error: Exception, request_id: str | None = None) -> 
 ```
 
 **Notes d'implémentation**:
-- Le champ `content` est une alternative à `pages` pour les formats simples (DOCX, HTML) qui retournent directement du Markdown
+- The `content` field is an alternative to `pages` for simple formats (DOCX, HTML) that return Markdown directly
 - Pour les formats complexes (PDF, XLSX), utiliser uniquement le champ `pages` avec la liste des sections
 - Les métadonnées doivent être spécifiques au format source et inclure au minimum: `total_pages`, `file_size_bytes`
 - L'horodatage doit toujours être en UTC pour la cohérence internationale
@@ -637,7 +637,7 @@ jsonl_output = _to_jsonl_format([
                   metadata={"source": "pdf_page"}
               ))
               
-              # Chunker le contenu textuel (Markdown) par blocs de CAAS_JSONL_CHUNK_SIZE
+              # Chunk the textual content (Markdown) into blocks of CAAS_JSONL_CHUNK_SIZE
               content = page[1]  # Markdown text
               chunk_size = settings.jsonl_chunk_size or 1024
               
@@ -656,7 +656,7 @@ jsonl_output = _to_jsonl_format([
           return "\n".join(json.dumps(e.model_dump(), ensure_ascii=False) for e in chunks)
   ```
 
-**Note**: Le chunking s'applique au contenu textuel (Markdown), pas aux métadonnées. Chaque chunk respecte la taille configurée pour le streaming LLM-friendly.
+**Note**: Chunking applies to textual content (Markdown), not metadata. Each chunk respects the configured size for LLM-friendly streaming.
               # Page start
               chunks.append({"type": "page_start", "index": page["index"]})
               

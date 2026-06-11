@@ -1,7 +1,7 @@
-"""Modèles Pydantic pour les réponses JSON/JSONL de l'API de conversion.
+"""Pydantic models for the conversion API's JSON/JSONL responses.
 
-Ce module définit les structures de données standardisées pour tous les convertisseurs,
-assurant une cohérence entre PDF, DOCX, XLSX et autres formats.
+This module defines standardized data structures for all converters,
+suring consistency across PDF, DOCX, XLSX and other formats.
 """
 
 from datetime import datetime, timezone
@@ -11,151 +11,151 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class PageJson(BaseModel):
-    """Représente une page ou unité logique du document.
+    """Represents a page or logical unit of the document.
 
-    Utilisé par PDF, DOCX, ODT, PPTX, HTML (contenu textuel).
-    Pour les formats structurés (XLSX/ODS), voir SheetJson et CellJson.
+    Used by PDF, DOCX, ODT, PPTX, HTML (textual content).
+    For structured formats (XLSX/ODS), see SheetJson and CellJson.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    page_idx: int | None = Field(None, description="Index de la page/section")
-    markdown_text: str = Field(..., description="Contenu brut (Markdown ou texte)")
-    links: list[str] = Field(default_factory=list, description="Liens extraits")
+    page_idx: int | None = Field(None, description="Page/section index")
+    markdown_text: str = Field(..., description="Raw content (Markdown or text)")
+    links: list[str] = Field(default_factory=list, description="Extracted links")
 
 
 class ConversionResponse(BaseModel):
-    """Réponse JSON structurée pour l'API de conversion.
+    """Structured JSON response for the conversion API.
 
-    Format standardisé retourné quand `format=json` est spécifié dans la requête.
-    Compatible avec tous les convertisseurs (PDF, DOCX, XLSX, ODT, PPTX, HTML, ODP).
+    Standardized format returned when `format=json` is specified in the request.
+    Compatible with all converters (PDF, DOCX, XLSX, ODT, PPTX, HTML, ODP).
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    format: str = Field(..., description="Format source du document (pdf, docx, xlsx, etc.)")
-    pages: list[PageJson] = Field(default_factory=list, description="Liste des pages/sections avec contenu")  # type: ignore[misc]
-    content: str | None = Field(None, description="Contenu Markdown brut (alternative aux pages pour formats simples)")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées spécifiques au format")
-    request_id: str | None = Field(None, description="ID unique de la requête pour le tracing")
-    success: bool = Field(True, description="Statut de réussite")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="Horodatage UTC")
+    format: str = Field(..., description="Source document format (pdf, docx, xlsx, etc.)")
+    pages: list[PageJson] = Field(default_factory=list, description="List of pages/sections with content")  # type: ignore[misc]
+    _content: str | None = Field(None, description="Raw Markdown content (alternative to pages for simple formats)")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Format-specific metadata")
+    request_id: str | None = Field(None, description="Unique request ID for tracing")
+    success: bool = Field(True, description="Success status")
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), description="UTC timestamp")
 
 
 class SheetJson(BaseModel):
-    """Représente une feuille de calcul (XLSX/ODS).
+    """Represents a spreadsheet sheet (XLSX/ODS).
 
-    Utilisé pour les formats tabulaires avec données structurées.
+    Used for tabular formats with structured data.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    name: str = Field(..., description="Nom de la feuille")
-    data: list[list[Any]] = Field(default_factory=list, description="Données brutes (liste de listes)")  # type: ignore[misc]
-    headers: list[str] | None = Field(None, description="En-têtes de colonnes si disponibles")
+    name: str = Field(..., description="Sheet name")
+    data: list[list[Any]] = Field(default_factory=list, description="Raw data (list of lists)")  # type: ignore[misc]
+    headers: list[str] | None = Field(None, description="Column headers if available")
 
 
 class CellJson(BaseModel):
-    """Représente une cellule individuelle (XLSX/ODS).
+    """Represents an individual cell (XLSX/ODS).
 
-    Utilisé pour les formats tabulaires avec granularité cellulaire.
+    Used for tabular formats with cellular granularity.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    row: int = Field(..., description="Numéro de ligne")
-    col: int = Field(..., description="Numéro de colonne")
-    value: Any = Field(None, description="Valeur de la cellule (str, float, None)")
+    row: int = Field(..., description="Row number")
+    col: int = Field(..., description="Column number")
+    value: Any = Field(None, description="Cell value (str, float, None)")
 
 
 class SlideJson(BaseModel):
-    """Représente une diapositive (PPTX/ODP).
+    """Represents a slide (PPTX/ODP).
 
-    Utilisé pour les présentations avec contenu textuel et tableaux.
+    Used for presentations with textual content and tables.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    index: int = Field(..., description="Index de la diapositive")
-    title: str | None = Field(None, description="Titre de la diapositive")
-    content: list[str] = Field(default_factory=list, description="Liste des paragraphes/texte")
-    tables: list[list[list[Any]]] = Field(default_factory=list, description="Tableaux extraits")  # type: ignore[misc]
+    index: int = Field(..., description="Slide index")
+    title: str | None = Field(None, description="Slide title")
+    content: list[str] = Field(default_factory=list, description="List of paragraphs/text")
+    tables: list[list[list[Any]]] = Field(default_factory=list, description="Extracted tables")  # type: ignore[misc]
 
 
 class HtmlElementJson(BaseModel):
-    """Représente un élément HTML extrait.
+    """Represents an extracted HTML element.
 
-    Utilisé pour le convertisseur HTML avec structure d'éléments.
+    Used for the HTML converter with element structure.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    tag: str = Field(..., description="Nom de la balise (div, p, h1, etc.)")
-    content: str = Field(..., description="Contenu textuel de l'élément")
+    tag: str = Field(..., description="Tag name (div, p, h1, etc.)")
+    content: str = Field(..., description="Textual content of the element")
 
 
 class OdtElementJson(BaseModel):
-    """Représente un élément ODT (paragraphe, titre, liste).
+    """Represents an ODT element (paragraph, heading, list).
 
-    Utilisé pour le convertisseur ODT avec structure d'éléments.
+    Used for the ODT converter with element structure.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    type: str = Field(..., description="Type d'élément (paragraph, heading, list)")
-    content: str = Field(..., description="Contenu textuel")
-    level: int = Field(0, description="Niveau de hiérarchie pour les titres/listes")
+    type: str = Field(..., description="Element type (paragraph, heading, list)")
+    content: str = Field(..., description="Textual content")
+    level: int = Field(0, description="Hierarchy level for headings/lists")
 
 
 class OdpSlideJson(BaseModel):
-    """Représente une diapositive ODP (OpenDocument Presentation).
+    """Represents an ODP slide (OpenDocument Presentation).
 
-    Utilisé pour le convertisseur ODP avec frames et listes.
+    Used for the ODP converter with frames and lists.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    index: int = Field(..., description="Index de la diapositive")
-    title: str | None = Field(None, description="Titre de la diapositive")
-    content: list[str] = Field(default_factory=list, description="Contenu textuel des frames")
-    lists: list[str] = Field(default_factory=list, description="Listes à puces/numérotées")  # type: ignore[misc]
+    index: int = Field(..., description="Slide index")
+    title: str | None = Field(None, description="Slide title")
+    content: list[str] = Field(default_factory=list, description="Textual content of frames")
+    lists: list[str] = Field(default_factory=list, description="Bulleted/numbered lists")  # type: ignore[misc]
 
 
-# Événements JSONL standardisés (cohérents entre tous les convertisseurs)
+# Standardized JSONL events (consistent across all converters)
 class JsonlEvent(BaseModel):
-    """Événement JSONL pour le streaming granulaire.
+    """JSONL event for granular streaming.
 
-    Utilisé quand `format=jsonl` est spécifié dans la requête.
-    Chaque événement correspond à une unité logique ou un chunk de contenu.
+    Used when `format=jsonl` is specified in the request.
+    Each event corresponds to a logical unit or content chunk.
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    type: str = Field(..., pattern="^(start|chunk|end)$", description="Type d'événement")
-    page_idx: int | None = Field(None, description="Index de la page/section/diapositive")
-    markdown_text: str = Field("", description="Contenu du chunk ou données brutes")
-    links: list[str] = Field(default_factory=list, description="Liens extraits")
-    offset: int = Field(0, description="Décalage dans le document (pour chunking)")
-    length: int = Field(0, description="Longueur du chunk")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Métadonnées spécifiques")
+    type: str = Field(..., pattern="^(start|chunk|end)$", description="Event type")
+    page_idx: int | None = Field(None, description="Page/section/slide index")
+    markdown_text: str = Field("", description="Chunk content or raw data")
+    links: list[str] = Field(default_factory=list, description="Extracted links")
+    offset: int = Field(0, description="Offset in document (for chunking)")
+    length: int = Field(0, description="Chunk length")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Specific metadata")
 
 
 class BatchConversionResponse(BaseModel):
-    """Réponse JSON structurée pour les conversions batch.
+    """Structured JSON response for batch conversions.
 
-    Format standardisé retourné quand `format=json` est spécifié sur l'endpoint /convert/batch.
-    Contient les métadonnées du batch et les résultats de chaque fichier converti.
+    Standardized format returned when `format=json` is specified on the /convert/batch endpoint.
+    Contains batch metadata and results of each converted file.
     
-    Utilisé par: app/routes/batch.py
+    Used by: app/routes/batch.py
     """
 
     model_config = ConfigDict(populate_by_name=True)
 
-    batch_id: str | None = Field(None, description="ID unique du batch")
-    total_files: int = Field(0, description="Nombre total de fichiers soumis")
-    succeeded: int = Field(0, description="Nombre de conversions réussies")
-    failed: int = Field(0, description="Nombre de conversions échouées")
-    results: list[dict[str, Any]] = Field(default_factory=list, description="Liste des résultats par fichier")  # type: ignore[misc]
+    batch_id: str | None = Field(None, description="Unique batch ID")
+    total_files: int = Field(0, description="Total files submitted")
+    succeeded: int = Field(0, description="Successful conversions count")
+    failed: int = Field(0, description="Failed conversions count")
+    results: list[dict[str, Any]] = Field(default_factory=list, description="Results per file")  # type: ignore[misc]
 
-    attributes: dict[str, Any] = Field(default_factory=dict, description="Attributs HTML extraits")
-    children: list[dict[str, Any]] = Field(default_factory=list, description="Enfants récursifs (si applicable)")  # type: ignore[misc]
+    attributes: dict[str, Any] = Field(default_factory=dict, description="Extracted HTML attributes")
+    children: list[dict[str, Any]] = Field(default_factory=list, description="Recursive children (if applicable)")  # type: ignore[misc]

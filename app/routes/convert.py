@@ -44,11 +44,11 @@ def register_convert_routes(app: FastAPI) -> None:
         """
         Convert a PDF, DOCX, ODT, ODP, ODS, HTML, XLSX, or PPTX document to Markdown, JSON, or JSONL.
 
-        - `format`: Format de sortie (markdown, json, jsonl). Par défaut: markdown.
-        - `async=true`: soumet la tâche en arrière-plan et retourne un task_id.
-        - `streaming=true`: le résultat est streamé via Server-Sent Events (SSE).
+        - `format`: Output format (markdown, json, jsonl). Default: markdown.
+        - `async=true`: submits the task in background and returns a task_id.
+        - `streaming=true`: result is streamed via Server-Sent Events (SSE).
 
-        Exemples:
+        Examples:
         - /convert?file=doc.pdf&format=json
         - /convert?file=doc.pdf&output_format=jsonl&async=true
         """
@@ -139,7 +139,7 @@ def register_convert_routes(app: FastAPI) -> None:
                         headers={"Content-Disposition": f'attachment; filename="{file.filename}.json"'}
                     )
                 else:
-                    # Format markdown par défaut
+                    # Default to markdown format
                     result = await _convert_worker(content, ext)
                     return result
 
