@@ -1,18 +1,24 @@
 """Common fixtures for all tests."""
 
+from .docx import sample_docx_bytes  # noqa: E402
+from .pdf import sample_pdf_bytes  # noqa: E402
+from .pptx import sample_pptx_bytes  # noqa: E402
+
 __all__ = [
     "async_client",
     "clean_caas_env",
     "disable_rate_limiting",
     "reset_task_manager",
     "sample_scanned_pdf_bytes",
+    "sample_docx_bytes",
+    "sample_pdf_bytes",
+    "sample_pptx_bytes",
 ]
 
 import asyncio
 import io
 import os
-from typing import Any, Dict, List
-
+from typing import Any
 import httpx
 import pytest
 from app.api import app
@@ -41,18 +47,18 @@ def reset_task_manager():
     from app.api import app as main_app
 
     original_tm = main_app.state.task_manager
-    original_tm._tasks.clear()
-    original_tm._async_tasks.clear()
-    original_tm._batches.clear()
+    original_tm.tasks.clear()
+    original_tm.async_tasks.clear()
+    original_tm.batches.clear()
     # Reset the semaphore so it's available again
-    original_tm._semaphore = asyncio.Semaphore(original_tm._max_concurrent)
+    original_tm._semaphore = asyncio.Semaphore(original_tm.max_concurrent)
     yield
     # Restore original task_manager in case a test replaced it
     main_app.state.task_manager = original_tm
-    original_tm._tasks.clear()
-    original_tm._async_tasks.clear()
-    original_tm._batches.clear()
-    original_tm._semaphore = asyncio.Semaphore(original_tm._max_concurrent)
+    original_tm.tasks.clear()
+    original_tm.async_tasks.clear()
+    original_tm.batches.clear()
+    original_tm._semaphore = asyncio.Semaphore(original_tm.max_concurrent)
 
 
 @pytest.fixture

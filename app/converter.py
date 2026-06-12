@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import re
+from typing import Any, Coroutine
 
 from app.config import settings
 from app.converters.docx import (
@@ -49,7 +50,7 @@ from app.converters.xlsx import (
 logger = logging.getLogger(__name__)
 
 
-def _clean_lines(lines: list[str]) -> list[str]:
+def clean_lines(lines: list[str]) -> list[str]:
     """Clean and enhance lines of text for better Markdown output.
 
     - Removes empty/whitespace-only lines.
@@ -85,7 +86,7 @@ def _clean_lines(lines: list[str]) -> list[str]:
     return result
 
 
-async def _convert_worker(file_bytes: bytes, ext: str, output_format: str = "markdown") -> dict:
+async def convert_worker(file_bytes: bytes, ext: str, output_format: str = "markdown") -> dict[str, Any]:
     """Worker that runs conversion in a thread (used by TaskManager).
 
     Args:

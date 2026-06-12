@@ -31,9 +31,9 @@ class RateLimiter:
     ):
         self.max_requests = max_requests
         self.window_seconds = window_seconds
-        self._enabled = enabled
-        self._cleanup_interval = cleanup_interval_seconds
-        self._max_keys = max_keys
+        self.enabled = enabled
+        self.cleanup_interval = cleanup_interval_seconds
+        self.max_keys = max_keys
         self._storage = storage
         # In-memory fallback: key -> list of timestamps
         self._requests: dict[str, list[float]] = defaultdict(list)
@@ -78,14 +78,14 @@ class RateLimiter:
         This provides a strict upper bound on memory usage: even under extreme load
         where periodic cleanup hasn't run yet, we never exceed max_keys entries.
         """
-        if len(self._requests) <= self._max_keys:
+        if len(self._requests) <= self.max_keys:
             return
         # Sort keys by their oldest timestamp (ascending) and remove the oldest first
         keys_by_oldest = sorted(
             self._requests.keys(),
             key=lambda k: self._requests[k][0] if self._requests[k] else float("inf"),
         )
-        num_to_evict = len(self._requests) - self._max_keys
+        num_to_evict = len(self._requests) - self.max_keys
         evicted = 0
         for key in keys_by_oldest:
             if evicted >= num_to_evict:
@@ -96,13 +96,13 @@ class RateLimiter:
             logger.warning(
                 "RateLimiter eviction: %d keys removed (limit %d reached)",
                 evicted,
-                self._max_keys,
+                self.max_keys,
             )
 
     async def _periodic_cleanup(self):
         """Background periodic cleanup to prevent memory leaks (in-memory mode only)."""
         while True:
-            await asyncio.sleep(self._cleanup_interval)
+            await asyncio.sleep(self.cleanup_interval)
             async with self._lock:
                 removed = self._cleanup_all()
             if removed > 0:

@@ -9,6 +9,13 @@ import pytest
 from app.converters import odt as odt_module
 from app.converters.odt import convert_odt_to_md
 
+# Import fixtures from modules
+from tests.fixtures.odt import (  # noqa: E402
+    sample_odt_bytes, # type: ignore[import-not-found]
+    sample_odt_with_list_bytes, # type: ignore[import-not-found]
+    sample_odt_with_special_chars_bytes, # type: ignore[import-not-found]
+)
+
 
 class TestConvertOdtToMd:
     """Unit tests for the convert_odt_to_md function."""
@@ -135,15 +142,20 @@ class _MockElement:
     This class ensures hasattr(elem, "data") is False while hasattr(elem, "localName") is True.
     """
 
-    def __init__(self, local_name, get_text=None, get_attr_ns=None):
-        self.localName = local_name
-        self._get_text = get_text
-        self._get_attr_ns = get_attr_ns
+    def __init__(
+        self,
+        local_name: str,
+        get_text: str | None = None,
+        get_attr_ns: str | None = None,
+    ) -> None:
+        self.localName = local_name  # type: ignore[attr-defined]
+        self._get_text: str | None = get_text
+        self._get_attr_ns: str | None = get_attr_ns
 
-    def _getText(self):  # noqa: N802
+    def _getText(self) -> str:  # noqa: N802
         return self._get_text or ""
 
-    def getAttrNS(self, *args):  # noqa: N802
+    def getAttrNS(self, *args: object) -> str | None:  # noqa: N802
         return self._get_attr_ns
 
 
@@ -276,7 +288,7 @@ class TestGetElementTextSpan:
         """Span without _getText returns empty string."""
 
         class _SpanNoGetText:
-            localName = "span"  # noqa: N815
+            localName = "span"  # type: ignore[attr-defined]  # noqa: N815
 
         mock_span = _SpanNoGetText()
         with patch.object(odt_module.opendocument, "load") as mock_load:
@@ -345,12 +357,12 @@ class TestParagraphChildNodes:
 
     def test_multiple_paragraphs_with_child_nodes(self):
         """Multiple paragraphs each with span child nodes."""
-        spans = []
+        spans: list[_MockElement] = []
         for word in ["First", "Second", "Third"]:
             mock_span = _MockElement("span", get_text=word)
             spans.append(mock_span)
         with patch.object(odt_module.opendocument, "load") as mock_load:
-            paras = []
+            paras: list[MagicMock] = []
             for span in spans:
                 mock_para = MagicMock()
                 mock_para.childNodes = [span]

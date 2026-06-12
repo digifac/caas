@@ -6,11 +6,7 @@ __all__ = [
     "sample_html_latin1_bytes",
 ]
 
-import io
-from typing import Any
-
 import pytest
-
 
 @pytest.fixture
 def sample_html_bytes() -> bytes:

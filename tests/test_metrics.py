@@ -3,6 +3,9 @@
 import httpx
 import pytest
 
+# Import fixtures from modules
+from tests.fixtures.common import async_client # type: ignore[import-not-found]
+
 
 @pytest.mark.anyio
 async def test_metrics_endpoint_prometheus_format(async_client: httpx.AsyncClient):

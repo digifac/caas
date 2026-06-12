@@ -31,9 +31,9 @@ class TestGlobalExceptionHandler:
 
         response = await global_exception_handler(mock_request, exc)
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         assert "request_id" in body
-        assert len([k for k in response.body.decode()]) > 0
+        assert len(body) > 0
 
     @pytest.mark.asyncio
     async def test_global_handler_includes_error_code(self):
@@ -43,7 +43,7 @@ class TestGlobalExceptionHandler:
 
         response = await global_exception_handler(mock_request, exc)
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         assert "SERVER_ERROR" in body
         assert "error_code" in body
 
@@ -61,7 +61,7 @@ class TestGlobalExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         # Should not contain the raw exception message
         assert "secret error" not in body
 
@@ -78,7 +78,7 @@ class TestGlobalExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         assert "debug" in body
 
 
@@ -123,7 +123,7 @@ class TestHttpExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         assert "Bad request" in body
         assert "request_id" in body
         assert "detail" in body  # detail field appears when debug=True
@@ -144,7 +144,7 @@ class TestHttpExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         assert "request_id" in body
 
     @pytest.mark.asyncio
@@ -163,7 +163,7 @@ class TestHttpExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         # When debug=False and error_code exists, it should use AppError.get()
         # which returns a sanitized message
         assert "request_id" in body
@@ -184,7 +184,7 @@ class TestHttpExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         assert "detail" in body  # detail field appears when debug=True
         assert "File is too big" in body  # Original message preserved in debug mode
 
@@ -201,7 +201,7 @@ class TestHttpExceptionHandler:
         finally:
             settings.debug = original_debug
 
-        body = response.body.decode()
+        body = bytes(response.body).decode()
         # In production: error_code=UNKNOWN triggers AppError.get("UNKNOWN")
         # which replaces the detail_dict entirely
         assert "request_id" in body

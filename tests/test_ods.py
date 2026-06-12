@@ -1,9 +1,19 @@
 """Tests for ODS to Markdown conversion."""
 
 import io
+from typing import Any
 
 import pytest
 from app.converters.ods import convert_ods_to_md
+
+# Import fixtures from modules
+from tests.fixtures.ods import (  # noqa: E402
+    sample_ods_bytes,# type: ignore[import-not-found]
+    sample_ods_multi_sheet_bytes,# type: ignore[import-not-found]
+    sample_ods_empty_sheet_bytes,# type: ignore[import-not-found]
+    sample_ods_special_chars_bytes,# type: ignore[import-not-found]
+)
+
 
 # --- Tests unitaires du convertisseur ---
 
@@ -11,7 +21,7 @@ from app.converters.ods import convert_ods_to_md
 class TestConvertOdsToMd:
     """Unit tests for the ODS converter."""
 
-    def test_simple_sheet_conversion(self, sample_ods_bytes):
+    def test_simple_sheet_conversion(self, sample_ods_bytes: bytes) -> None:
         """Test conversion of a simple single-sheet ODS."""
         result = convert_ods_to_md(sample_ods_bytes)
         assert "## Feuille1" in result
@@ -20,7 +30,9 @@ class TestConvertOdsToMd:
         assert "| A | 1 |" in result
         assert "| B | 2 |" in result
 
-    def test_multi_sheet_conversion(self, sample_ods_multi_sheet_bytes):
+    def test_multi_sheet_conversion(
+        self, sample_ods_multi_sheet_bytes: bytes
+    ) -> None:
         """Test conversion of an ODS with multiple sheets."""
         result = convert_ods_to_md(sample_ods_multi_sheet_bytes)
         assert "## Données" in result
@@ -30,13 +42,13 @@ class TestConvertOdsToMd:
         assert "| Orange | 2.0 |" in result
         assert "| Total | 3.5 |" in result
 
-    def test_empty_sheet(self, sample_ods_empty_sheet_bytes):
+    def test_empty_sheet(self, sample_ods_empty_sheet_bytes: bytes) -> None:
         """Test handling of an empty sheet."""
         result = convert_ods_to_md(sample_ods_empty_sheet_bytes)
         assert "## Vide" in result
         assert "*Empty sheet*" in result
 
-    def test_special_chars(self, sample_ods_special_chars_bytes):
+    def test_special_chars(self, sample_ods_special_chars_bytes: bytes) -> None:
         """Test handling of special characters (pipe, backslash, accents)."""
         result = convert_ods_to_md(sample_ods_special_chars_bytes)
         assert "## Spécial" in result
@@ -48,48 +60,48 @@ class TestConvertOdsToMd:
         assert "Àéîôù" in result
         assert "Ñ ü ö ä" in result
 
-    def test_invalid_ods_raises_error(self):
+    def test_invalid_ods_raises_error(self) -> None:
         """Test that an invalid ODS file raises a ValueError."""
         with pytest.raises(ValueError, match="Invalid ODS file"):
             convert_ods_to_md(b"not a valid ods file")
 
-    def test_empty_cells(self):
+    def test_empty_cells(self) -> None:
         """Test that empty cells are handled correctly."""
-        from odf import table, text
-        from odf.opendocument import OpenDocumentSpreadsheet
+        from odf import table, text  # type: ignore[import-not-found]
+        from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[import-not-found]
 
-        doc = OpenDocumentSpreadsheet()
-        table_elem = table.Table(name="Test")
+        doc = OpenDocumentSpreadsheet()  # type: ignore[arg-type]
+        table_elem = table.Table(name="Test")  # type: ignore[attr-defined]
 
         # Row 1: headers
-        row1 = table.TableRow()
-        c1 = table.TableCell()
-        p1 = text.P()
-        p1.addText("Header")
-        c1.addElement(p1)
-        row1.addElement(c1)
-        c2 = table.TableCell()
-        p2 = text.P()
-        p2.addText("Data")
-        c2.addElement(p2)
-        row1.addElement(c2)
-        table_elem.addElement(row1)
+        row1 = table.TableRow()  # type: ignore[attr-defined]
+        c1 = table.TableCell()  # type: ignore[attr-defined]
+        p1 = text.P()  # type: ignore[attr-defined]
+        p1.addText("Header")  # type: ignore[attr-defined]
+        c1.addElement(p1)  # type: ignore[attr-defined]
+        row1.addElement(c1)  # type: ignore[attr-defined]
+        c2 = table.TableCell()  # type: ignore[attr-defined]
+        p2 = text.P()  # type: ignore[attr-defined]
+        p2.addText("Data")  # type: ignore[attr-defined]
+        c2.addElement(p2)  # type: ignore[attr-defined]
+        row1.addElement(c2)  # type: ignore[attr-defined]
+        table_elem.addElement(row1)  # type: ignore[attr-defined]
 
         # Row 2: one value, one empty cell
-        row2 = table.TableRow()
-        c3 = table.TableCell()
-        p3 = text.P()
-        p3.addText("value")
-        c3.addElement(p3)
-        row2.addElement(c3)
-        c4 = table.TableCell()  # Empty cell
-        row2.addElement(c4)
-        table_elem.addElement(row2)
+        row2 = table.TableRow()  # type: ignore[attr-defined]
+        c3 = table.TableCell()  # type: ignore[attr-defined]
+        p3 = text.P()  # type: ignore[attr-defined]
+        p3.addText("value")  # type: ignore[attr-defined]
+        c3.addElement(p3)  # type: ignore[attr-defined]
+        row2.addElement(c3)  # type: ignore[attr-defined]
+        c4 = table.TableCell()  # Empty cell  # type: ignore[attr-defined]
+        row2.addElement(c4)  # type: ignore[attr-defined]
+        table_elem.addElement(row2)  # type: ignore[attr-defined]
 
-        doc.spreadsheet.addElement(table_elem)
+        doc.spreadsheet.addElement(table_elem)  # type: ignore[union-attr]
 
         buf = io.BytesIO()
-        doc.save(buf)
+        doc.save(buf)  # type: ignore[arg-type]
         buf.seek(0)
 
         result = convert_ods_to_md(buf.getvalue())
@@ -106,7 +118,9 @@ class TestOdsApiSync:
     """Synchronous API tests for ODS conversion."""
 
     @pytest.mark.asyncio
-    async def test_convert_ods_sync_success(self, async_client, sample_ods_bytes):
+    async def test_convert_ods_sync_success(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
         """POST /convert with a valid ODS file returns 200 with Markdown."""
         response = await async_client.post(
             "/convert",
@@ -125,7 +139,9 @@ class TestOdsApiSync:
         assert "## Feuille1" in data["markdown"]
 
     @pytest.mark.asyncio
-    async def test_convert_ods_sync_invalid_file(self, async_client):
+    async def test_convert_ods_sync_invalid_file(
+        self, async_client: Any
+    ) -> None:
         """POST /convert with an invalid ODS file returns 400."""
         response = await async_client.post(
             "/convert",
@@ -140,13 +156,17 @@ class TestOdsApiSync:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_convert_ods_sync_too_large(self, async_client, sample_ods_bytes):
+    async def test_convert_ods_sync_too_large(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
         """POST /convert with an ODS file that is too large returns an error."""
         # Create a file larger than the max allowed size
         from app.config import settings
 
         # Pad the file to exceed the limit
-        large_ods = sample_ods_bytes + b"\x00" * (settings.max_file_size_mb * 1024 * 1024 + 1)
+        large_ods = sample_ods_bytes + b"\x00" * (
+            settings.max_file_size_mb * 1024 * 1024 + 1
+        )
 
         response = await async_client.post(
             "/convert",
@@ -169,7 +189,9 @@ class TestOdsApiAsync:
     """Asynchronous / batch API tests for ODS conversion."""
 
     @pytest.mark.asyncio
-    async def test_convert_ods_async_success(self, async_client, sample_ods_bytes):
+    async def test_convert_ods_async_success(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
         """POST /convert with ?async=true returns a task ID."""
         response = await async_client.post(
             "/convert?async=true",
@@ -186,7 +208,9 @@ class TestOdsApiAsync:
         assert "task_id" in data or "markdown" in data
 
     @pytest.mark.asyncio
-    async def test_batch_convert_ods_sync(self, async_client, sample_ods_bytes):
+    async def test_batch_convert_ods_sync(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
         """POST /convert/batch with an ODS file returns success."""
         response = await async_client.post(
             "/convert/batch",
@@ -204,7 +228,9 @@ class TestOdsApiAsync:
         assert "## Feuille1" in result["markdown"]
 
     @pytest.mark.asyncio
-    async def test_batch_convert_ods_async(self, async_client, sample_ods_bytes):
+    async def test_batch_convert_ods_async(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
         """POST /convert/batch?async=true with an ODS file returns a batch ID."""
         response = await async_client.post(
             "/convert/batch?async=true",
@@ -216,8 +242,8 @@ class TestOdsApiAsync:
 
     @pytest.mark.asyncio
     async def test_batch_convert_mixed_formats(
-        self, async_client, sample_ods_bytes, sample_pdf_bytes
-    ):
+        self, async_client: Any, sample_ods_bytes: bytes, sample_pdf_bytes: bytes
+    ) -> None:
         """POST /convert/batch with ODS + PDF returns success for both."""
         response = await async_client.post(
             "/convert/batch",

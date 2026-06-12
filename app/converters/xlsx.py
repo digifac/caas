@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from datetime import date, datetime
+from typing import Optional
 
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
@@ -21,15 +22,17 @@ _DANGEROUS_URL_SCHEMES = re.compile(
 )
 
 
-def _sanitize_url(url: str) -> str:
+def _sanitize_url(url: Optional[str]) -> Optional[str]:
     """Sanitize a URL by blocking dangerous schemes.
 
     Args:
-        url: The raw URL string to sanitize.
+        url: The raw URL string to sanitize, or None.
 
     Returns:
-        The sanitized URL, or "#" if the URL uses a dangerous scheme.
+        The sanitized URL, "#" if the URL uses a dangerous scheme, or None.
     """
+    if url is None:
+        return None
     if not url:
         return url
     stripped = url.strip()
@@ -39,17 +42,19 @@ def _sanitize_url(url: str) -> str:
     return url
 
 
-def _escape_md_table(text: str) -> str:
+def _escape_md_table(text: Optional[str]) -> Optional[str]:
     r"""Escape characters that have special meaning in Markdown tables.
 
     Escapes `|` and `\` to prevent table structure corruption.
 
     Args:
-        text: Raw cell text.
+        text: Raw cell text, or None.
 
     Returns:
-        Text with Markdown table special characters escaped.
+        Text with Markdown table special characters escaped, or None.
     """
+    if text is None:
+        return None
     if not text:
         return text
     text = text.replace("\\", "\\\\")

@@ -4,7 +4,11 @@ import asyncio
 
 import httpx
 import pytest
-from app.converters.html import _sanitize_url, convert_html_to_md
+from app.converters.html import sanitize_url, convert_html_to_md
+
+# Import fixtures from modules
+from tests.fixtures.common import async_client # type: ignore[import-not-found]
+from tests.fixtures.html import sample_html_bytes, sample_html_latin1_bytes, sample_html_minimal_bytes # type: ignore[import-not-found]
 
 
 @pytest.mark.anyio
@@ -228,67 +232,67 @@ class TestURLSanitization:
 
     def test_sanitize_url_blocks_javascript_scheme(self):
         """javascript: URLs should be replaced with #."""
-        assert _sanitize_url("javascript:alert('XSS')") == "#"
+        assert sanitize_url("javascript:alert('XSS')") == "#"
 
     def test_sanitize_url_blocks_javascript_uppercase(self):
         """Uppercase JAVASCRIPT: should also be blocked."""
-        assert _sanitize_url("JAVASCRIPT:alert('XSS')") == "#"
+        assert sanitize_url("JAVASCRIPT:alert('XSS')") == "#"
 
     def test_sanitize_url_blocks_mixed_case_javascript(self):
         """Mixed case JaVaScRiPt: should also be blocked."""
-        assert _sanitize_url("JaVaScRiPt:alert('XSS')") == "#"
+        assert sanitize_url("JaVaScRiPt:alert('XSS')") == "#"
 
     def test_sanitize_url_blocks_vbscript_scheme(self):
         """vbscript: URLs should be replaced with #."""
-        assert _sanitize_url("vbscript:msgbox('XSS')") == "#"
+        assert sanitize_url("vbscript:msgbox('XSS')") == "#"
 
     def test_sanitize_url_blocks_data_scheme(self):
         """data: URLs should be replaced with #."""
-        assert _sanitize_url("data:text/html,<script>alert(1)</script>") == "#"
+        assert sanitize_url("data:text/html,<script>alert(1)</script>") == "#"
 
     def test_sanitize_url_blocks_data_scheme_with_whitespace(self):
         """data: URLs with leading whitespace should be blocked."""
-        assert _sanitize_url("  data:text/html;base64,PHNjcmlwdD4=") == "#"
+        assert sanitize_url("  data:text/html;base64,PHNjcmlwdD4=") == "#"
 
     def test_sanitize_url_blocks_file_scheme(self):
         """file: URLs should be replaced with #."""
-        assert _sanitize_url("file:///etc/passwd") == "#"
+        assert sanitize_url("file:///etc/passwd") == "#"
 
     def test_sanitize_url_blocks_blob_scheme(self):
         """blob: URLs should be replaced with #."""
-        assert _sanitize_url("blob:https://example.com/abc123") == "#"
+        assert sanitize_url("blob:https://example.com/abc123") == "#"
 
     def test_sanitize_url_allows_http(self):
         """http: URLs should be allowed."""
-        assert _sanitize_url("http://example.com") == "http://example.com"
+        assert sanitize_url("http://example.com") == "http://example.com"
 
     def test_sanitize_url_allows_https(self):
         """https: URLs should be allowed."""
-        assert _sanitize_url("https://example.com/page") == "https://example.com/page"
+        assert sanitize_url("https://example.com/page") == "https://example.com/page"
 
     def test_sanitize_url_allows_mailto(self):
         """mailto: URLs should be allowed."""
-        assert _sanitize_url("mailto:test@example.com") == "mailto:test@example.com"
+        assert sanitize_url("mailto:test@example.com") == "mailto:test@example.com"
 
     def test_sanitize_url_allows_tel(self):
         """tel: URLs should be allowed."""
-        assert _sanitize_url("tel:+33123456789") == "tel:+33123456789"
+        assert sanitize_url("tel:+33123456789") == "tel:+33123456789"
 
     def test_sanitize_url_allows_relative(self):
         """Relative URLs should be allowed."""
-        assert _sanitize_url("/page/about") == "/page/about"
+        assert sanitize_url("/page/about") == "/page/about"
 
     def test_sanitize_url_allows_anchor(self):
         """Anchor URLs should be allowed."""
-        assert _sanitize_url("#section-1") == "#section-1"
+        assert sanitize_url("#section-1") == "#section-1"
 
     def test_sanitize_url_empty_string(self):
         """Empty URL should return empty string."""
-        assert _sanitize_url("") == ""
+        assert sanitize_url("") == ""
 
     def test_sanitize_url_none(self):
         """None/empty URL should be handled gracefully."""
-        assert _sanitize_url("") == ""
+        assert sanitize_url("") == ""
 
 
 class TestHTMLSanitizationIntegration:

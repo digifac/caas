@@ -17,7 +17,7 @@ from app.metrics import AppMetrics
 from app.middleware import add_security_headers
 from app.rate_limiter import RateLimiter
 from app.redis_client import RedisManager
-from app.routes import _register_routes
+from app.routes import register_routes
 from app.storage.base import StorageProtocol
 from app.storage.memory import MemoryStorage
 from app.task_manager import TaskManager
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 _VERSION_PATTERN = re.compile(r'^version\s*=\s*"([^"]+)"', re.MULTILINE)
 
 
-def _get_version() -> str:
+def get_version() -> str:
     """Retrieve the package version directly from pyproject.toml.
 
     This ensures the version shown in Swagger UI is always synchronized
@@ -44,7 +44,7 @@ def _get_version() -> str:
     return "unknown"
 
 
-def _get_lifespan(redis_enabled: bool, redis_url: str, redis_password: str = ""):
+def get_lifespan(redis_enabled: bool, redis_url: str, redis_password: str = ""):
     """Create a lifespan context manager for startup/shutdown events."""
 
     @asynccontextmanager
@@ -114,8 +114,8 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="CAAS Converter",
         description="PDF/DOCX/ODT/ODS/ODP/HTML/XLSX/PPTX → Markdown conversion, 100% in-memory (zero-disk I/O)",
-        version=_get_version(),
-        lifespan=_get_lifespan(settings.redis_enabled, settings.redis_url, settings.redis_password),
+        version=get_version(),
+        lifespan=get_lifespan(settings.redis_enabled, settings.redis_url, settings.redis_password),
     )
 
     # CORS middleware (only if origins are configured)
@@ -172,7 +172,7 @@ def create_app() -> FastAPI:
     app.state.task_manager = task_manager
 
     # Register routes
-    _register_routes(app)
+    register_routes(app)
 
     return app
 

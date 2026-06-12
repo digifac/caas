@@ -3,6 +3,7 @@
 import asyncio
 import json
 import time
+from typing import Any, Literal
 from unittest.mock import AsyncMock
 
 import pytest
@@ -14,6 +15,9 @@ from app.task_manager import (
     TaskResult,
     TaskStatus,
 )
+
+# Import fixtures from modules
+from tests.fixtures.common import sample_pdf_bytes # type: ignore[import-not-found]
 
 # --- Task submission tests ---
 
@@ -73,6 +77,7 @@ class TestTaskManagerSubmit:
         task_id = manager.submit(success_task)
         await asyncio.sleep(0.5)
         result = await manager.get_task(task_id)
+        assert result is not None
         assert result.status == TaskStatus.COMPLETED
         assert result.result == {"result": 42}
 
@@ -87,9 +92,10 @@ class TestTaskManagerSubmit:
         task_id = manager.submit(failing_task)
         await asyncio.sleep(0.5)
         result = await manager.get_task(task_id)
+        assert result is not None
         assert result.status == TaskStatus.FAILED
         assert result.error == "CONVERSION_FAILED"
-        assert "test error" in result.error_detail
+        assert result.error_detail is not None and "test error" in result.error_detail
 
     @pytest.mark.anyio
     async def test_submit_task_has_timestamps(self):
@@ -103,6 +109,7 @@ class TestTaskManagerSubmit:
         task_id = manager.submit(quick_task)
         await asyncio.sleep(0.5)
         result = await manager.get_task(task_id)
+        assert result is not None
         assert result.created_at >= before
         assert result.completed_at is not None
         assert result.completed_at >= result.created_at
@@ -218,7 +225,7 @@ class TestTaskManagerCleanup:
         task_id = manager.submit(quick_task)
         await asyncio.sleep(0.5)
         # Manually age the task
-        manager._tasks[task_id].completed_at = time.time() - 7200
+        manager.tasks[task_id].completed_at = time.time() - 7200
         removed = await manager.cleanup_completed(max_age_seconds=3600)
         assert removed >= 1
         assert await manager.get_task(task_id) is None
@@ -244,7 +251,7 @@ class TestTaskManagerCleanup:
 
         # Create a task manually in PENDING state with old timestamp
         task_id = "orphan-task-id"
-        manager._tasks[task_id] = TaskResult(
+        manager.tasks[task_id] = TaskResult(
             task_id=task_id,
             status=TaskStatus.PENDING,
             created_at=time.time() - 7200,
@@ -259,7 +266,7 @@ class TestTaskManagerCleanup:
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
 
         task_id = "orphan-processing-id"
-        manager._tasks[task_id] = TaskResult(
+        manager.tasks[task_id] = TaskResult(
             task_id=task_id,
             status=TaskStatus.PROCESSING,
             created_at=time.time() - 7200,
@@ -276,7 +283,7 @@ class TestTaskManagerCleanup:
         # Create multiple old tasks
         for i in range(3):
             task_id = f"old-task-{i}"
-            manager._tasks[task_id] = TaskResult(
+            manager.tasks[task_id] = TaskResult(
                 task_id=task_id,
                 status=TaskStatus.COMPLETED,
                 created_at=time.time() - 7200,
@@ -302,19 +309,19 @@ class TestTaskManagerDefaults:
     def test_default_values(self):
         """Default constructor values are correct."""
         manager = TaskManager()
-        assert manager._max_concurrent == 3
-        assert manager._max_queue_size == 20
-        assert manager._result_ttl == 3600
-        assert manager._cleanup_interval == 60
+        assert manager.max_concurrent == 3
+        assert manager.max_queue_size == 20
+        assert manager.result_ttl == 3600
+        assert manager.cleanup_interval == 60
 
     def test_custom_values(self):
         """Custom constructor values are respected."""
         manager = TaskManager(
             max_concurrent=5, max_queue_size=50, result_ttl_seconds=7200
         )
-        assert manager._max_concurrent == 5
-        assert manager._max_queue_size == 50
-        assert manager._result_ttl == 7200
+        assert manager.max_concurrent == 5
+        assert manager.max_queue_size == 50
+        assert manager.result_ttl == 7200
 
 
 # --- TaskResult.from_json tests ---
@@ -325,7 +332,7 @@ class TestTaskResultFromJson:
 
     def test_from_json_completed(self):
         """TaskResult.from_json correctly deserializes a COMPLETED JSON string."""
-        data = {
+        data: dict[str, Any] = {
             "task_id": "abc123",
             "status": "completed",
             "result": {"key": "value"},
@@ -340,7 +347,7 @@ class TestTaskResultFromJson:
 
     def test_from_json_pending(self):
         """TaskResult.from_json handles PENDING status."""
-        data = {
+        data: dict[str, Any] = {
             "task_id": "xyz",
             "status": "pending",
             "result": None,
@@ -353,7 +360,7 @@ class TestTaskResultFromJson:
 
     def test_from_json_failed(self):
         """TaskResult.from_json handles FAILED status."""
-        data = {
+        data: dict[str, Any] = {
             "task_id": "fail1",
             "status": "failed",
             "result": None,
@@ -374,7 +381,7 @@ class TestBatchInfoFromJson:
 
     def test_from_json_valid(self):
         """BatchInfo.from_json correctly deserializes a JSON string."""
-        data = {
+        data: dict[str, Any] = {
             "batch_id": "batch-1",
             "task_ids": ["t1", "t2"],
             "filenames": ["a.pdf", "b.pdf"],
@@ -408,9 +415,9 @@ class TestStorageProperty:
 
     @pytest.mark.anyio
     async def test_storage_property_returns_storage(self):
-        """storage property returns the internal storage backend."""
+        """storage_backend property returns the internal storage backend."""
         manager = TaskManager(max_concurrent=1, max_queue_size=2)
-        storage = manager.storage
+        storage = manager.storage_backend
         assert storage is not None
 
 
@@ -424,7 +431,7 @@ class TestCanAccept:
     async def test_can_accept_true_when_empty(self):
         """_can_accept returns True when queue is empty."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        assert manager._can_accept() is True
+        assert manager._can_accept() is True  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_can_accept_false_when_full(self):
@@ -436,7 +443,7 @@ class TestCanAccept:
 
         manager.submit(slow)
         manager.submit(slow)
-        assert manager._can_accept() is False
+        assert manager._can_accept() is False  # type: ignore[attr-defined]
 
 
 # --- restore_active_tasks tests ---
@@ -458,7 +465,7 @@ class TestRestoreActiveTasks:
             created_at=time.time(),
             completed_at=None,
         )
-        await manager._storage.set(
+        await manager._storage.set(  # type: ignore[attr-defined]
             f"{manager.ACTIVE_TASK_IDS_KEY}:restore-me", task_data.to_json()
         )
 
@@ -481,7 +488,7 @@ class TestRestoreActiveTasks:
             created_at=time.time(),
             completed_at=time.time(),
         )
-        await manager._storage.set(
+        await manager._storage.set(  # type: ignore[attr-defined]
             f"{manager.ACTIVE_TASK_IDS_KEY}:completed-task", task_data.to_json()
         )
 
@@ -493,7 +500,7 @@ class TestRestoreActiveTasks:
         """Invalid JSON in storage is skipped during restore."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
 
-        await manager._storage.set(
+        await manager._storage.set(  # type: ignore[attr-defined]
             f"{manager.ACTIVE_TASK_IDS_KEY}:bad-key", "not-json{{{"
         )
 
@@ -505,7 +512,9 @@ class TestRestoreActiveTasks:
         """Storage exception during restore is logged and doesn't crash."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
 
-        manager._storage.keys = AsyncMock(side_effect=RuntimeError("storage down"))
+        manager._storage.keys = AsyncMock(  # type: ignore[attr-defined]
+            side_effect=RuntimeError("storage down")
+        )
 
         restored_count = await manager.restore_active_tasks()
         assert restored_count == 0
@@ -528,7 +537,7 @@ class TestEvictCompletedTasks:
         manager.submit(quick)
         await asyncio.sleep(0.3)
 
-        evicted = await manager._evict_completed_tasks()
+        evicted = await manager._evict_completed_tasks()  # type: ignore[attr-defined]
         assert evicted == 0
 
     @pytest.mark.anyio
@@ -544,7 +553,7 @@ class TestEvictCompletedTasks:
 
         await asyncio.sleep(0.5)
 
-        assert len(manager._tasks) <= 2
+        assert len(manager.tasks) <= 2
 
     @pytest.mark.anyio
     async def test_evict_persists_before_removal(self):
@@ -560,7 +569,9 @@ class TestEvictCompletedTasks:
         manager.submit(quick)
         await asyncio.sleep(0.3)
 
-        json_str = await manager._storage.get(manager._task_key(tid))
+        json_str = await manager._storage.get(  # type: ignore[attr-defined]
+            manager._task_key(tid)  # type: ignore[attr-defined]
+        )
         assert json_str is not None
 
 
@@ -596,7 +607,7 @@ class TestCleanupEdgeCases:
     async def test_cleanup_cancels_running_async_task(self):
         """Cleanup cancels asyncio coroutines for expired tasks."""
         manager = TaskManager(
-            max_concurrent=2, max_queue_size=5, result_ttl_seconds=0.1
+            max_concurrent=2, max_queue_size=5, result_ttl_seconds=int(0.1)
         )
 
         async def slow():
@@ -620,13 +631,17 @@ class TestCleanupEdgeCases:
         tid = manager.submit(quick)
         await asyncio.sleep(0.3)
 
-        json_str = await manager._storage.get(manager._task_key(tid))
+        json_str = await manager._storage.get(  # type: ignore[attr-defined]
+            manager._task_key(tid)  # type: ignore[attr-defined]
+        )
         assert json_str is not None
 
         await manager.cleanup_completed(max_age_seconds=0)
         await asyncio.sleep(0.1)
 
-        json_str = await manager._storage.get(manager._task_key(tid))
+        json_str = await manager._storage.get(  # type: ignore[attr-defined]
+            manager._task_key(tid)  # type: ignore[attr-defined]
+        )
         assert json_str is None
 
     @pytest.mark.anyio
@@ -734,7 +749,10 @@ class TestGetBatchWithStorage:
             created_at=time.time(),
             total_files=1,
         )
-        await manager._storage.set(manager._batch_key("stored-batch"), batch.to_json())
+        await manager._storage.set(  # type: ignore[attr-defined]
+            manager._batch_key("stored-batch"),  # type: ignore[attr-defined]
+            batch.to_json(),
+        )
 
         result = await manager.get_batch_with_storage("stored-batch")
         assert result is not None
@@ -759,11 +777,11 @@ class TestSubmitBatchQueueFull:
         """submit_batch raises QueueFullError if queue fills mid-batch."""
         manager = TaskManager(max_concurrent=1, max_queue_size=2)
 
-        async def slow(content, ext):
+        async def slow(content: bytes, ext: str) -> None:
             await asyncio.sleep(10)
 
-        manager.submit(slow)
-        manager.submit(slow)
+        manager.submit(slow)  # type: ignore[arg-type]
+        manager.submit(slow)  # type: ignore[arg-type]
 
         with pytest.raises(QueueFullError, match="Queue is full"):
             manager.submit_batch(
@@ -830,7 +848,10 @@ class TestGetTaskStorageFallback:
             created_at=time.time(),
             completed_at=time.time(),
         )
-        await manager._storage.set(manager._task_key("storage-only"), task.to_json())
+        await manager._storage.set(  # type: ignore[attr-defined]
+            manager._task_key("storage-only"),  # type: ignore[attr-defined]
+            task.to_json(),
+        )
 
         result = await manager.get_task("storage-only")
         assert result is not None
@@ -873,7 +894,7 @@ class TestSubmitFailedTask:
         """Batch with a failed task still completes."""
         manager = TaskManager(max_concurrent=5, max_queue_size=10)
 
-        async def task_func(content, ext):
+        async def task_func(content: bytes, ext: str) -> Literal["ok"]:
             if content == b"bad":
                 raise ValueError("bad data")
             return "ok"
@@ -891,10 +912,11 @@ class TestSubmitFailedTask:
         assert batch is not None
         assert len(batch.task_ids) == 2
 
-        results = []
+        results: list[TaskResult] = []
         for tid in batch.task_ids:
             r = await manager.get_task(tid)
-            results.append(r)
+            if r is not None:
+                results.append(r)
 
         failed_count = sum(1 for r in results if r.status == TaskStatus.FAILED)
         assert failed_count >= 1
@@ -910,13 +932,13 @@ class TestTaskKeyAndBatchKey:
     async def test_task_key_format(self):
         """_task_key returns correct format."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        assert manager._task_key("abc") == "task:abc"
+        assert manager._task_key("abc") == "task:abc"  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_batch_key_format(self):
         """_batch_key returns correct format."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        assert manager._batch_key("xyz") == "batch:xyz"
+        assert manager._batch_key("xyz") == "batch:xyz"  # type: ignore[attr-defined]
 
 
 # --- ACTIVE_TASK_IDS_KEY tests ---

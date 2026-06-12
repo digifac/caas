@@ -11,6 +11,8 @@ from app.zip_utils import _validate_openxml_structure, _validate_zip_bomb
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["_detect_mime_type", "_validate_xlsx_structure"]
+
 # Pattern to detect path traversal attempts in filenames
 _PATH_TRAVERSAL_RE = re.compile(r"(\.\./|\.\.\\|%2e%2e|%5c|/|\\\\)")
 

@@ -2,64 +2,20 @@
 
 import asyncio
 import io
+from typing import Any, cast
 
 import httpx
 import pytest
 from app.api import app, task_manager
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def pdf_bytes_1() -> bytes:
-    """Minimal PDF with distinctive text for file 1."""
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    c.setFont("Helvetica", 12)
-    c.drawString(72, 750, "Document Un")
-    c.save()
-    buf.seek(0)
-    return buf.getvalue()
-
-
-@pytest.fixture
-def pdf_bytes_2() -> bytes:
-    """Minimal PDF with distinctive text for file 2."""
-    buf = io.BytesIO()
-    c = canvas.Canvas(buf, pagesize=A4)
-    c.setFont("Helvetica", 12)
-    c.drawString(72, 750, "Document Deux")
-    c.save()
-    buf.seek(0)
-    return buf.getvalue()
-
-
-@pytest.fixture
-def docx_bytes() -> bytes:
-    """Minimal DOCX in memory."""
-    import zipfile
-
-    content_types = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
-    relationships = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
-    document_xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>DOCX Content</w:t></w:r></w:p></w:body></w:document>'
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("[Content_Types].xml", content_types)
-        zf.writestr("_rels/.rels", relationships)
-        zf.writestr("word/document.xml", document_xml)
-    return buf.getvalue()
-
+from fixtures.batch import docx_bytes, pdf_bytes_1, pdf_bytes_2  # type: ignore[import-not-found]
 
 @pytest.fixture(autouse=True)
 def reset_state():
     """Reset rate limiter and task manager between tests."""
     app.state.rate_limiter._requests.clear()
-    task_manager._tasks.clear()
-    task_manager._batches.clear()
+    task_manager.tasks.clear()
+    task_manager.batches.clear()
     yield
 
 
@@ -564,12 +520,12 @@ class TestBatchQueueSaturation:
         app.state.task_manager = small_manager
 
         # Fill the queue first
-        async def slow_task():
+        async def slow_task() -> dict[str, Any]:
             await asyncio.sleep(5)
             return {"ok": True}
 
-        small_manager.submit(slow_task)
-        small_manager.submit(slow_task)
+        small_manager.submit(slow_task)  # type: ignore[misc]
+        small_manager.submit(slow_task)  # type: ignore[misc]
 
         # Now try to submit a batch — should fail with queue full
         files = [
@@ -951,13 +907,14 @@ class TestBatchOdp:
         for _ in range(40):
             await asyncio.sleep(0.25)
             status_res = await async_client.get(f"/task/{task_id}")
-            status_data = status_res.json()
-            if status_data["status"] in ("completed", "failed"):
+            status_data = cast(dict[str, Any], status_res.json())  # type: ignore[assignment]
+            if status_data.get("status") in ("completed", "failed"):
                 break
 
-        assert status_data["status"] == "completed"
-        assert "markdown" in status_data["result"]
-        assert "Présentation de Test" in status_data["result"]["markdown"]
+        assert status_data["status"] == "completed"  # type: ignore[index]
+        result = status_data.get("result", {})  # type: ignore[index]
+        assert "markdown" in result  # type: ignore[index]
+        assert "Présentation de Test" in result["markdown"]  # type: ignore[index]
 
     @pytest.mark.anyio
     async def test_invalid_odp_in_batch(

@@ -22,7 +22,7 @@ _DANGEROUS_URL_SCHEMES: Pattern[str] = re.compile(
 )
 
 
-def _sanitize_url(url: str) -> str:
+def sanitize_url(url: str) -> str:
     """Sanitize a URL by blocking dangerous schemes.
 
     Args:
@@ -40,7 +40,7 @@ def _sanitize_url(url: str) -> str:
     return url
 
 
-def _escape_md_text(text: str) -> str:
+def escape_md_text(text: str) -> str:
     """Escape HTML entities in text to prevent XSS via raw HTML in Markdown.
 
     Args:
@@ -59,30 +59,30 @@ def convert_docx_to_md(file_bytes: bytes) -> str:
     - Escape HTML entities in text content to prevent XSS
     - Sanitize URLs in links to block dangerous schemes
     """
-    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore
+    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore[union-attr]
     if hasattr(result, 'messages') and result.messages:
         for msg in result.messages:
-            logger.warning("DOCX Warning: %s", str(msg))  # type: ignore
+            logger.warning("DOCX Warning: %s", str(msg))
 
-    markdown: str = result.value.strip()  # type: ignore
+    markdown: str = result.value.strip()  # type: ignore[union-attr]
 
     # Sanitize URLs in Markdown links [text](url)
     def sanitize_link(match: re.Match[str]) -> str:
-        link_text: str = match.group(1)  # type: ignore
-        url: str = match.group(2)  # type: ignore
-        safe_url = _sanitize_url(url)
+        link_text = match.group(1)
+        url = match.group(2)
+        safe_url = sanitize_url(url)
         return f"[{link_text}]({safe_url})"
 
-    markdown = re.sub(r"\[([^\]]*)\]\(([^)]*)\)", sanitize_link, markdown)  # type: ignore
+    markdown = re.sub(r"\[([^\]]*)\]\(([^)]*)\)", sanitize_link, markdown)
 
     # Sanitize URLs in Markdown images ![alt](url)
     def sanitize_image(match: re.Match[str]) -> str:
-        alt: str = match.group(1)  # type: ignore
-        url: str = match.group(2)  # type: ignore
-        safe_url = _sanitize_url(url)
+        alt = match.group(1)
+        url = match.group(2)
+        safe_url = sanitize_url(url)
         return f"![{alt}]({safe_url})"
 
-    markdown = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)", sanitize_image, markdown)  # type: ignore
+    markdown = re.sub(r"!\[([^\]]*)\]\(([^)]*)\)", sanitize_image, markdown)
 
     return markdown
 
@@ -96,12 +96,17 @@ def _extract_docx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
     Returns:
         List of tuples (page_num, title, text_list).
     """
-    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore
+    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore[union-attr]
     if hasattr(result, 'messages') and result.messages:
         for msg in result.messages:
-            logger.warning("DOCX Warning: %s", str(msg))  # type: ignore
+            logger.warning("DOCX Warning: %s", str(msg))
 
-    markdown: str = result.value.strip()  # type: ignore
+    markdown: str = result.value.strip()  # type: ignore[union-attr]
+    
+    # Split into paragraphs/pages - DOCX doesn't have natural page breaks,
+    # so we treat the entire document as a single "page" with paragraph content
+    paragraphs = [p.strip() for p in markdown.split("\n\n") if p.strip()]
+    return [(0, "Document", paragraphs)]
 
 
 def convert_docx_to_json(file_bytes: bytes) -> dict[str, Any]:
@@ -158,7 +163,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     lines: list[str] = []
 
     # Start event
-    lines.append(json.dumps({  # type: ignore
+    lines.append(json.dumps({
         "type": "start",
         "format": "docx",
     }))
@@ -175,16 +180,16 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({  # type: ignore
+            lines.append(json.dumps({
                 "type": "chunk",
                 "content": chunk,
             }))
 
     # End event
-    lines.append(json.dumps({  # type: ignore
+    lines.append(json.dumps({
         "type": "end",
         "format": "docx",
         "total_pages": len(results),
     }))
 
-    return "\n".join(lines)  # type: ignore
+    return "\n".join(lines)

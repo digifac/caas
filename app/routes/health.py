@@ -9,7 +9,7 @@ from fastapi import FastAPI
 logger = logging.getLogger(__name__)
 
 
-def _get_version() -> str:
+def get_version() -> str:
     """Retrieve the package version from metadata, falling back to 'unknown'."""
     try:
         return importlib.metadata.version("caas")
@@ -17,7 +17,7 @@ def _get_version() -> str:
         return "unknown"
 
 
-async def _check_redis(app: FastAPI) -> dict[str, Any]:
+async def check_redis(app: FastAPI) -> dict[str, Any]:
     """Check Redis connectivity and return its health status."""
     redis_manager = getattr(app.state, "redis_manager", None)
 
@@ -42,7 +42,7 @@ async def _check_redis(app: FastAPI) -> dict[str, Any]:
         }
 
 
-async def _check_task_manager(app: FastAPI) -> dict[str, Any]:
+async def check_task_manager(app: FastAPI) -> dict[str, Any]:
     """Check task manager status and return queue metrics."""
     task_manager = getattr(app.state, "task_manager", None)
 
@@ -52,7 +52,7 @@ async def _check_task_manager(app: FastAPI) -> dict[str, Any]:
     active = task_manager.get_active_count()
     pending = task_manager.get_pending_count()
     max_concurrent = task_manager.max_concurrent
-    max_queue = task_manager._max_queue_size
+    max_queue = task_manager.max_queue_size
 
     total = active + pending
     queue_ok = total < max_queue
@@ -73,8 +73,8 @@ def register_health_routes(app: FastAPI) -> None:
     @app.get("/health", response_model=dict[str, Any])
     async def health_check():
         """Health check endpoint with Redis and task manager diagnostics."""
-        redis_health = await _check_redis(app)
-        tm_health = await _check_task_manager(app)
+        redis_health = await check_redis(app)
+        tm_health = await check_task_manager(app)
 
         # Overall status is unhealthy if any critical component is unhealthy
         statuses = [
@@ -92,7 +92,7 @@ def register_health_routes(app: FastAPI) -> None:
         return {
             "status": overall,
             "service": "caas",
-            "version": _get_version(),
+            "version": get_version(),
             "redis": redis_health,
             "task_manager": tm_health,
         }

@@ -6,6 +6,9 @@ import pytest
 from app.rate_limiter import RateLimiter
 from app.storage.memory import MemoryStorage
 
+# Import fixtures from modules
+from tests.fixtures.common import sample_pdf_bytes # type: ignore[import-not-found]
+
 # --- Basic allow/deny tests (in-memory mode) ---
 
 
@@ -79,10 +82,10 @@ class TestRateLimiterCleanup:
         limiter = RateLimiter(max_requests=10, window_seconds=1)
         await limiter.is_allowed("127.0.0.1")
         await limiter.is_allowed("127.0.0.1")
-        assert len(limiter._requests["127.0.0.1"]) == 2
+        assert len(limiter._requests["127.0.0.1"]) == 2  # type: ignore[attr-defined]
         await asyncio.sleep(1.1)
-        limiter._cleanup("127.0.0.1")
-        assert "127.0.0.1" not in limiter._requests
+        limiter._cleanup("127.0.0.1")  # type: ignore[attr-defined]
+        assert "127.0.0.1" not in limiter._requests  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_cleanup_all_removes_empty_keys(self):
@@ -91,9 +94,9 @@ class TestRateLimiterCleanup:
         await limiter.is_allowed("ip1")
         await limiter.is_allowed("ip2")
         await asyncio.sleep(1.1)
-        removed = limiter._cleanup_all()
+        removed = limiter._cleanup_all()  # type: ignore[attr-defined]
         assert removed == 2
-        assert len(limiter._requests) == 0
+        assert len(limiter._requests) == 0  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_cleanup_all_returns_count(self):
@@ -103,7 +106,7 @@ class TestRateLimiterCleanup:
         await limiter.is_allowed("ip2")
         await limiter.is_allowed("ip3")
         await asyncio.sleep(1.1)
-        removed = limiter._cleanup_all()
+        removed = limiter._cleanup_all()  # type: ignore[attr-defined]
         assert removed == 3
 
     @pytest.mark.anyio
@@ -112,10 +115,10 @@ class TestRateLimiterCleanup:
         limiter = RateLimiter(max_requests=10, window_seconds=60)
         await limiter.is_allowed("ip1")
         await limiter.is_allowed("ip2")
-        removed = limiter._cleanup_all()
+        removed = limiter._cleanup_all()  # type: ignore[attr-defined]
         assert removed == 0
-        assert "ip1" in limiter._requests
-        assert "ip2" in limiter._requests
+        assert "ip1" in limiter._requests  # type: ignore[attr-defined]
+        assert "ip2" in limiter._requests  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_reset_clears_all(self):
@@ -124,7 +127,7 @@ class TestRateLimiterCleanup:
         await limiter.is_allowed("ip1")
         await limiter.is_allowed("ip2")
         await limiter.reset()
-        assert len(limiter._requests) == 0
+        assert len(limiter._requests) == 0  # type: ignore[attr-defined]
 
     @pytest.mark.anyio
     async def test_periodic_cleanup_runs(self):
@@ -134,10 +137,10 @@ class TestRateLimiterCleanup:
         )
         await limiter.is_allowed("ip1")
         await asyncio.sleep(1.1)
-        # Trigger periodic cleanup by waiting
+        # Wait for periodic cleanup to run (cleanup_interval + buffer)
         await asyncio.sleep(1.5)
         # The key should have been cleaned up
-        assert "ip1" not in limiter._requests
+        assert "ip1" not in limiter._requests  # type: ignore[attr-defined]
 
 
 # --- Edge cases (in-memory mode) ---
@@ -167,19 +170,19 @@ class TestRateLimiterEdgeCases:
         limiter = RateLimiter(max_requests=2, window_seconds=60)
         for i in range(100):
             await limiter.is_allowed(f"ip_{i}")
-        assert len(limiter._requests) == 100
+        assert len(limiter._requests) == 100  # type: ignore[attr-defined]
 
     def test_cleanup_empty_dict(self):
         """_cleanup_all on empty dict doesn't raise."""
         limiter = RateLimiter(max_requests=10, window_seconds=60)
-        removed = limiter._cleanup_all()
+        removed = limiter._cleanup_all()  # type: ignore[attr-defined]
         assert removed == 0
 
     def test_cleanup_nonexistent_key(self):
         """_cleanup on a key that doesn't exist doesn't raise."""
         limiter = RateLimiter(max_requests=10, window_seconds=60)
-        limiter._cleanup("nonexistent")
-        assert len(limiter._requests) == 0
+        limiter._cleanup("nonexistent")  # type: ignore[attr-defined]
+        assert len(limiter._requests) == 0  # type: ignore[attr-defined]
 
     def test_enabled_property_getter_setter(self):
         """enabled property getter/setter works correctly."""
@@ -196,7 +199,7 @@ class TestRateLimiterEdgeCases:
         assert limiter.max_requests == 30
         assert limiter.window_seconds == 60
         assert limiter.enabled is True
-        assert limiter._cleanup_interval == 120
+        assert limiter.cleanup_interval == 120
 
 
 # --- Storage-backed tests ---
@@ -261,4 +264,4 @@ class TestRateLimiterStorage:
         limiter = RateLimiter(max_requests=10, window_seconds=60, storage=storage)
         await limiter.is_allowed("ip1")
         # No cleanup task should be created
-        assert limiter._cleanup_task is None
+        assert limiter._cleanup_task is None  # type: ignore[attr-defined]

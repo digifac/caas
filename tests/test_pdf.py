@@ -11,6 +11,12 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 
+# Import fixtures from modules
+from tests.fixtures.common import sample_pdf_bytes, sample_scanned_pdf_bytes  # type: ignore[import-not-found]
+from tests.fixtures.pdf import sample_pdf_with_link_bytes  # type: ignore[import-not-found]
+
+from pytest import MonkeyPatch
+
 @pytest.fixture
 def multi_page_pdf_bytes(num_pages: int = 10) -> bytes:
     """Generate a PDF with multiple pages in memory."""
@@ -67,13 +73,11 @@ async def test_convert_pdf_with_link(
     markdown = response.json()["markdown"]
     # Extract URLs from markdown links and parse hostnames for strict host validation
     urls = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", markdown)
-    parsed_hosts = {
-        parsed.hostname
+    parsed_hosts: set[str | None] = {
+        urlparse(url).hostname  # type: ignore[union-attr]
         for _, url in urls
-        for parsed in [urlparse(url)]
-        if parsed.hostname
     }
-    assert any(host == "example.com" for host in parsed_hosts)
+    assert any(host == "example.com" for host in parsed_hosts if host)
 
 
 @pytest.mark.anyio
@@ -137,7 +141,8 @@ async def test_convert_async_pdf_completes(
 
 @pytest.mark.anyio
 async def test_convert_pdf_max_pages_exceeded(
-    async_client: httpx.AsyncClient, monkeypatch
+    async_client: httpx.AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     """POST /convert with a PDF exceeding max pages returns 400."""
     from reportlab.lib.pagesizes import A4
@@ -165,7 +170,8 @@ async def test_convert_pdf_max_pages_exceeded(
 
 @pytest.mark.anyio
 async def test_convert_pdf_max_pages_disabled(
-    async_client: httpx.AsyncClient, monkeypatch
+    async_client: httpx.AsyncClient,
+    monkeypatch: MonkeyPatch,
 ):
     """POST /convert with pdf_max_pages=0 allows unlimited pages."""
     from app.config import settings

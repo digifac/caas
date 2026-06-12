@@ -1,14 +1,38 @@
 """Tests for XLSX to Markdown conversion."""
 
 import io
+from typing import Any
 
 import pytest
 from app.converters.xlsx import (
-    _escape_md_table,
-    _sanitize_url,
-    convert_xlsx_to_md,
+    _escape_md_table,  # type: ignore[attr-defined, private]
+    _sanitize_url,  # type: ignore[attr-defined, private]
+    convert_xlsx_to_md,  # type: ignore[attr-defined, private]
 )
 from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
+
+# Import fixtures from modules (used by pytest as fixture injection)
+# These are imported to make them available to pytest's fixture system
+from tests.fixtures.xlsx import (  # type: ignore[import-not-found]
+    sample_xlsx_bytes,
+    sample_xlsx_dates_numbers_bytes,
+    sample_xlsx_empty_sheet_bytes,
+    sample_xlsx_merged_cells_bytes,
+    sample_xlsx_multi_sheet_bytes,
+    sample_xlsx_special_chars_bytes,
+)
+
+# Register fixtures in module namespace for pytest discovery
+__all__ = [
+    "sample_xlsx_bytes",
+    "sample_xlsx_dates_numbers_bytes",
+    "sample_xlsx_empty_sheet_bytes",
+    "sample_xlsx_merged_cells_bytes",
+    "sample_xlsx_multi_sheet_bytes",
+    "sample_xlsx_special_chars_bytes",
+]
+
 
 # --- Tests _escape_md_table ---
 
@@ -72,7 +96,9 @@ class TestSanitizeUrl:
 
 
 class TestConvertXlsxToMd:
-    def test_simple_sheet_conversion(self, sample_xlsx_bytes):
+    def test_simple_sheet_conversion(
+        self, sample_xlsx_bytes: bytes
+    ) -> None:
         result = convert_xlsx_to_md(sample_xlsx_bytes)
         assert "# Feuille1" in result
         assert "| Nom | Valeur |" in result
@@ -80,7 +106,9 @@ class TestConvertXlsxToMd:
         assert "| A | 1 |" in result
         assert "| B | 2 |" in result
 
-    def test_multi_sheet_conversion(self, sample_xlsx_multi_sheet_bytes):
+    def test_multi_sheet_conversion(
+        self, sample_xlsx_multi_sheet_bytes: bytes
+    ) -> None:
         result = convert_xlsx_to_md(sample_xlsx_multi_sheet_bytes)
         assert "# Données" in result
         assert "# Résumé" in result
@@ -89,13 +117,17 @@ class TestConvertXlsxToMd:
         assert "| Orange | 2 |" in result  # openpyxl converts 2.0 to 2
         assert "| Total | 3.5 |" in result
 
-    def test_merged_cells(self, sample_xlsx_merged_cells_bytes):
+    def test_merged_cells(
+        self, sample_xlsx_merged_cells_bytes: bytes
+    ) -> None:
         result = convert_xlsx_to_md(sample_xlsx_merged_cells_bytes)
         assert "# Fusionné" in result
         assert "En-tête fusionné" in result
         assert "| Col1 | Col2 | Col3 |" in result
 
-    def test_dates_and_numbers(self, sample_xlsx_dates_numbers_bytes):
+    def test_dates_and_numbers(
+        self, sample_xlsx_dates_numbers_bytes: bytes
+    ) -> None:
         result = convert_xlsx_to_md(sample_xlsx_dates_numbers_bytes)
         assert "# Types" in result
         assert "42.5" in result
@@ -105,13 +137,17 @@ class TestConvertXlsxToMd:
         assert "true" in result
         assert "false" in result
 
-    def test_special_chars_escaped(self, sample_xlsx_special_chars_bytes):
+    def test_special_chars_escaped(
+        self, sample_xlsx_special_chars_bytes: bytes
+    ) -> None:
         result = convert_xlsx_to_md(sample_xlsx_special_chars_bytes)
         assert "# Spécial" in result
         assert "\\|" in result  # pipe should be escaped
         assert "\\\\" in result  # backslash should be escaped
 
-    def test_empty_sheet(self, sample_xlsx_empty_sheet_bytes):
+    def test_empty_sheet(
+        self, sample_xlsx_empty_sheet_bytes: bytes
+    ) -> None:
         result = convert_xlsx_to_md(sample_xlsx_empty_sheet_bytes)
         assert "# Vide" in result
         # Empty sheets just show an empty table structure
@@ -123,8 +159,8 @@ class TestConvertXlsxToMd:
 
     def test_empty_cells(self):
         """Test that empty cells are handled correctly."""
-        wb = Workbook()
-        ws = wb.active
+        wb: Workbook = Workbook()
+        ws: Worksheet = wb.active  # type: ignore[assignment]
         ws.title = "Test"
         ws["A1"] = "Header"
         ws["B1"] = "Data"
@@ -143,8 +179,8 @@ class TestConvertXlsxToMd:
 
     def test_boolean_values(self):
         """Test boolean cell values."""
-        wb = Workbook()
-        ws = wb.active
+        wb: Workbook = Workbook()
+        ws: Worksheet = wb.active  # type: ignore[assignment]
         ws.title = "Bool"
         ws["A1"] = "Col"
         ws["B1"] = "Bool"
@@ -165,7 +201,9 @@ class TestConvertXlsxToMd:
 
 class TestXlsxApiIntegration:
     @pytest.mark.asyncio
-    async def test_upload_valid_xlsx(self, async_client, sample_xlsx_bytes):
+    async def test_upload_valid_xlsx(
+        self, async_client: Any, sample_xlsx_bytes: bytes
+    ) -> None:
         """Upload valid XLSX → 200 OK with Markdown."""
         response = await async_client.post(
             "/convert",
@@ -184,7 +222,9 @@ class TestXlsxApiIntegration:
         assert "# Feuille1" in data["markdown"]
 
     @pytest.mark.asyncio
-    async def test_upload_invalid_xlsx_wrong_format(self, async_client):
+    async def test_upload_invalid_xlsx_wrong_format(
+        self, async_client: Any
+    ) -> None:
         """Upload XLSX with wrong format → 400."""
         response = await async_client.post(
             "/convert",
@@ -195,7 +235,9 @@ class TestXlsxApiIntegration:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_upload_xlsx_corrupted(self, async_client):
+    async def test_upload_xlsx_corrupted(
+        self, async_client: Any
+    ) -> None:
         """Upload corrupted XLSX → 400."""
         response = await async_client.post(
             "/convert",
@@ -204,7 +246,9 @@ class TestXlsxApiIntegration:
         assert response.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_upload_xlsx_empty(self, async_client):
+    async def test_upload_xlsx_empty(
+        self, async_client: Any
+    ) -> None:
         """Upload empty XLSX → 400."""
         response = await async_client.post(
             "/convert", files={"file": ("test.xlsx", b"", "application/octet-stream")}
@@ -213,8 +257,8 @@ class TestXlsxApiIntegration:
 
     @pytest.mark.asyncio
     async def test_upload_xlsx_multi_sheet(
-        self, async_client, sample_xlsx_multi_sheet_bytes
-    ):
+        self, async_client: Any, sample_xlsx_multi_sheet_bytes: bytes
+    ) -> None:
         """Upload multi-sheet XLSX → Markdown with headings."""
         response = await async_client.post(
             "/convert",

@@ -3,18 +3,18 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from app.api import _get_lifespan, _get_version, create_app
+from app.api import get_lifespan, get_version, create_app
 from fastapi import FastAPI
 
 
 class TestGetVersion:
-    """Tests for _get_version helper."""
+    """Tests for get_version helper."""
 
     def test_returns_version_from_pyproject_toml(self):
         """Should return version read directly from pyproject.toml."""
         import re
 
-        version = _get_version()
+        version = get_version()
         assert version is not None
         assert version != "unknown"
         # Version should match a.b.c or a.b-<tag>.c format (e.g. 1.0.3, 1.0-beta.0, 2.1.rc1.7)
@@ -25,7 +25,7 @@ class TestGetVersion:
     def test_returns_unknown_when_pyproject_toml_unreadable(self):
         """Should return 'unknown' when pyproject.toml cannot be read."""
         with patch("pathlib.Path.read_text", side_effect=Exception("no file")):
-            version = _get_version()
+            version = get_version()
             assert version == "unknown"
 
 
@@ -34,19 +34,19 @@ class TestCreateApp:
 
     def test_create_app_returns_fastapi_instance(self):
         """create_app should return a FastAPI instance."""
-        with patch("app.api._get_version", return_value="1.0.0"):
+        with patch("app.api.get_version", return_value="1.0.0"):
             test_app = create_app()
             assert isinstance(test_app, FastAPI)
 
     def test_create_app_sets_title(self):
         """App should have correct title."""
-        with patch("app.api._get_version", return_value="1.0.0"):
+        with patch("app.api.get_version", return_value="1.0.0"):
             test_app = create_app()
             assert test_app.title == "CAAS Converter"
 
     def test_create_app_registers_exception_handlers(self):
         """App should register exception handlers."""
-        with patch("app.api._get_version", return_value="1.0.0"):
+        with patch("app.api.get_version", return_value="1.0.0"):
             test_app = create_app()
             # Check that exception handlers are registered
             assert Exception in test_app.exception_handlers
@@ -56,7 +56,7 @@ class TestCreateApp:
 
     def test_create_app_with_cors_origins(self):
         """App should add CORS middleware when origins are configured."""
-        with patch("app.api._get_version", return_value="1.0.0"), \
+        with patch("app.api.get_version", return_value="1.0.0"), \
              patch("app.api.settings") as mock_settings:
                 mock_settings.cors_origins_list = ["http://localhost:3000"]
                 mock_settings.cors_allow_credentials = False
@@ -78,7 +78,7 @@ class TestCreateApp:
 
     def test_create_app_without_cors_origins(self):
         """App should not add CORS middleware when no origins configured."""
-        with patch("app.api._get_version", return_value="1.0.0"), \
+        with patch("app.api.get_version", return_value="1.0.0"), \
              patch("app.api.settings") as mock_settings:
                 mock_settings.cors_origins_list = []
                 mock_settings.cors_allow_credentials = False
@@ -103,7 +103,7 @@ class TestCreateApp:
 
     def test_create_app_mounts_static_files(self):
         """App should mount static files."""
-        with patch("app.api._get_version", return_value="1.0.0"):
+        with patch("app.api.get_version", return_value="1.0.0"):
             test_app = create_app()
             # Check by name since mount creates a Mount route
             route_names = [getattr(r, "name", "") for r in test_app.routes]
@@ -111,13 +111,13 @@ class TestCreateApp:
 
     def test_create_app_initializes_rate_limiter(self):
         """App should initialize rate limiter."""
-        with patch("app.api._get_version", return_value="1.0.0"):
+        with patch("app.api.get_version", return_value="1.0.0"):
             test_app = create_app()
             assert hasattr(test_app.state, "rate_limiter")
 
     def test_create_app_initializes_task_manager(self):
         """App should initialize task manager."""
-        with patch("app.api._get_version", return_value="1.0.0"):
+        with patch("app.api.get_version", return_value="1.0.0"):
             test_app = create_app()
             assert hasattr(test_app.state, "task_manager")
 
@@ -128,7 +128,7 @@ class TestGetLifespan:
     @pytest.mark.asyncio
     async def test_lifespan_without_redis(self):
         """Lifespan should work without Redis."""
-        lifespan_cm = _get_lifespan(redis_enabled=False, redis_url="")
+        lifespan_cm = get_lifespan(redis_enabled=False, redis_url="")
 
         mock_app = MagicMock(spec=FastAPI)
         mock_app.state = MagicMock()
@@ -139,7 +139,7 @@ class TestGetLifespan:
     @pytest.mark.asyncio
     async def test_lifespan_with_redis_enabled_but_unavailable(self):
         """Lifespan should fall back to memory when Redis is unavailable."""
-        lifespan_cm = _get_lifespan(
+        lifespan_cm = get_lifespan(
             redis_enabled=True, redis_url="redis://localhost:9999"
         )
 
@@ -155,7 +155,8 @@ class TestGetLifespan:
         """Lifespan should close Redis client on shutdown when Redis was active."""
         # This test is more of an integration test
         # We'll just verify the lifespan context manager works
-        lifespan_cm = _get_lifespan(redis_enabled=False, redis_url="")
+        lifespan_cm = get_lifespan(redis_enabled=False, redis_url="")
+
         mock_app = MagicMock(spec=FastAPI)
         mock_app.state = MagicMock()
 

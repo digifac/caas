@@ -25,18 +25,18 @@ def clean_lines(lines: list[str]) -> list[str]:
         # Headings (numbered or already Markdown)
         if re.match(r"^#{1,6}\s", line):
             # Already a Markdown heading — keep as-is
-            cleaned.append(line)  # type: ignore[assignment]
+            cleaned.append(line)
         elif (
             re.match(r"^\d+[.)]\s", line)
             or settings.markdown_heading_detection
             and is_uppercase_heading(line)
         ):
-            cleaned.append(f"# {line}")  # type: ignore[assignment]
+            cleaned.append(f"# {line}")
         # Lists
         elif re.match(r"^[\*\-•]\s", line):
-            cleaned.append(line)  # type: ignore[assignment]
+            cleaned.append(line)
         else:
-            cleaned.append(line)  # type: ignore[assignment]
+            cleaned.append(line)
     return cleaned
 
 

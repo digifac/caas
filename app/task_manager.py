@@ -62,8 +62,8 @@ class BatchInfo:
     """Metadata for a batch of tasks."""
 
     batch_id: str
-    task_ids: list
-    filenames: list
+    task_ids: list[str]
+    filenames: list[str]
     created_at: float
     total_files: int
 
@@ -113,16 +113,16 @@ class TaskManager:
     ):
         self._semaphore = asyncio.Semaphore(max_concurrent)
         # In-memory cache for active tasks (PENDING/PROCESSING) — always fast access
-        self._tasks: dict[str, TaskResult] = {}
-        self._async_tasks: dict[str, asyncio.Task] = {}
-        self._batches: dict[str, BatchInfo] = {}
+        self.tasks: dict[str, TaskResult] = {}
+        self.async_tasks: dict[str, asyncio.Task] = {}
+        self.batches: dict[str, BatchInfo] = {}
         self._max_concurrent = max_concurrent
-        self._max_queue_size = max_queue_size
-        self._result_ttl = result_ttl_seconds
-        self._cleanup_interval = cleanup_interval_seconds
-        self._max_tasks = max_tasks
-        self._cleanup_task: asyncio.Task | None = None
-        self._cleanup_lock = asyncio.Lock()
+        self.max_queue_size = max_queue_size
+        self.result_ttl = result_ttl_seconds
+        self.cleanup_interval = cleanup_interval_seconds
+        self.max_tasks = max_tasks
+        self.cleanup_task: asyncio.Task | None = None
+        self.cleanup_lock = asyncio.Lock()
         # Storage backend — defaults to MemoryStorage for backward compatibility
         self._storage: StorageProtocol = (
             storage if storage is not None else MemoryStorage()
@@ -136,8 +136,12 @@ class TaskManager:
         """Maximum number of concurrently executed tasks."""
         return self._max_concurrent
 
+    @max_concurrent.setter
+    def max_concurrent(self, value: int):
+        self._max_concurrent = value
+
     @property
-    def storage(self) -> StorageProtocol:
+    def storage_backend(self) -> StorageProtocol:
         """The storage backend in use."""
         return self._storage
 
@@ -153,26 +157,26 @@ class TaskManager:
         """Check if the queue can accept a new task."""
         pending = self.get_pending_count()
         processing = self.get_active_count()
-        return (pending + processing) < self._max_queue_size
+        return (pending + processing) < self.max_queue_size
 
     async def _periodic_cleanup(self):
         """Periodic cleanup of expired results to prevent memory leaks."""
         while True:
-            await asyncio.sleep(self._cleanup_interval)
-            await self.cleanup_completed(max_age_seconds=self._result_ttl)
+            await asyncio.sleep(self.cleanup_interval)
+            await self.cleanup_completed(max_age_seconds=self.result_ttl)
 
     async def _ensure_cleanup_started(self):
         """Start periodic cleanup on first call (lazy start). Async-safe via lock."""
-        async with self._cleanup_lock:
-            if self._cleanup_task is None or self._cleanup_task.done():
-                self._cleanup_task = asyncio.ensure_future(self._periodic_cleanup())
+        async with self.cleanup_lock:
+            if self.cleanup_task is None or self.cleanup_task.done():
+                self.cleanup_task = asyncio.ensure_future(self._periodic_cleanup())
 
     async def _persist_task(self, task: TaskResult) -> None:
         """Persist a completed/failed task to storage with TTL."""
         await self._storage.set(
             self._task_key(task.task_id),
             task.to_json(),
-            ttl=self._result_ttl,
+            ttl=self.result_ttl,
         )
 
     async def _persist_active_task(self, task: TaskResult) -> None:
@@ -199,7 +203,7 @@ class TaskManager:
         await self._storage.set(
             self._batch_key(batch.batch_id),
             batch.to_json(),
-            ttl=self._result_ttl,
+            ttl=self.result_ttl,
         )
 
     async def restore_active_tasks(self) -> int:
@@ -225,7 +229,7 @@ class TaskManager:
                         if task.status in (TaskStatus.PENDING, TaskStatus.PROCESSING):
                             # Mark as PENDING since we can't resume PROCESSING without the original coroutine
                             task.status = TaskStatus.PENDING
-                            self._tasks[task.task_id] = task
+                            self.tasks[task.task_id] = task
                             restored += 1
                             logger.info(
                                 "Restored active task: %s (was %s, now PENDING)",
@@ -251,34 +255,34 @@ class TaskManager:
         Returns:
             Number of tasks evicted.
         """
-        if len(self._tasks) <= self._max_tasks:
+        if len(self.tasks) <= self.max_tasks:
             return 0
         # Collect completed/failed tasks sorted by completion time (oldest first)
         finished = [
             (tid, t)
-            for tid, t in self._tasks.items()
+            for tid, t in self.tasks.items()
             if t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED)
         ]
         finished.sort(key=lambda x: x[1].completed_at or x[1].created_at)
 
-        num_to_evict = len(self._tasks) - self._max_tasks
+        num_to_evict = len(self.tasks) - self.max_tasks
         evicted = 0
         for task_id, task in finished:
             if evicted >= num_to_evict:
                 break
             # Persist before evicting from memory so storage still has the result
             await self._persist_task(task)
-            del self._tasks[task_id]
+            del self.tasks[task_id]
             evicted += 1
         if evicted:
             logger.warning(
                 "TaskManager eviction: %d completed tasks removed from memory (limit %d reached)",
                 evicted,
-                self._max_tasks,
+                self.max_tasks,
             )
         return evicted
 
-    def submit(self, task_func: Callable, *args: Any, **kwargs: Any) -> str:
+    def submit(self, task_func: "Callable[..., Any]", *args: Any, **kwargs: Any) -> str:
         """
         Submit a task to the queue and immediately return a task_id.
 
@@ -295,7 +299,7 @@ class TaskManager:
         asyncio.ensure_future(self._ensure_cleanup_started())
         if not self._can_accept():
             raise QueueFullError(
-                f"Queue is full ({self._max_queue_size} tasks max). "
+                f"Queue is full ({self.max_queue_size} tasks max). "
                 f"Please try again in a moment."
             )
         task_id = secrets.token_hex(16)
@@ -303,7 +307,7 @@ class TaskManager:
             task_id=task_id,
             status=TaskStatus.PENDING,
         )
-        self._tasks[task_id] = task
+        self.tasks[task_id] = task
         # Persist active task to storage for resilience on restart
         asyncio.ensure_future(self._persist_active_task(task))
         # Proactively evict old completed tasks if we're over the memory limit
@@ -311,8 +315,8 @@ class TaskManager:
         async_task = asyncio.create_task(
             self._run_task(task_id, task_func, *args, **kwargs)
         )
-        self._async_tasks[task_id] = async_task
-        async_task.add_done_callback(lambda _: self._async_tasks.pop(task_id, None))
+        self.async_tasks[task_id] = async_task
+        async_task.add_done_callback(lambda _: self.async_tasks.pop(task_id, None))
         logger.info(
             "Task submitted: %s (queue: %d pending, %d processing)",
             task_id,
@@ -348,7 +352,7 @@ class TaskManager:
             created_at=now,
             completed_at=now,
         )
-        self._tasks[task_id] = task
+        self.tasks[task_id] = task
         # Persist failed task to storage backend
         asyncio.ensure_future(self._persist_task(task))
         # Proactively evict old completed tasks if we're over the memory limit
@@ -372,50 +376,50 @@ class TaskManager:
             created_at=time.time(),
             total_files=total_files,
         )
-        self._batches[batch_id] = batch
+        self.batches[batch_id] = batch
         asyncio.ensure_future(self._persist_batch(batch))
         logger.info("Batch %s registered with %d tasks", batch_id, len(task_ids))
 
     async def _run_task(
-        self, task_id: str, task_func: Callable, *args: Any, **kwargs: Any
+        self, task_id: str, task_func: "Callable[..., Any]", *args: Any, **kwargs: Any
     ):
         """Execute a task with concurrency limiting."""
         async with self._semaphore:
-            self._tasks[task_id].status = TaskStatus.PROCESSING
+            self.tasks[task_id].status = TaskStatus.PROCESSING
             # Persist the PROCESSING state to storage for resilience
-            await self._persist_active_task(self._tasks[task_id])
+            await self._persist_active_task(self.tasks[task_id])
             logger.info("Task processing: %s", task_id)
             try:
                 result = await task_func(*args, **kwargs)
-                self._tasks[task_id] = TaskResult(
+                self.tasks[task_id] = TaskResult(
                     task_id=task_id,
                     status=TaskStatus.COMPLETED,
                     result=result,
-                    created_at=self._tasks[task_id].created_at,
+                    created_at=self.tasks[task_id].created_at,
                     completed_at=time.time(),
                 )
                 # Persist completed task to storage backend
-                await self._persist_task(self._tasks[task_id])
+                await self._persist_task(self.tasks[task_id])
                 # Remove from active task tracking since it's now completed
                 await self._storage.delete(f"{self.ACTIVE_TASK_IDS_KEY}:{task_id}")
                 logger.info("Task completed: %s", task_id)
             except Exception as e:
-                self._tasks[task_id] = TaskResult(
+                self.tasks[task_id] = TaskResult(
                     task_id=task_id,
                     status=TaskStatus.FAILED,
                     error="CONVERSION_FAILED",
                     error_detail=str(e),
-                    created_at=self._tasks[task_id].created_at,
+                    created_at=self.tasks[task_id].created_at,
                     completed_at=time.time(),
                 )
                 # Persist failed task to storage backend
-                await self._persist_task(self._tasks[task_id])
+                await self._persist_task(self.tasks[task_id])
                 # Remove from active task tracking since it's now failed
                 await self._storage.delete(f"{self.ACTIVE_TASK_IDS_KEY}:{task_id}")
                 logger.error("Task failed: %s — %s", task_id, e)
             finally:
                 # Clean up asyncio.Task reference once the coroutine is done
-                self._async_tasks.pop(task_id, None)
+                self.async_tasks.pop(task_id, None)
 
     async def get_task(self, task_id: str) -> TaskResult | None:
         """
@@ -424,7 +428,7 @@ class TaskManager:
         retrievable via the storage backend.
         """
         # Check in-memory cache first (fast path for active tasks)
-        task = self._tasks.get(task_id)
+        task = self.tasks.get(task_id)
         if task is not None:
             return task
         # Fall back to storage for completed/evicted tasks
@@ -441,24 +445,24 @@ class TaskManager:
 
     def get_active_count(self) -> int:
         """Number of tasks currently running (processing)."""
-        return sum(1 for t in self._tasks.values() if t.status == TaskStatus.PROCESSING)
+        return sum(1 for t in self.tasks.values() if t.status == TaskStatus.PROCESSING)
 
     def get_pending_count(self) -> int:
         """Number of tasks waiting in queue."""
-        return sum(1 for t in self._tasks.values() if t.status == TaskStatus.PENDING)
+        return sum(1 for t in self.tasks.values() if t.status == TaskStatus.PENDING)
 
     def get_queue_usage(self) -> dict[str, Any]:
         """Return queue usage statistics."""
         return {
             "active": self.get_active_count(),
             "pending": self.get_pending_count(),
-            "total": len(self._tasks),
-            "max_concurrent": self._max_concurrent,
-            "max_queue_size": self._max_queue_size,
-            "async_tasks_tracked": len(self._async_tasks),
+            "total": len(self.tasks),
+            "max_concurrent": self.max_concurrent,
+            "max_queue_size": self.max_queue_size,
+            "async_tasks_tracked": len(self.async_tasks),
             "available_slots": max(
                 0,
-                self._max_queue_size
+                self.max_queue_size
                 - self.get_pending_count()
                 - self.get_active_count(),
             ),
@@ -477,7 +481,7 @@ class TaskManager:
         """
         now = time.time()
         keys_to_remove = []
-        for task_id, task in self._tasks.items():
+        for task_id, task in self.tasks.items():
             if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
                 age = now - (task.completed_at or task.created_at)
                 if age > max_age_seconds:
@@ -494,11 +498,11 @@ class TaskManager:
                     keys_to_remove.append(task_id)
         for key in keys_to_remove:
             # Cancel the asyncio coroutine if it's still running
-            async_task = self._async_tasks.pop(key, None)
+            async_task = self.async_tasks.pop(key, None)
             if async_task is not None and not async_task.done():
                 async_task.cancel()
                 logger.info("Asyncio coroutine cancelled for expired task: %s", key)
-            del self._tasks[key]
+            del self.tasks[key]
             # Also remove from storage backend
             await self._storage.delete(self._task_key(key))
             # Remove from active task tracking if it was an active task
@@ -513,19 +517,19 @@ class TaskManager:
         """Remove batches whose tasks have all been cleaned up."""
         empty_batches = [
             batch_id
-            for batch_id, info in self._batches.items()
-            if not any(tid in self._tasks for tid in info.task_ids)
+            for batch_id, info in self.batches.items()
+            if not any(tid in self.tasks for tid in info.task_ids)
         ]
         for batch_id in empty_batches:
-            del self._batches[batch_id]
+            del self.batches[batch_id]
             logger.debug("Removed empty batch: %s", batch_id)
 
     def submit_batch(
         self,
         batch_id: str,
         filenames: list[str],
-        task_func: Callable,
-        contents_and_exts: list,
+        task_func: "Callable[..., Any]",
+        contents_and_exts: list[tuple[bytes, str]],
     ) -> list[str]:
         """
         Submit multiple files as individual tasks grouped under a batch_id.
@@ -544,7 +548,7 @@ class TaskManager:
         for content, ext in contents_and_exts:
             if not self._can_accept():
                 raise QueueFullError(
-                    f"Queue is full ({self._max_queue_size} tasks max). "
+                    f"Queue is full ({self.max_queue_size} tasks max). "
                     f"Some files in the batch could not be submitted."
                 )
             task_id = self.submit(task_func, content, ext)
@@ -555,13 +559,13 @@ class TaskManager:
 
     def get_batch(self, batch_id: str) -> BatchInfo | None:
         """Retrieve batch metadata by batch_id (in-memory only)."""
-        return self._batches.get(batch_id)
+        return self.batches.get(batch_id)
 
     async def get_batch_with_storage(self, batch_id: str) -> BatchInfo | None:
         """
         Retrieve a batch, checking in-memory first, then falling back to storage.
         """
-        batch = self._batches.get(batch_id)
+        batch = self.batches.get(batch_id)
         if batch is not None:
             return batch
         json_str = await self._storage.get(self._batch_key(batch_id))
@@ -580,7 +584,7 @@ class TaskManager:
         Returns None if the batch doesn't exist (in either memory or storage).
         """
         # Check in-memory first, then fall back to storage for the batch itself
-        batch_info = self._batches.get(batch_id)
+        batch_info = self.batches.get(batch_id)
         if batch_info is None:
             batch_info = await self.get_batch_with_storage(batch_id)
         if batch_info is None:

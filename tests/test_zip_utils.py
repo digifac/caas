@@ -1,17 +1,26 @@
 """Tests for shared ZIP / Open XML utilities (zip_utils module)."""
 
 import io
+import typing
 import zipfile
 
 import pytest
 from app.config import settings
-from app.validation import _detect_mime_type, _validate_xlsx_structure
-from app.zip_utils import _validate_openxml_structure, _validate_zip_bomb
+import app.validation as validation_module
+import app.zip_utils as zip_utils_module
+
+_detect_mime_type = getattr(validation_module, "_detect_mime_type")
+_validate_xlsx_structure = getattr(validation_module, "_validate_xlsx_structure")
+_validate_openxml_structure = getattr(zip_utils_module, "_validate_openxml_structure")
+_validate_zip_bomb = getattr(zip_utils_module, "_validate_zip_bomb")
 
 # --- Helpers ---
 
 
-def _make_zip(entries: dict, compression: int = zipfile.ZIP_DEFLATED) -> bytes:
+def _make_zip(
+    entries: typing.Mapping[str, typing.Union[str, bytes]],
+    compression: int = zipfile.ZIP_DEFLATED,
+) -> bytes:
     """Create an in-memory ZIP archive from a {name: content} dictionary."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression) as zf:
@@ -20,7 +29,9 @@ def _make_zip(entries: dict, compression: int = zipfile.ZIP_DEFLATED) -> bytes:
     return buf.getvalue()
 
 
-def _make_zip_stored(entries: dict) -> bytes:
+def _make_zip_stored(
+    entries: typing.Mapping[str, typing.Union[str, bytes]]
+) -> bytes:
     """Create an uncompressed (STORE) ZIP archive to test ratios."""
     return _make_zip(entries, zipfile.ZIP_STORED)
 
@@ -74,11 +85,11 @@ class TestValidateZipBomb:
         data = _make_zip({"file.txt": "contenu normal"})
         assert _validate_zip_bomb(data) is None
 
-    def test_valid_docx_passes(self, valid_docx_bytes):
+    def test_valid_docx_passes(self, valid_docx_bytes: bytes) -> None:
         """Valid DOCX passes ZIP bomb detection."""
         assert _validate_zip_bomb(valid_docx_bytes) is None
 
-    def test_valid_xlsx_passes(self, valid_xlsx_bytes):
+    def test_valid_xlsx_passes(self, valid_xlsx_bytes: bytes) -> None:
         """Valid XLSX passes ZIP bomb detection."""
         assert _validate_zip_bomb(valid_xlsx_bytes) is None
 
@@ -237,17 +248,17 @@ class TestValidateZipBomb:
 class TestValidateOpenXmlStructure:
     """Tests for the generic Open XML structure validation."""
 
-    def test_valid_docx_structure(self, valid_docx_bytes):
+    def test_valid_docx_structure(self, valid_docx_bytes: bytes) -> None:
         """Valid DOCX structure passes."""
         required = ["[Content_Types].xml", "word/document.xml"]
         assert _validate_openxml_structure(valid_docx_bytes, "docx", required) is None
 
-    def test_valid_odt_structure(self, valid_odt_bytes):
+    def test_valid_odt_structure(self, valid_odt_bytes: bytes) -> None:
         """Valid ODT structure passes."""
         required = ["mimetype", "content.xml"]
         assert _validate_openxml_structure(valid_odt_bytes, "odt", required) is None
 
-    def test_valid_xlsx_structure(self, valid_xlsx_bytes):
+    def test_valid_xlsx_structure(self, valid_xlsx_bytes: bytes) -> None:
         """Valid XLSX structure passes."""
         required = ["[Content_Types].xml", "xl/workbook.xml"]
         assert _validate_openxml_structure(valid_xlsx_bytes, "xlsx", required) is None
@@ -447,7 +458,9 @@ class TestXlsXMimeDetection:
 class TestValidateXlsxStructure:
     """Tests for XLSX structure validation (wrapper around _validate_openxml_structure)."""
 
-    def test_valid_xlsx_structure_passes(self, valid_xlsx_bytes):
+    def test_valid_xlsx_structure_passes(
+        self, valid_xlsx_bytes: bytes
+    ) -> None:
         """Valid XLSX passes structure validation."""
         assert _validate_xlsx_structure(valid_xlsx_bytes) is None
 

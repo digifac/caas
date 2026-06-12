@@ -1,19 +1,22 @@
 """Tests for uploaded file content validation."""
 
 import io
+import os
+from typing import Union
+
 import zipfile
 
 from app.config import settings
 from app.validation import (
-    _detect_mime_type,
-    _validate_docx_structure,
-    _validate_xlsx_structure,
-    _validate_zip_bomb,
-    validate_file_content,
+    _detect_mime_type, # type: ignore[attr-defined, private]
+    _validate_docx_structure, # type: ignore[attr-defined, private]
+    _validate_xlsx_structure, # type: ignore[attr-defined, private]
+    _validate_zip_bomb, # type: ignore[attr-defined, private]
+    validate_file_content, # type: ignore[attr-defined, private]
 )
 
 
-def _make_zip(files: dict) -> bytes:
+def _make_zip(files: dict[str, Union[str, bytes]]) -> bytes:
     """Helper: create a valid ZIP archive in memory from {filename: content} pairs."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -146,17 +149,17 @@ class TestValidateFileContent:
         result = validate_file_content(data, "pdf")
         assert result is None
 
-    def test_valid_docx(self, sample_docx_bytes):
+    def test_valid_docx(self, sample_docx_bytes: bytes) -> None:
         """Valid DOCX passes validation."""
         result = validate_file_content(sample_docx_bytes, "docx")
         assert result is None
 
-    def test_valid_docx_with_word_path(self, sample_docx_bytes):
+    def test_valid_docx_with_word_path(self, sample_docx_bytes: bytes) -> None:
         """Valid DOCX with word/ path passes validation."""
         result = validate_file_content(sample_docx_bytes, "docx")
         assert result is None
 
-    def test_valid_docx_real_archive(self, sample_docx_bytes):
+    def test_valid_docx_real_archive(self, sample_docx_bytes: bytes) -> None:
         """Real DOCX (valid ZIP archive) passes validation."""
         result = validate_file_content(sample_docx_bytes, "docx")
         assert result is None
@@ -184,7 +187,7 @@ class TestValidateFileContent:
         assert "document.xml" in result.lower() or "missing" in result.lower()
 
     # --- Valid XLSX ---
-    def test_valid_xlsx(self, sample_xlsx_bytes):
+    def test_valid_xlsx(self, sample_xlsx_bytes: bytes) -> None:
         """Valid XLSX passes validation."""
         result = validate_file_content(sample_xlsx_bytes, "xlsx")
         assert result is None
@@ -245,7 +248,7 @@ class TestValidateFileContent:
 class TestValidateXlsxStructure:
     """Tests for XLSX structure validation."""
 
-    def test_valid_xlsx_structure(self, sample_xlsx_bytes):
+    def test_valid_xlsx_structure(self, sample_xlsx_bytes: bytes) -> None:
         """Valid XLSX passes structure validation."""
         assert _validate_xlsx_structure(sample_xlsx_bytes) is None
 
@@ -277,20 +280,7 @@ class TestValidateXlsxStructure:
         assert result is None or result is not None  # Ensures no exception
 
 
-# --- Helpers to create test ZIP archives ---
-def _make_zip_v2(entries: dict) -> bytes:
-    """
-    Create an in-memory ZIP archive from a {name: content} dictionary.
-    entries: dict[str, str|bytes]
-    """
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name, content in entries.items():
-            zf.writestr(name, content)
-    return buf.getvalue()
-
-
-def _make_zip_stored(entries: dict) -> bytes:
+def _make_zip_stored(entries: dict[str, Union[str, bytes]]) -> bytes:
     """
     Create an uncompressed (STORE) ZIP archive to test ratios.
     """
@@ -310,7 +300,7 @@ class TestValidateZipBomb:
         data = _make_zip({"file.txt": "contenu normal"})
         assert _validate_zip_bomb(data) is None
 
-    def test_valid_docx_archive_passes(self, sample_docx_bytes):
+    def test_valid_docx_archive_passes(self, sample_docx_bytes: bytes) -> None:
         """Valid DOCX passes ZIP bomb detection."""
         assert _validate_zip_bomb(sample_docx_bytes) is None
 
@@ -326,7 +316,7 @@ class TestValidateZipBomb:
 
     def test_too_many_files_detected(self):
         """Too many files in the archive is detected."""
-        entries = {f"file_{i}.txt": "x" for i in range(settings.zip_max_files + 1)}
+        entries: dict[str, Union[str, bytes]] = {f"file_{i}.txt": "x" for i in range(settings.zip_max_files + 1)}
         data = _make_zip(entries)
         result = _validate_zip_bomb(data)
         assert result is not None
@@ -409,11 +399,9 @@ class TestValidateZipBomb:
         assert result is not None
         assert "decompressed" in result.lower() or "size" in result.lower()
 
-    def test_boundary_compression_ratio_ok(self):
+    def test_boundary_compression_ratio_ok(self) -> None:
         """Acceptable compression ratio passes validation."""
         # Random content (not compressible) → ratio close to 1x
-        import os
-
         content = os.urandom(1024 * 1024)  # 1 MB of random data
         data = _make_zip({"data.bin": content})
         result = _validate_zip_bomb(data)
@@ -424,7 +412,7 @@ class TestValidateZipBomb:
 class TestValidateDocxStructure:
     """Tests for DOCX structure validation."""
 
-    def test_valid_docx_structure_passes(self, sample_docx_bytes):
+    def test_valid_docx_structure_passes(self, sample_docx_bytes: bytes) -> None:
         """Valid DOCX passes structure validation."""
         assert _validate_docx_structure(sample_docx_bytes) is None
 
@@ -454,12 +442,12 @@ class TestValidateDocxStructure:
 class TestOdpValidation:
     """Tests for ODP file validation."""
 
-    def test_valid_odp(self, sample_odp_bytes):
+    def test_valid_odp(self, sample_odp_bytes: bytes) -> None:
         """Valid ODP passes validation."""
         result = validate_file_content(sample_odp_bytes, "odp")
         assert result is None
 
-    def test_valid_odp_mime_detection(self, sample_odp_bytes):
+    def test_valid_odp_mime_detection(self, sample_odp_bytes: bytes) -> None:
         """ODP MIME type is correctly detected."""
         mime = _detect_mime_type(sample_odp_bytes)
         assert mime == "application/vnd.oasis.opendocument.presentation"
@@ -563,7 +551,7 @@ class TestOdpValidation:
         assert result is not None
         assert "invalid" in result.lower() or "corrupted" in result.lower()
 
-    def test_extra_files_allowed(self, sample_docx_bytes):
+    def test_extra_files_allowed(self, sample_docx_bytes: bytes) -> None:
         """Fichiers supplémentaires dans le DOCX sont autorisés."""
         # Le DOCX de test a des fichiers en plus (_rels/.rels) et c'est OK
         assert _validate_docx_structure(sample_docx_bytes) is None

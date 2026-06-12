@@ -8,6 +8,8 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+__all__ = ["_validate_zip_bomb", "_validate_openxml_structure"]
+
 
 def _validate_zip_bomb(file_bytes: bytes) -> str | None:
     """

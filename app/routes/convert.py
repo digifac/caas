@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from starlette.templating import Jinja2Templates
 
 from app.config import settings
-from app.converter import _convert_worker
+from app.converter import convert_worker
 from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip
 from app.streaming import convert_stream
@@ -101,7 +101,7 @@ def register_convert_routes(app: FastAPI) -> None:
                 error(400, "FILE_CORRUPTED", detail=validation_error)
 
             if async_mode and async_mode.lower() == "true":
-                task_id = app.state.task_manager.submit(_convert_worker, content, ext)
+                task_id = app.state.task_manager.submit(convert_worker, content, ext)
                 content = None  # type: ignore[assignment]  # Explicit memory release
                 return {
                     "success": True,
@@ -124,7 +124,7 @@ def register_convert_routes(app: FastAPI) -> None:
 
             if result_format == "jsonl":
                 # Convertir en JSONL et retourner comme texte brut
-                result_content = await _convert_worker(content, ext, format="jsonl")
+                result_content = await convert_worker(content, ext, output_format="jsonl")
                 return Response(
                     content=result_content,
                     media_type="text/plain; charset=utf-8",
@@ -132,14 +132,14 @@ def register_convert_routes(app: FastAPI) -> None:
                 )
             elif result_format == "json":
                 # Convertir en JSON structuré
-                result_content = await _convert_worker(content, ext, format="json")
+                result_content = await convert_worker(content, ext, output_format="json")
                 return JSONResponse(
                     content=result_content,
                     headers={"Content-Disposition": f'attachment; filename="{file.filename}.json"'}
                 )
             else:
                 # Default to markdown format
-                result = await _convert_worker(content, ext)
+                result = await convert_worker(content, ext)
                 return result
 
         except HTTPException:

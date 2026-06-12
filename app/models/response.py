@@ -35,7 +35,7 @@ class ConversionResponse(BaseModel):
 
     format: str = Field(..., description="Source document format (pdf, docx, xlsx, etc.)")
     pages: list[PageJson] = Field(default_factory=list, description="List of pages/sections with content")  # type: ignore[misc]
-    _content: str | None = Field(None, description="Raw Markdown content (alternative to pages for simple formats)")
+    raw_content: str | None = Field(None, alias="_content", description="Raw Markdown content (alternative to pages for simple formats)")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Format-specific metadata")
     request_id: str | None = Field(None, description="Unique request ID for tracing")
     success: bool = Field(True, description="Success status")

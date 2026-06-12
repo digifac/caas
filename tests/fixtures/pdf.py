@@ -6,8 +6,6 @@ __all__ = [
 ]
 
 import io
-from typing import Any
-
 import pytest
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas

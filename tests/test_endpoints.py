@@ -10,6 +10,9 @@ import os
 import httpx
 import pytest
 
+# Import fixtures from modules
+from tests.fixtures.common import async_client # type: ignore[import-not-found]
+
 # =============================================================================
 # Root endpoint
 # =============================================================================
@@ -228,7 +231,7 @@ async def test_convert_async_concurrency_limit(
 
     # Submit more tasks than CPU cores to test the limit, but stay within the queue (max 20)
     num_tasks = min(max_concurrent + 2, 18)
-    task_ids = []
+    task_ids: list[str] = []
     for i in range(num_tasks):
         response = await async_client.post(
             "/convert?async=true", files={"file": ("test.pdf", sample_pdf_bytes)}

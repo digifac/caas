@@ -7,8 +7,6 @@ __all__ = [
 ]
 
 import io
-from typing import Any
-
 import pytest
 
 

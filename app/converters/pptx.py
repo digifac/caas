@@ -249,6 +249,7 @@ def convert_pptx_to_json(file_bytes: bytes) -> dict:
         "slides": [
             SlideJson(
                 index=slide[0],
+                title=None,
                 content=[line for line in slide[2] if line.strip()]
             ).model_dump()
             for slide in results

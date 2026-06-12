@@ -11,8 +11,6 @@ __all__ = [
 
 import io
 from datetime import date, datetime
-from typing import Any
-
 import pytest
 from openpyxl import Workbook
 

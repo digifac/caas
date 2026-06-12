@@ -170,14 +170,14 @@ class Settings(BaseSettings):
         return bool(self.redis_url.strip())
 
     @property
-    def cors_origins_list(self) -> list:
+    def cors_origins_list(self) -> list[str]:
         """Return the list of allowed CORS origins."""
         if not self.cors_origins:
             return []
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
-    def trusted_proxies_list(self) -> list:
+    def trusted_proxies_list(self) -> list[str]:
         """Return the list of trusted proxies (CIDR strings or IPs)."""
         if not self.trusted_proxies:
             return []

@@ -12,10 +12,15 @@ import json
 import fakeredis.aioredis  # type: ignore[import-untyped]
 import pytest
 from app.rate_limiter import RateLimiter
+from typing import TYPE_CHECKING
+
 from app.storage.base import StorageProtocol
 from app.storage.memory import MemoryStorage
 from app.storage.redis import RedisStorage
 from app.task_manager import TaskManager, TaskStatus
+
+if TYPE_CHECKING:
+    import fakeredis.aioredis
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -23,25 +28,25 @@ from app.task_manager import TaskManager, TaskStatus
 
 
 @pytest.fixture
-def memory_storage():
+def memory_storage() -> MemoryStorage:
     """Fresh MemoryStorage instance."""
     return MemoryStorage()
 
 
 @pytest.fixture
-def fake_redis():
+def fake_redis() -> "fakeredis.aioredis.FakeRedis":
     """Create a fakeredis async client that mimics redis.asyncio.Redis."""
     return fakeredis.aioredis.FakeRedis()
 
 
 @pytest.fixture
-def redis_storage(fake_redis):
+def redis_storage(fake_redis: "fakeredis.aioredis.FakeRedis") -> RedisStorage:
     """RedisStorage backed by fakeredis."""
     return RedisStorage(fake_redis)
 
 
 @pytest.fixture
-def memory_task_manager(memory_storage):
+def memory_task_manager(memory_storage: MemoryStorage) -> TaskManager:
     """TaskManager with MemoryStorage backend."""
     return TaskManager(
         max_concurrent=2,
@@ -52,7 +57,7 @@ def memory_task_manager(memory_storage):
 
 
 @pytest.fixture
-def redis_task_manager(redis_storage):
+def redis_task_manager(redis_storage: RedisStorage) -> TaskManager:
     """TaskManager with RedisStorage backend."""
     return TaskManager(
         max_concurrent=2,
@@ -63,7 +68,7 @@ def redis_task_manager(redis_storage):
 
 
 @pytest.fixture
-def memory_rate_limiter(memory_storage):
+def memory_rate_limiter(memory_storage: MemoryStorage) -> RateLimiter:
     """RateLimiter with MemoryStorage backend."""
     return RateLimiter(
         max_requests=5,
@@ -74,7 +79,7 @@ def memory_rate_limiter(memory_storage):
 
 
 @pytest.fixture
-def redis_rate_limiter(redis_storage):
+def redis_rate_limiter(redis_storage: RedisStorage) -> RateLimiter:
     """RateLimiter with RedisStorage backend."""
     return RateLimiter(
         max_requests=5,
@@ -181,11 +186,12 @@ class TestTaskManagerSwitching:
     async def test_task_lifecycle_memory(self, memory_task_manager: TaskManager):
         """Full task lifecycle with MemoryStorage."""
 
-        async def success_task():
+        async def success_task() -> dict[str, str]:
             return {"output": "done"}
 
         task_id = memory_task_manager.submit(success_task)
         # Wait for task to complete
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await memory_task_manager.get_task_with_storage(task_id)
@@ -199,11 +205,12 @@ class TestTaskManagerSwitching:
     async def test_task_lifecycle_redis(self, redis_task_manager: TaskManager):
         """Full task lifecycle with RedisStorage."""
 
-        async def success_task():
+        async def success_task() -> dict[str, str]:
             return {"output": "done"}
 
         task_id = redis_task_manager.submit(success_task)
         # Wait for task to complete
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await redis_task_manager.get_task_with_storage(task_id)
@@ -217,10 +224,11 @@ class TestTaskManagerSwitching:
     async def test_task_failure_memory(self, memory_task_manager: TaskManager):
         """Task failure should be handled identically."""
 
-        async def failing_task():
+        async def failing_task() -> dict[str, str]:
             raise RuntimeError("conversion failed")
 
         task_id = memory_task_manager.submit(failing_task)
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await memory_task_manager.get_task_with_storage(task_id)
@@ -235,10 +243,11 @@ class TestTaskManagerSwitching:
     async def test_task_failure_redis(self, redis_task_manager: TaskManager):
         """Task failure should be handled identically with Redis."""
 
-        async def failing_task():
+        async def failing_task() -> dict[str, str]:
             raise RuntimeError("conversion failed")
 
         task_id = redis_task_manager.submit(failing_task)
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await redis_task_manager.get_task_with_storage(task_id)
@@ -253,12 +262,12 @@ class TestTaskManagerSwitching:
     async def test_batch_memory(self, memory_task_manager: TaskManager):
         """Batch submission should work with MemoryStorage."""
 
-        async def convert_task(content, ext):
+        async def convert_task(content: bytes, ext: str) -> dict[str, str]:
             return {"output": f"converted {ext}"}
 
         batch_id = "test-batch-mem"
-        filenames = ["file0.pdf", "file1.pdf", "file2.pdf"]
-        contents_and_exts = [(b"fake-content", "pdf") for _ in range(3)]
+        filenames: list[str] = ["file0.pdf", "file1.pdf", "file2.pdf"]
+        contents_and_exts: list[tuple[bytes, str]] = [(b"fake-content", "pdf") for _ in range(3)]
 
         task_ids = memory_task_manager.submit_batch(
             batch_id, filenames, convert_task, contents_and_exts
@@ -288,12 +297,12 @@ class TestTaskManagerSwitching:
     async def test_batch_redis(self, redis_task_manager: TaskManager):
         """Batch submission should work with RedisStorage."""
 
-        async def convert_task(content, ext):
+        async def convert_task(content: bytes, ext: str) -> dict[str, str]:
             return {"output": f"converted {ext}"}
 
         batch_id = "test-batch-redis"
-        filenames = ["file0.pdf", "file1.pdf", "file2.pdf"]
-        contents_and_exts = [(b"fake-content", "pdf") for _ in range(3)]
+        filenames: list[str] = ["file0.pdf", "file1.pdf", "file2.pdf"]
+        contents_and_exts: list[tuple[bytes, str]] = [(b"fake-content", "pdf") for _ in range(3)]
 
         task_ids = redis_task_manager.submit_batch(
             batch_id, filenames, convert_task, contents_and_exts
@@ -324,7 +333,7 @@ class TestTaskManagerSwitching:
         should have expired the key via TTL.
         """
 
-        async def success_task():
+        async def success_task() -> dict[str, str]:
             return {"output": "done"}
 
         mem_store = MemoryStorage()
@@ -337,6 +346,7 @@ class TestTaskManagerSwitching:
 
         task_id = short_tm.submit(success_task)
         # Wait for completion
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await short_tm.get_task_with_storage(task_id)
@@ -345,7 +355,7 @@ class TestTaskManagerSwitching:
         assert result is not None
 
         # Simulate restart: clear in-memory cache (tasks dict)
-        short_tm._tasks.clear()
+        short_tm.tasks.clear()
 
         # Wait for TTL expiry in storage
         await asyncio.sleep(1.5)
@@ -353,14 +363,16 @@ class TestTaskManagerSwitching:
         assert expired_result is None
 
     @pytest.mark.asyncio
-    async def test_task_result_ttl_redis(self, fake_redis):
+    async def test_task_result_ttl_redis(
+        self, fake_redis: "fakeredis.aioredis.FakeRedis"
+    ):
         """Task results should expire with RedisStorage after in-memory cache is cleared.
 
         Simulates a restart scenario where the in-memory cache is lost but Redis
         should have expired the key via EXPIRE.
         """
 
-        async def success_task():
+        async def success_task() -> dict[str, str]:
             return {"output": "done"}
 
         redis_store = RedisStorage(fake_redis)
@@ -373,6 +385,7 @@ class TestTaskManagerSwitching:
 
         task_id = short_tm.submit(success_task)
         # Wait for completion
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await short_tm.get_task_with_storage(task_id)
@@ -381,7 +394,7 @@ class TestTaskManagerSwitching:
         assert result is not None
 
         # Simulate restart: clear in-memory cache (tasks dict)
-        short_tm._tasks.clear()
+        short_tm.tasks.clear()
 
         # Wait for TTL expiry in Redis
         await asyncio.sleep(1.5)
@@ -467,19 +480,21 @@ class TestFullSwitchingRegression:
     """Verify no regression when switching between backends."""
 
     @pytest.mark.asyncio
-    async def test_memory_to_redis_to_memory_task_manager(self, fake_redis):
+    async def test_memory_to_redis_to_memory_task_manager(
+        self, fake_redis: "fakeredis.aioredis.FakeRedis"
+    ):
         """Submit tasks with MemoryStorage, then RedisStorage, then MemoryStorage again.
 
         Each backend should work independently without interference.
         """
 
-        async def mem_task():
+        async def mem_task() -> dict[str, str]:
             return {"backend": "memory"}
 
-        async def redis_task():
+        async def redis_task() -> dict[str, str]:
             return {"backend": "redis"}
 
-        async def mem2_task():
+        async def mem2_task() -> dict[str, str]:
             return {"backend": "memory-again"}
 
         # Phase 1: MemoryStorage
@@ -493,6 +508,7 @@ class TestFullSwitchingRegression:
 
         task_id_mem = mem_tm.submit(mem_task)
 
+        result = None
         for _ in range(20):
             await asyncio.sleep(0.1)
             result = await mem_tm.get_task_with_storage(task_id_mem)
@@ -550,7 +566,9 @@ class TestFullSwitchingRegression:
         assert mem_result is None
 
     @pytest.mark.asyncio
-    async def test_memory_to_redis_to_memory_rate_limiter(self, fake_redis):
+    async def test_memory_to_redis_to_memory_rate_limiter(
+        self, fake_redis: "fakeredis.aioredis.FakeRedis"
+    ):
         """Rate limiting should work correctly across backend switches."""
         # Phase 1: MemoryStorage
         mem_store = MemoryStorage()

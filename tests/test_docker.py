@@ -15,11 +15,15 @@ import io
 import subprocess
 import time
 from collections.abc import Generator
+from typing import Any
 
 import httpx
 import pytest
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+
+# Import fixtures from modules
+from tests.fixtures.common import sample_pdf_bytes  # type: ignore[import-not-found]
 
 IMAGE_NAME = "caas-test"
 CONTAINER_NAME = "caas-test-container"
@@ -51,9 +55,9 @@ def _docker_available() -> bool:
         return False
 
 
-def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+def _run(cmd: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
     """Run a docker command and raise on failure."""
-    return subprocess.run(
+    result: subprocess.CompletedProcess[str] = subprocess.run(
         cmd,
         capture_output=True,
         text=True,
@@ -62,6 +66,7 @@ def _run(cmd: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
         errors="replace",
         **kwargs,
     )
+    return result
 
 
 def _wait_for_health(url: str, timeout: int = HEALTH_TIMEOUT) -> None:

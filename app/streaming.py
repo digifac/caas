@@ -13,14 +13,42 @@ import logging
 from collections.abc import AsyncGenerator
 
 from app.config import settings
-from app.converters.docx import convert_docx_to_md
-from app.converters.html import convert_html_to_md
-from app.converters.odp import convert_odp_to_md
-from app.converters.ods import convert_ods_to_md
-from app.converters.odt import convert_odt_to_md
+from app.converters.docx import (
+    convert_docx_to_json,
+    convert_docx_to_jsonl,
+    convert_docx_to_md,
+)
+from app.converters.html import (
+    convert_html_to_json,
+    convert_html_to_jsonl,
+    convert_html_to_md,
+)
+from app.converters.odp import (
+    convert_odp_to_json,
+    convert_odp_to_jsonl,
+    convert_odp_to_md,
+)
+from app.converters.ods import (
+    convert_ods_to_json,
+    convert_ods_to_jsonl,
+    convert_ods_to_md,
+)
+from app.converters.odt import (
+    convert_odt_to_json,
+    convert_odt_to_jsonl,
+    convert_odt_to_md,
+)
 from app.converters.pdf import convert_pdf_to_md_stream
-from app.converters.pptx import convert_pptx_to_md
-from app.converters.xlsx import convert_xlsx_to_md
+from app.converters.pptx import (
+    convert_pptx_to_json,
+    convert_pptx_to_jsonl,
+    convert_pptx_to_md,
+)
+from app.converters.xlsx import (
+    convert_xlsx_to_json,
+    convert_xlsx_to_jsonl,
+    convert_xlsx_to_md,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -57,15 +85,17 @@ async def _convert_docx_stream(file_bytes: bytes, format: str = "markdown") -> A
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_docx_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_docx_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_docx_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        for line in result.split("\n"):
+            if line.strip():
+                yield _sse_event(line)
     else:
         markdown = await asyncio.to_thread(convert_docx_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -86,15 +116,17 @@ async def _convert_odt_stream(file_bytes: bytes, format: str = "markdown") -> As
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_odt_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_odt_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_odt_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        for line in result.split("\n"):
+            if line.strip():
+                yield _sse_event(line)
     else:
         markdown = await asyncio.to_thread(convert_odt_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -115,15 +147,17 @@ async def _convert_html_stream(file_bytes: bytes, format: str = "markdown") -> A
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_html_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_html_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_html_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        for line in result.split("\n"):
+            if line.strip():
+                yield _sse_event(line)
     else:
         markdown = await asyncio.to_thread(convert_html_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -144,15 +178,17 @@ async def _convert_xlsx_stream(file_bytes: bytes, format: str = "markdown") -> A
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_xlsx_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_xlsx_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_xlsx_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        for line in result.split("\n"):
+            if line.strip():
+                yield _sse_event(line)
     else:
         markdown = await asyncio.to_thread(convert_xlsx_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -173,15 +209,17 @@ async def _convert_pptx_stream(file_bytes: bytes, format: str = "markdown") -> A
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_pptx_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_pptx_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_pptx_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        for line in result.split("\n"):
+            if line.strip():
+                yield _sse_event(line)
     else:
         markdown = await asyncio.to_thread(convert_pptx_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -191,7 +229,7 @@ async def _convert_pptx_stream(file_bytes: bytes, format: str = "markdown") -> A
             await asyncio.sleep(0)
 
 
-async def convert_stream(file_bytes: bytes, ext: str, format: str = "markdown") -> AsyncGenerator[str, None]:
+async def _convert_ods_stream(file_bytes: bytes, format: str = "markdown") -> AsyncGenerator[str, None]:
     """Stream ODS → Markdown conversion.
 
     The ODS converter processes the entire spreadsheet at once, so we split
@@ -199,19 +237,20 @@ async def convert_stream(file_bytes: bytes, ext: str, format: str = "markdown") 
     
     Args:
         file_bytes: Raw ODS content.
-        ext: File extension (ods).
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_ods_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_ods_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_ods_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        for line in result.split("\n"):
+            if line.strip():
+                yield _sse_event(line)
     else:
         markdown = await asyncio.to_thread(convert_ods_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -232,7 +271,8 @@ async def _convert_odp_stream(file_bytes: bytes, format: str = "markdown") -> As
         format: Output format ("markdown", "json", or "jsonl"). Defaults to "markdown".
     """
     if format == "json":
-        result = await asyncio.to_thread(convert_odp_to_json, file_bytes)
+        result_dict = await asyncio.to_thread(convert_odp_to_json, file_bytes)
+        result = json.dumps(result_dict, ensure_ascii=False)
         for i in range(0, len(result), settings.streaming_chunk_size):
             chunk = result[i : i + settings.streaming_chunk_size]
             yield _sse_event(chunk)

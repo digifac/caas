@@ -8,7 +8,7 @@ from fastapi import FastAPI, File, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
 
 from app.config import settings
-from app.converter import _convert_worker  # type: ignore[import-untyped]
+from app.converter import convert_worker
 from app.error_handler import ErrorHandler, error
 from app.ip_helpers import _get_client_ip  # type: ignore[import-untyped]
 from app.task_manager import QueueFullError, TaskManager, TaskStatus
@@ -201,7 +201,7 @@ def register_batch_routes(app: FastAPI) -> None:
 
             # Convert file
             try:
-                conversion_result: dict[str, Any] = await _convert_worker(content, ext)  # type: ignore[assignment]
+                conversion_result: dict[str, Any] = await convert_worker(content, ext)
                 result: dict[str, Any] = {
                     "index": index,
                     "filename": file.filename,
@@ -259,13 +259,13 @@ def register_batch_routes(app: FastAPI) -> None:
         # --- 8. Gestion des réponses HTTP selon le format ---
         if format == "jsonl":
             # Streaming JSONL: une ligne JSON par fichier
-            content = "\n".join(
+            jsonl_content = "\n".join(
                 f"{{\"index\": {i}, \"filename\": \"{r['filename']}\", "
                 f'"success": {str(r["success"]).lower()}, '
                 f'"result": {r.get("markdown") or r.get("error")}}}'
                 for i, r in enumerate(results)
             )
-            return Response(content=content, media_type="text/plain; charset=utf-8")
+            return Response(content=jsonl_content, media_type="text/plain; charset=utf-8")
         
         elif format == "json":
             # JSON structuré avec toutes les métadonnées
@@ -395,7 +395,7 @@ async def _handle_async_batch(
     for index, filename, content, ext in valid_files:
         try:
             entries.append(  # type: ignore[typeddict-item]
-                (index, filename, task_manager.submit(_convert_worker, content, ext), None)  # type: ignore[arg-type]
+                (index, filename, task_manager.submit(convert_worker, content, ext), None)
             )
         except QueueFullError as e:
             logger.warning(

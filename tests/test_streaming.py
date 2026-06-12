@@ -1,32 +1,34 @@
 """Tests for streaming conversion functionality."""
 
 import json
+from typing import Any
 from unittest.mock import patch
 
 import pytest
 from app.api import create_app
 from app.config import settings
 from app.streaming import (
-    _convert_docx_stream,
-    _convert_html_stream,
-    _convert_odp_stream,
-    _convert_odt_stream,
-    _convert_pdf_stream,
-    _convert_xlsx_stream,
-    _sse_event,
+    _convert_docx_stream,  # type: ignore[attr-defined]
+    _convert_html_stream,  # type: ignore[attr-defined]
+    _convert_odp_stream,  # type: ignore[attr-defined]
+    _convert_odt_stream,  # type: ignore[attr-defined]
+    _convert_pdf_stream,  # type: ignore[attr-defined]
+    _convert_xlsx_stream,  # type: ignore[attr-defined]
+    _sse_event,  # type: ignore[attr-defined]
     convert_stream,
 )
 from fastapi.testclient import TestClient
-
+# Import fixtures from modules
+from tests.fixtures.common import sample_docx_bytes # type: ignore[import-not-found]
 
 @pytest.fixture
-def app():
+def app() -> Any:
     """Create a test application."""
     return create_app()
 
 
 @pytest.fixture
-def client(app):
+def client(app: Any) -> Any:
     """Create a test client."""
     return TestClient(app)
 
@@ -71,14 +73,14 @@ class TestConvertStream:
         )
         pdf_content += b"trailer<</Root 1 0 R>>\n%%EOF"
 
-        events = []
+        events: list[str] = []
         async for event in convert_stream(pdf_content, "pdf"):
             events.append(event)
 
         assert len(events) >= 2  # At least start and done events
         # First event should be a start event
-        start_data = events[0].strip().removeprefix("data: ")
-        start_json = json.loads(start_data)
+        start_data: str = events[0].strip().removeprefix("data: ")
+        start_json: dict[str, Any] = json.loads(start_data)
         assert start_json["format"] == "pdf"
         assert start_json["status"] == "started"
 
@@ -90,7 +92,7 @@ class TestConvertStream:
                 pass
 
     @pytest.mark.asyncio
-    async def test_convert_stream_docx_yields_events(self, client):
+    async def test_convert_stream_docx_yields_events(self, client: TestClient):
         """DOCX streaming should yield events."""
         # We'll test via the API endpoint instead of directly
         # because mammoth needs a real DOCX file
@@ -103,12 +105,12 @@ class TestConvertStream:
 class TestStreamingEndpoint:
     """Tests for the /convert endpoint with streaming."""
 
-    def test_streaming_disabled_by_query(self, client):
+    def test_streaming_disabled_by_query(self, client: Any):
         """Streaming should work when enabled via query parameter."""
         # Create a simple HTML file for testing
         html_content = b"<html><body><h1>Test</h1><p>Content</p></body></html>"
 
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.html", html_content, "text/html")},
         )
@@ -117,41 +119,41 @@ class TestStreamingEndpoint:
         assert response.status_code == 200
         assert "text/event-stream" in response.headers.get("content-type", "")
 
-    def test_streaming_respects_setting(self, client):
+    def test_streaming_respects_setting(self, client: Any):
         """Streaming should respect the streaming_enabled setting."""
         html_content = b"<html><body><p>Test</p></body></html>"
 
         # When streaming is enabled (default), should work
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.html", html_content, "text/html")},
         )
         assert response.status_code == 200
 
-    def test_streaming_returns_sse_events(self, client):
+    def test_streaming_returns_sse_events(self, client: Any):
         """Streaming should return properly formatted SSE events."""
         html_content = b"<html><body><h1>Hello</h1><p>World</p></body></html>"
 
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.html", html_content, "text/html")},
         )
 
         assert response.status_code == 200
-        content = response.text
+        content: str = response.text
 
         # Should contain SSE data lines
         assert "data:" in content
 
         # Should have start and complete events
-        events = [line for line in content.split("\n") if line.startswith("data:")]
+        events: list[str] = [line for line in content.split("\n") if line.startswith("data:")]
         assert len(events) >= 2
 
-    def test_streaming_headers(self, client):
+    def test_streaming_headers(self, client: Any):
         """Streaming response should have correct headers."""
         html_content = b"<html><body><p>Test</p></body></html>"
 
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.html", html_content, "text/html")},
         )
@@ -159,7 +161,7 @@ class TestStreamingEndpoint:
         assert response.headers.get("cache-control") == "no-cache"
         assert response.headers.get("x-accel-buffering") == "no"
 
-    def test_streaming_pdf(self, client):
+    def test_streaming_pdf(self, client: Any):
         """Streaming should work with PDF files."""
         # Minimal valid PDF
         pdf_content = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
@@ -169,7 +171,7 @@ class TestStreamingEndpoint:
         )
         pdf_content += b"trailer<</Root 1 0 R>>\n%%EOF"
 
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.pdf", pdf_content, "application/pdf")},
         )
@@ -177,12 +179,12 @@ class TestStreamingEndpoint:
         assert response.status_code == 200
         assert "text/event-stream" in response.headers.get("content-type", "")
 
-    def test_streaming_validation_still_applies(self, client):
+    def test_streaming_validation_still_applies(self, client: Any):
         """File validation should still apply in streaming mode."""
         # Invalid PDF content
         invalid_pdf = b"This is not a valid PDF"
 
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.pdf", invalid_pdf, "application/pdf")},
         )
@@ -190,30 +192,30 @@ class TestStreamingEndpoint:
         # Should reject invalid files
         assert response.status_code == 400
 
-    def test_streaming_file_size_check(self, client):
+    def test_streaming_file_size_check(self, client: Any):
         """File size check should apply in streaming mode."""
         # Create content larger than max file size
         large_content = b"x" * (settings.max_file_size_mb * 1024 * 1024 + 1)
 
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.html", large_content, "text/html")},
         )
 
         assert response.status_code == 400
 
-    def test_streaming_unsupported_format(self, client):
-        """Unsupported format should be rejected in streaming mode."""
-        response = client.post(
+    def test_streaming_unsupported_format(self, client: Any):
+        """Unsupported formats should be rejected in streaming mode."""
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.txt", b"content", "text/plain")},
         )
 
         assert response.status_code == 400
 
-    def test_streaming_missing_filename(self, client):
+    def test_streaming_missing_filename(self, client: Any):
         """Missing filename should be rejected in streaming mode (FastAPI returns 422)."""
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": (None, b"content", "text/html")},
         )
@@ -221,20 +223,20 @@ class TestStreamingEndpoint:
         # FastAPI validates the UploadFile before our code runs, returning 422
         assert response.status_code == 422
 
-    def test_streaming_rate_limiting(self, client):
+    def test_streaming_rate_limiting(self, client: Any):
         """Rate limiting should apply to streaming requests."""
         html_content = b"<html><body><p>Test</p></body></html>"
 
         # Make requests up to the rate limit
         for _ in range(settings.rate_limit_max_requests):
-            response = client.post(
+            resp: Any = client.post(
                 "/convert?streaming=true",
                 files={"file": ("test.html", html_content, "text/html")},
             )
-            assert response.status_code in (200, 429)
+            assert resp.status_code in (200, 429)
 
         # Next request should be rate limited
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.html", html_content, "text/html")},
         )
@@ -268,14 +270,14 @@ class TestConvertPdfStream:
         """PDF streaming should yield SSE-formatted chunks."""
         with patch("app.streaming.convert_pdf_to_md_stream") as mock_convert:
 
-            async def mock_gen(file_bytes):
+            async def mock_gen(file_bytes: bytes):
                 yield "# Page 1"
                 yield "\n## Page 2"
 
             mock_convert.side_effect = mock_gen
 
             pdf_content = b"%PDF-1.4 test"
-            chunks = []
+            chunks: list[str] = []
             async for chunk in _convert_pdf_stream(pdf_content):
                 chunks.append(chunk)
 
@@ -293,7 +295,7 @@ class TestConvertPdfStream:
         )
         pdf_content += b"trailer<</Root 1 0 R>>\n%%EOF"
 
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_pdf_stream(pdf_content):
             chunks.append(chunk)
 
@@ -313,7 +315,7 @@ class TestConvertDocxStream:
             )
 
             docx_bytes = b"PK dummy docx content"
-            chunks = []
+            chunks: list[str] = []
             async for chunk in _convert_docx_stream(docx_bytes):
                 chunks.append(chunk)
 
@@ -329,7 +331,7 @@ class TestConvertDocxStream:
             mock_convert.return_value = long_content
 
             docx_bytes = b"PK dummy docx content"
-            chunks = []
+            chunks: list[str] = []
             async for chunk in _convert_docx_stream(docx_bytes):
                 chunks.append(chunk)
 
@@ -348,9 +350,9 @@ class TestConvertOdtStream:
     """Tests for _convert_odt_stream function."""
 
     @pytest.mark.asyncio
-    async def test_convert_odt_stream_yields_chunks(self, sample_odt_bytes):
+    async def test_convert_odt_stream_yields_chunks(self, sample_odt_bytes: bytes):
         """ODT streaming should yield SSE-formatted chunks."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_odt_stream(sample_odt_bytes):
             chunks.append(chunk)
 
@@ -366,7 +368,7 @@ class TestConvertHtmlStream:
         """HTML streaming should yield SSE-formatted chunks."""
         html_content = b"<html><body><h1>Test</h1><p>Content</p></body></html>"
 
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_html_stream(html_content):
             chunks.append(chunk)
 
@@ -378,7 +380,7 @@ class TestConvertHtmlStream:
         """HTML streaming should handle empty HTML."""
         html_content = b"<html><body></body></html>"
 
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_html_stream(html_content):
             chunks.append(chunk)
 
@@ -399,7 +401,7 @@ class TestConvertStreamErrorHandling:
 
             mock_stream.side_effect = error_generator
 
-            chunks = []
+            chunks: list[str] = []
             try:
                 async for chunk in convert_stream(b"%PDF-1.4 test", "pdf"):
                     chunks.append(chunk)
@@ -422,7 +424,7 @@ class TestConvertStreamErrorHandling:
         )
         pdf_content += b"trailer<</Root 1 0 R>>\n%%EOF"
 
-        chunks = []
+        chunks: list[str] = []
         async for chunk in convert_stream(pdf_content, "pdf"):
             chunks.append(chunk)
 
@@ -435,7 +437,7 @@ class TestConvertStreamErrorHandling:
         """convert_stream start event should contain format and size."""
         pdf_content = b"%PDF-1.4 test content"
 
-        chunks = []
+        chunks: list[str] = []
         async for chunk in convert_stream(pdf_content, "pdf"):
             chunks.append(chunk)
             break  # Only need first chunk
@@ -450,9 +452,9 @@ class TestConvertXlsxStream:
     """Tests for XLSX streaming conversion."""
 
     @pytest.mark.asyncio
-    async def test_convert_xlsx_stream_yields_chunks(self, sample_xlsx_bytes):
+    async def test_convert_xlsx_stream_yields_chunks(self, sample_xlsx_bytes: bytes):
         """_convert_xlsx_stream should yield SSE data chunks."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_xlsx_stream(sample_xlsx_bytes):
             chunks.append(chunk)
 
@@ -460,9 +462,9 @@ class TestConvertXlsxStream:
         assert all(chunk.startswith("data:") for chunk in chunks)
 
     @pytest.mark.asyncio
-    async def test_convert_xlsx_stream_multi_sheet(self, sample_xlsx_multi_sheet_bytes):
+    async def test_convert_xlsx_stream_multi_sheet(self, sample_xlsx_multi_sheet_bytes: bytes):
         """_convert_xlsx_stream should yield chunks for multi-sheet workbooks."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_xlsx_stream(sample_xlsx_multi_sheet_bytes):
             chunks.append(chunk)
 
@@ -478,9 +480,9 @@ class TestConvertOdpStream:
     """Tests for ODP streaming conversion."""
 
     @pytest.mark.asyncio
-    async def test_convert_odp_stream_yields_chunks(self, sample_odp_bytes):
+    async def test_convert_odp_stream_yields_chunks(self, sample_odp_bytes: bytes):
         """_convert_odp_stream should yield SSE data chunks."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_odp_stream(sample_odp_bytes):
             chunks.append(chunk)
 
@@ -488,9 +490,9 @@ class TestConvertOdpStream:
         assert all(chunk.startswith("data:") for chunk in chunks)
 
     @pytest.mark.asyncio
-    async def test_convert_odp_stream_content(self, sample_odp_bytes):
+    async def test_convert_odp_stream_content(self, sample_odp_bytes: bytes):
         """_convert_odp_stream should yield slide content."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_odp_stream(sample_odp_bytes):
             chunks.append(chunk)
 
@@ -501,9 +503,9 @@ class TestConvertOdpStream:
         assert "Présentation de Test" in full_content
 
     @pytest.mark.asyncio
-    async def test_convert_odp_stream_list(self, sample_odp_with_list_bytes):
+    async def test_convert_odp_stream_list(self, sample_odp_with_list_bytes: bytes):
         """_convert_odp_stream should yield list content."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_odp_stream(sample_odp_with_list_bytes):
             chunks.append(chunk)
 
@@ -515,9 +517,9 @@ class TestConvertOdpStream:
         assert "Pommes" in full_content
 
     @pytest.mark.asyncio
-    async def test_convert_odp_stream_special_chars(self, sample_odp_with_special_chars_bytes):
+    async def test_convert_odp_stream_special_chars(self, sample_odp_with_special_chars_bytes: bytes):
         """_convert_odp_stream should preserve special characters."""
-        chunks = []
+        chunks: list[str] = []
         async for chunk in _convert_odp_stream(sample_odp_with_special_chars_bytes):
             chunks.append(chunk)
 
@@ -532,9 +534,9 @@ class TestConvertOdpStream:
 class TestOdpStreamingEndpoint:
     """Tests for ODP streaming via the /convert?streaming=true endpoint."""
 
-    def test_streaming_odp_success(self, client, sample_odp_bytes):
+    def test_streaming_odp_success(self, client: Any, sample_odp_bytes: bytes):
         """Streaming ODP conversion should return SSE events."""
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.odp", sample_odp_bytes, "application/vnd.oasis.opendocument.presentation")},
         )
@@ -544,9 +546,9 @@ class TestOdpStreamingEndpoint:
         content = response.text
         assert "data:" in content
 
-    def test_streaming_odp_headers(self, client, sample_odp_bytes):
+    def test_streaming_odp_headers(self, client: Any, sample_odp_bytes: bytes):
         """Streaming ODP response should have correct headers."""
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.odp", sample_odp_bytes, "application/vnd.oasis.opendocument.presentation")},
         )
@@ -554,9 +556,9 @@ class TestOdpStreamingEndpoint:
         assert response.headers.get("cache-control") == "no-cache"
         assert response.headers.get("x-accel-buffering") == "no"
 
-    def test_streaming_odp_content(self, client, sample_odp_bytes):
+    def test_streaming_odp_content(self, client: Any, sample_odp_bytes: bytes):
         """Streaming ODP should contain slide content."""
-        response = client.post(
+        response: Any = client.post(
             "/convert?streaming=true",
             files={"file": ("test.odp", sample_odp_bytes, "application/vnd.oasis.opendocument.presentation")},
         )

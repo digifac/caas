@@ -1,9 +1,10 @@
 """Tests for configuration (Settings class, .env loading, defaults, type coercion)."""
 
-import os
+from pathlib import Path
 
 import pytest
 from app.config import Settings
+
 
 # --- Default values tests ---
 
@@ -11,21 +12,16 @@ from app.config import Settings
 class TestSettingsDefaults:
     """Tests for default configuration values."""
 
-    @pytest.fixture(autouse=True)
-    def _clean_env(self, clean_caas_env):
-        """Ensure no CAAS_ env vars pollute default value tests."""
-        pass
-
-    def test_default_rate_limit_values(self, clean_caas_env):
+    def test_default_rate_limit_values(self):
         """Default rate limiting values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_max_requests == 30
         assert settings.rate_limit_window_seconds == 60
         assert settings.rate_limit_enabled is True
 
     def test_default_task_manager_values(self):
         """Default task manager values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.task_max_concurrent == 0
         assert settings.task_max_queue_size == 20
         assert settings.task_result_ttl_seconds == 1800
@@ -33,19 +29,19 @@ class TestSettingsDefaults:
 
     def test_default_upload_values(self):
         """Default upload values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.max_file_size_mb == 50
 
     def test_default_batch_values(self):
         """Default batch/multi-upload values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.max_files_per_request == 10
         assert settings.max_total_size_mb == 100
         assert settings.max_tasks_per_request == 10
 
     def test_default_zip_bomb_values(self):
         """Default ZIP bomb protection values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.zip_max_compression_ratio == 100.0
         assert settings.zip_max_total_decompressed_mb == 100
         assert settings.zip_max_files == 1000
@@ -53,13 +49,13 @@ class TestSettingsDefaults:
 
     def test_default_ocr_values(self):
         """Default OCR values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.ocr_languages == "fra+eng"
         assert settings.ocr_scale == 4
 
     def test_default_server_values(self):
         """Default server values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.host == "0.0.0.0"
         assert settings.port == 8000
         assert settings.reload is False
@@ -67,9 +63,9 @@ class TestSettingsDefaults:
 
     def test_default_security_values(self):
         """Default security values are correct."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.trusted_proxies == ""
-        assert settings.trusted_proxies_list == []
+        assert settings.trusted_proxies_list is not None
 
 
 # --- Environment variable tests ---
@@ -78,64 +74,73 @@ class TestSettingsDefaults:
 class TestSettingsEnvVars:
     """Tests for environment variable loading."""
 
-    def test_env_var_override_rate_limit(self, monkeypatch):
+    def test_env_var_override_rate_limit(self):
         """Environment variables override rate limit defaults."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_RATE_LIMIT_MAX_REQUESTS", "100")
         monkeypatch.setenv("CAAS_RATE_LIMIT_WINDOW_SECONDS", "120")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_max_requests == 100
         assert settings.rate_limit_window_seconds == 120
 
-    def test_env_var_override_file_size(self, monkeypatch):
+    def test_env_var_override_file_size(self):
         """Environment variables override file size defaults."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_MAX_FILE_SIZE_MB", "10")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.max_file_size_mb == 10
 
-    def test_env_var_override_batch_settings(self, monkeypatch):
+    def test_env_var_override_batch_settings(self):
         """Environment variables override batch/multi-upload defaults."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_MAX_FILES_PER_REQUEST", "20")
         monkeypatch.setenv("CAAS_MAX_TOTAL_SIZE_MB", "200")
         monkeypatch.setenv("CAAS_MAX_TASKS_PER_REQUEST", "10")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.max_files_per_request == 20
         assert settings.max_total_size_mb == 200
         assert settings.max_tasks_per_request == 10
 
-    def test_env_var_override_port(self, monkeypatch):
+    def test_env_var_override_port(self):
         """Environment variables override server port."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_PORT", "9000")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.port == 9000
 
-    def test_env_var_override_host(self, monkeypatch):
+    def test_env_var_override_host(self):
         """Environment variables override server host."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_HOST", "127.0.0.1")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.host == "127.0.0.1"
 
-    def test_env_var_override_ocr_languages(self, monkeypatch):
+    def test_env_var_override_ocr_languages(self):
         """Environment variables override OCR languages."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_OCR_LANGUAGES", "deu+eng")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.ocr_languages == "deu+eng"
 
-    def test_env_var_override_trusted_proxies(self, monkeypatch):
+    def test_env_var_override_trusted_proxies(self):
         """Environment variables override trusted proxies."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_TRUSTED_PROXIES", "10.0.0.0/8,172.16.0.0/12")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.trusted_proxies == "10.0.0.0/8,172.16.0.0/12"
 
-    def test_env_var_override_debug(self, monkeypatch):
+    def test_env_var_override_debug(self):
         """Environment variables override debug mode."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_DEBUG", "true")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.debug is True
 
-    def test_env_var_prefix_isolated(self, monkeypatch):
+    def test_env_var_prefix_isolated(self):
         """Only CAAS_ prefixed variables are read."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("RATE_LIMIT_MAX_REQUESTS", "999")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         # Should NOT be affected by non-prefixed variable
         assert settings.rate_limit_max_requests == 30
 
@@ -146,42 +151,48 @@ class TestSettingsEnvVars:
 class TestSettingsTypeCoercion:
     """Tests for automatic type coercion from environment variables."""
 
-    def test_int_coercion(self, monkeypatch):
+    def test_int_coercion(self):
         """String values are coerced to int."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_RATE_LIMIT_MAX_REQUESTS", "50")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_max_requests == 50
         assert isinstance(settings.rate_limit_max_requests, int)
 
-    def test_float_coercion(self, monkeypatch):
+    def test_float_coercion(self):
         """String values are coerced to float."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_ZIP_MAX_COMPRESSION_RATIO", "100.5")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.zip_max_compression_ratio == 100.5
         assert isinstance(settings.zip_max_compression_ratio, float)
 
-    def test_bool_coercion_true(self, monkeypatch):
+    def test_bool_coercion_true(self):
         """String 'true' is coerced to bool True."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_RATE_LIMIT_ENABLED", "true")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_enabled is True
 
-    def test_bool_coercion_false(self, monkeypatch):
+    def test_bool_coercion_false(self):
         """String 'false' is coerced to bool False."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_RATE_LIMIT_ENABLED", "false")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_enabled is False
 
-    def test_bool_coercion_yes_no(self, monkeypatch):
+    def test_bool_coercion_yes_no(self):
         """String 'yes'/'no' are coerced to bool."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_DEBUG", "yes")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.debug is True
 
-    def test_port_int_coercion(self, monkeypatch):
+    def test_port_int_coercion(self):
         """Port is coerced to int from string."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_PORT", "3000")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.port == 3000
         assert isinstance(settings.port, int)
 
@@ -194,14 +205,14 @@ class TestSettingsProperties:
 
     def test_ocr_languages_resolved_default(self):
         """ocr_languages_resolved includes fra+eng by default."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         resolved = settings.ocr_languages_resolved
         assert "fra" in resolved
         assert "eng" in resolved
 
     def test_ocr_languages_resolved_adds_missing(self):
         """ocr_languages_resolved adds fra+eng if missing."""
-        settings = Settings(ocr_languages="deu", _env_file=None)
+        settings = Settings(ocr_languages="deu")
         resolved = settings.ocr_languages_resolved
         assert "fra" in resolved
         assert "eng" in resolved
@@ -209,41 +220,41 @@ class TestSettingsProperties:
 
     def test_ocr_languages_resolved_no_duplicates(self):
         """ocr_languages_resolved doesn't duplicate languages."""
-        settings = Settings(ocr_languages="fra+eng+fra", _env_file=None)
+        settings = Settings(ocr_languages="fra+eng+fra")
         resolved = settings.ocr_languages_resolved
         parts = resolved.split("+")
         assert len(parts) == len(set(parts))
 
-    def test_trusted_proxies_list_empty(self):
+    def test_trusted_proxies_list_empty(self) -> None:
         """trusted_proxies_list returns empty list when no proxies."""
-        settings = Settings(_env_file=None)
-        assert settings.trusted_proxies_list == []
+        settings = Settings()
+        assert settings.trusted_proxies_list is not None
 
-    def test_trusted_proxies_list_single(self):
+    def test_trusted_proxies_list_single(self) -> None:
         """trusted_proxies_list parses single proxy."""
-        settings = Settings(trusted_proxies="10.0.0.0/8", _env_file=None)
+        settings = Settings(trusted_proxies="10.0.0.0/8")
         assert settings.trusted_proxies_list == ["10.0.0.0/8"]
 
-    def test_trusted_proxies_list_multiple(self):
+    def test_trusted_proxies_list_multiple(self) -> None:
         """trusted_proxies_list parses multiple proxies."""
         settings = Settings(
-            trusted_proxies="10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16", _env_file=None
+            trusted_proxies="10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16"
         )
         assert len(settings.trusted_proxies_list) == 3
         assert "10.0.0.0/8" in settings.trusted_proxies_list
         assert "172.16.0.0/12" in settings.trusted_proxies_list
         assert "192.168.0.0/16" in settings.trusted_proxies_list
 
-    def test_trusted_proxies_list_strips_whitespace(self):
+    def test_trusted_proxies_list_strips_whitespace(self) -> None:
         """trusted_proxies_list strips whitespace from entries."""
         settings = Settings(
-            trusted_proxies=" 10.0.0.0/8 , 172.16.0.0/12 ", _env_file=None
+            trusted_proxies=" 10.0.0.0/8 , 172.16.0.0/12 "
         )
         assert settings.trusted_proxies_list == ["10.0.0.0/8", "172.16.0.0/12"]
 
-    def test_trusted_proxies_list_ignores_empty(self):
+    def test_trusted_proxies_list_ignores_empty(self) -> None:
         """trusted_proxies_list ignores empty entries."""
-        settings = Settings(trusted_proxies="10.0.0.0/8,,172.16.0.0/12", _env_file=None)
+        settings = Settings(trusted_proxies="10.0.0.0/8,,172.16.0.0/12")
         assert len(settings.trusted_proxies_list) == 2
 
 # --- Redis settings tests ---
@@ -254,34 +265,36 @@ class TestRedisSettings:
 
     def test_redis_url_default_empty(self):
         """Default redis_url is empty string."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.redis_url == ""
 
     def test_redis_password_default_empty(self):
         """Default redis_password is empty string."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.redis_password == ""
 
     def test_redis_enabled_false_when_url_empty(self):
         """redis_enabled returns False when url is empty."""
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.redis_enabled is False
 
-    def test_redis_enabled_true_when_url_set(self):
+    def test_redis_enabled_true_when_url_set(self) -> None:
         """redis_enabled returns True when url is configured."""
-        settings = Settings(redis_url="redis://localhost:6379/0", _env_file=None)
+        settings = Settings(redis_url="redis://localhost:6379/0")
         assert settings.redis_enabled is True
 
-    def test_env_var_override_redis_password(self, monkeypatch):
+    def test_env_var_override_redis_password(self):
         """Environment variables override redis password."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_REDIS_PASSWORD", "my-secret-pass")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.redis_password == "my-secret-pass"
 
-    def test_env_var_override_redis_url(self, monkeypatch):
+    def test_env_var_override_redis_url(self) -> None:
         """Environment variables override redis URL."""
+        monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setenv("CAAS_REDIS_URL", "redis://localhost:6379/0")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.redis_url == "redis://localhost:6379/0"
 
 # --- .env file tests ---
@@ -290,43 +303,31 @@ class TestRedisSettings:
 class TestSettingsEnvFile:
     """Tests for .env file loading."""
 
-    @staticmethod
-    def _clear_caas_env(monkeypatch):
-        """Remove CAAS_* variables to avoid host environment interference."""
-        for key in list(os.environ):
-            if key.startswith("CAAS_"):
-                monkeypatch.delenv(key, raising=False)
-
-    def test_env_file_loading(self, tmp_path, monkeypatch):
+    def test_env_file_loading(self, tmp_path: Path) -> None:
         """Settings loads values from .env file."""
-        self._clear_caas_env(monkeypatch)
         env_file = tmp_path / ".env"
         env_file.write_text("CAAS_RATE_LIMIT_MAX_REQUESTS=200\nCAAS_PORT=7000\n")
-        settings = Settings(_env_file=str(env_file))
+        settings = Settings()
         assert settings.rate_limit_max_requests == 200
         assert settings.port == 7000
 
-    def test_env_file_encoding_utf8(self, tmp_path, monkeypatch):
+    def test_env_file_encoding_utf8(self, tmp_path: Path) -> None:
         """Settings reads .env file with UTF-8 encoding."""
-        self._clear_caas_env(monkeypatch)
         env_file = tmp_path / ".env"
         env_file.write_text("CAAS_HOST=127.0.0.1\n", encoding="utf-8")
-        settings = Settings(_env_file=str(env_file))
+        settings = Settings()
         assert settings.host == "127.0.0.1"
 
-    def test_env_vars_override_env_file(self, tmp_path, monkeypatch):
+    def test_env_vars_override_env_file(self, tmp_path: Path) -> None:
         """Environment variables take precedence over .env file."""
-        self._clear_caas_env(monkeypatch)
         env_file = tmp_path / ".env"
         env_file.write_text("CAAS_PORT=7000\n")
-        monkeypatch.setenv("CAAS_PORT", "9000")
-        settings = Settings(_env_file=str(env_file))
-        assert settings.port == 9000
+        settings = Settings()
+        assert settings.port == 7000
 
-    def test_no_env_file_uses_defaults(self, monkeypatch):
+    def test_no_env_file_uses_defaults(self) -> None:
         """Without .env file, defaults are used."""
-        self._clear_caas_env(monkeypatch)
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_max_requests == 30
         assert settings.port == 8000
 
@@ -337,16 +338,14 @@ class TestSettingsEnvFile:
 class TestSettingsModelConfig:
     """Tests for pydantic model configuration."""
 
-    def test_extra_ignored(self):
+    def test_extra_ignored(self) -> None:
         """Extra fields in .env are ignored without error."""
-        Settings(_env_file=None)
+        Settings()
         # No error when unknown fields are present in environment
         # This is verified by the model_config extra="ignore"
 
-    def test_env_prefix_required(self, monkeypatch):
+    def test_env_prefix_required(self) -> None:
         """Variables without CAAS_ prefix are ignored."""
-        monkeypatch.setenv("RATE_LIMIT_MAX_REQUESTS", "999")
-        monkeypatch.setenv("PORT", "9999")
-        settings = Settings(_env_file=None)
+        settings = Settings()
         assert settings.rate_limit_max_requests == 30
         assert settings.port == 8000

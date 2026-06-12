@@ -23,20 +23,20 @@ class TestMainReExports:
         from app.main import AppError
 
         assert hasattr(AppError, "_messages")
-        assert "SERVER_ERROR" in AppError._messages
+        assert "SERVER_ERROR" in AppError._messages  # type: ignore[attr-defined]
         assert hasattr(AppError, "get")
 
     def test_clean_lines_reexported(self):
-        """app.main._clean_lines should be callable."""
-        from app.main import _clean_lines
+        """app.main.clean_lines should be callable."""
+        from app.main import clean_lines
 
-        assert callable(_clean_lines)
+        assert callable(clean_lines)
 
     def test_convert_worker_reexported(self):
-        """app.main._convert_worker should be callable."""
-        from app.main import _convert_worker
+        """app.main.convert_worker should be callable."""
+        from app.main import convert_worker
 
-        assert callable(_convert_worker)
+        assert callable(convert_worker)
 
     def test_all_exports_present(self):
         """__all__ should contain all expected symbols."""
@@ -46,8 +46,8 @@ class TestMainReExports:
             "app",
             "task_manager",
             "AppError",
-            "_clean_lines",
-            "_convert_worker",
+            "clean_lines",
+            "convert_worker",
         }
         assert set(main.__all__) == expected
 

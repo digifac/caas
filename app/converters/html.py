@@ -107,7 +107,7 @@ def convert_html_to_md(file_bytes: bytes) -> str:
     return markdown.strip()
 
 
-def _sanitize_url(url: str) -> str:
+def sanitize_url(url: str) -> str:
     """Sanitize a URL by blocking dangerous schemes.
 
     Blocks javascript:, vbscript:, data:, file:, and blob: URLs
@@ -151,7 +151,7 @@ def _sanitize_soup(soup: BeautifulSoup) -> None:
             href_val = element["href"]
             if isinstance(href_val, list):
                 href_val = " ".join(href_val)
-            element["href"] = _sanitize_url(href_val)
+            element["href"] = sanitize_url(href_val)
 
         # Sanitize src on tags that load external resources
         if (
@@ -161,7 +161,7 @@ def _sanitize_soup(soup: BeautifulSoup) -> None:
             src_val = element["src"]
             if isinstance(src_val, list):
                 src_val = " ".join(src_val)  # type: ignore
-            element["src"] = _sanitize_url(src_val)
+            element["src"] = sanitize_url(src_val)
 
 
 def _convert_element(element: Union[_bs4_Tag, _bs4_NavigableString]) -> list[str]:  # type: ignore[misc]
@@ -289,6 +289,7 @@ def _convert_element(element: Union[_bs4_Tag, _bs4_NavigableString]) -> list[str
         return [text.strip()]
 
     # For other tags, just process children
+    lines = []
     for child in element.children:
         lines.extend(_convert_element(child))  # type: ignore
     return lines
