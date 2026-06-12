@@ -145,6 +145,13 @@ def register_convert_routes(app: FastAPI) -> None:
         except HTTPException:
             # Re-raise HTTPException (from error()) without catching it
             raise
+        except ValueError as e:
+            # Handle PDF page limit exceeded specifically
+            error_msg = str(e).lower()
+            if "exceeding the limit" in error_msg or "too many pages" in error_msg:
+                logger.warning("PDF page limit exceeded for %s: %s", file.filename, e)
+                error(400, "PDF_TOO_MANY_PAGES", detail=str(e))
+            raise
         except Exception as e:
             logger.error("Error during conversion: %s", str(e))
             error(500, "CONVERSION_ERROR", detail=str(e))

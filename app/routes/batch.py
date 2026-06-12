@@ -46,7 +46,7 @@ def register_batch_routes(app: FastAPI) -> None:
 
         # --- 0. Validation du paramètre format ---
         if format is None:
-            format = "markdown"
+            format = "json"
         
         valid_formats = ["markdown", "json", "jsonl"]
         if format not in valid_formats:
@@ -280,7 +280,8 @@ def register_batch_routes(app: FastAPI) -> None:
             )
             return JSONResponse(
                 content=pydantic_response.model_dump(), 
-                media_type="application/json"
+                media_type="application/json",
+                status_code=status_code
             )
         
         else:  # markdown (défaut)

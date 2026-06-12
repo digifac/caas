@@ -187,18 +187,33 @@ def _convert_element(element: Union[_bs4_Tag, _bs4_NavigableString]) -> list[str
 
     tag = element.name  # type: ignore[union-attr]
 
-    # Headings
+    # Headings - process children to preserve inline formatting
     if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
         level = int(tag[1])
-        text = _get_text(element)
-        content = text.strip()
+        parts: list[str] = []
+        for child in element.children:
+            child_lines = _convert_element(child)
+            for line in child_lines:
+                stripped = line.strip()  # type: ignore
+                if stripped:
+                    parts.append(stripped)
+
+        content = "".join(parts).strip()
         return [f"{'#' * level} {content}"]
 
-    # Paragraphs
+    # Paragraphs - process children to preserve inline formatting (links, bold, italic, images)
     if tag == "p":
-        text = _get_text(element)
-        if text.strip():
-            return [text.strip(), ""]
+        parts: list[str] = []
+        for child in element.children:
+            child_lines = _convert_element(child)
+            for line in child_lines:
+                stripped = line.strip()  # type: ignore
+                if stripped:
+                    parts.append(stripped)
+
+        content = "".join(parts).strip()
+        if content:
+            return [content, ""]
 
     # Line breaks
     if tag == "br":

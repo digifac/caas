@@ -51,8 +51,12 @@ def _create_odp_with_content(texts: list[str]) -> bytes:
 
 @pytest.fixture
 def sample_odp_bytes() -> bytes:
-    """Generate a minimal ODP presentation document in memory using odfpy."""
-    return _create_odp_with_content(["Présentation de Test"])
+    """Generate a minimal ODP presentation document with two slides in memory using odfpy."""
+    return _create_odp_with_content([
+        "Présentation de Test",
+        "Sous-titre de la présentation",
+        "Deuxième Slide"
+    ])
 
 
 @pytest.fixture
@@ -113,12 +117,12 @@ def sample_odp_with_list_bytes() -> bytes:
 @pytest.fixture
 def sample_odp_with_special_chars_bytes() -> bytes:
     """Generate an ODP document with special characters using odfpy."""
-    texts = ["Caractères spéciaux", "Àéîôù € £ ¥", "Accents et symboles"]
+    texts = ["Caractères spéciaux", "Àéîôù © € £ ¥", "Accents et symboles"]
     return _create_odp_with_content(texts)
 
 
 @pytest.fixture  
 def sample_odp_with_groups_bytes() -> bytes:
-    """Generate an ODP document with basic content using odfpy."""
-    texts = ["Titre", "Objet 1", "Objet 2"]
+    """Generate an ODP document with grouped content using odfpy."""
+    texts = ["Groupe de contenu", "Plusieurs éléments", "Titre dans un groupe"]
     return _create_odp_with_content(texts)

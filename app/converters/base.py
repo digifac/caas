@@ -94,8 +94,12 @@ def is_uppercase_heading(line: str) -> bool:
     - is actually uppercase (line == line.upper())
     - contains no punctuation (excludes sentences/paragraphs)
     - is not a known acronym (e.g., API, URL, HTTP)
+    - is not a Markdown separator (--- or similar)
     """
     if len(line) < 3 or len(line) > 40:
+        return False
+    # Exclude Markdown horizontal rules (lines that are only hyphens/underscores/spaces)
+    if re.match(r"^[\-\_ ]+$", line):
         return False
     if line != line.upper():
         return False

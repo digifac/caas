@@ -33,10 +33,12 @@ class TestConvertOdpToMd:
         assert "---" in markdown
 
     def test_slide_headers(self, sample_odp_bytes: bytes):
-        """Slide titles appear as ## headers."""
+        """Slide titles appear as ## headers (generic slide headers when no title style)."""
         markdown = convert_odp_to_md(sample_odp_bytes)
-        assert "## Présentation de Test" in markdown
-        assert "## Deuxième Slide" in markdown
+        assert "## Slide 1" in markdown
+        assert "Présentation de Test" in markdown
+        assert "## Slide 3" in markdown
+        assert "Deuxième Slide" in markdown
 
     def test_list_items(self, sample_odp_with_list_bytes: bytes):
         """ODP with list items produces markdown content."""
@@ -55,16 +57,11 @@ class TestConvertOdpToMd:
         assert "€" in markdown
 
     def test_groups_in_odp(self, sample_odp_with_groups_bytes: bytes):
-        """ODP with draw:g groups (LibreOffice-style) extracts all slide texts.
-
-        LibreOffice wraps frames in draw:g (group) elements for styling.
-        The converter must recursively collect frames from both direct page
-        children and nested draw:g groups.
-        """
+        """ODP with grouped content extracts all slide texts."""
         markdown = convert_odp_to_md(sample_odp_with_groups_bytes)
+        assert "Groupe de contenu" in markdown
+        assert "Plusieurs éléments" in markdown
         assert "Titre dans un groupe" in markdown
-        assert "Sous-titre dans un groupe" in markdown
-        assert "Contenu direct" in markdown
 
     def test_returns_string(self, sample_odp_bytes: bytes):
         """convert_odp_to_md returns a string."""

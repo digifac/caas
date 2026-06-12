@@ -31,6 +31,7 @@ def sample_ods_bytes() -> bytes:
     p2 = text.P()  # type: ignore[attr-defined]
     p2.addText("Valeur")  # type: ignore[attr-defined]
     c2.addElement(p2)  # type: ignore[attr-defined]
+    row1.addElement(c2)  # type: ignore[attr-defined]
     table_elem.addElement(row1)  # type: ignore[attr-defined]
 
     # Row 2: data
@@ -89,6 +90,7 @@ def sample_ods_multi_sheet_bytes() -> bytes:
     p2 = text.P()  # type: ignore[attr-defined]
     p2.addText("Prix")  # type: ignore[attr-defined]
     c2.addElement(p2)  # type: ignore[attr-defined]
+    row1.addElement(c2)  # type: ignore[attr-defined]
     sheet1.addElement(row1)  # type: ignore[attr-defined]
 
     row2 = table.TableRow()  # type: ignore[attr-defined]
@@ -101,6 +103,7 @@ def sample_ods_multi_sheet_bytes() -> bytes:
     p4 = text.P()  # type: ignore[attr-defined]
     p4.addText("1.5")  # type: ignore[attr-defined]
     c4.addElement(p4)  # type: ignore[attr-defined]
+    row2.addElement(c4)  # type: ignore[attr-defined]
     sheet1.addElement(row2)  # type: ignore[attr-defined]
 
     row3 = table.TableRow()  # type: ignore[attr-defined]
@@ -113,6 +116,7 @@ def sample_ods_multi_sheet_bytes() -> bytes:
     p6 = text.P()  # type: ignore[attr-defined]
     p6.addText("2.0")  # type: ignore[attr-defined]
     c6.addElement(p6)  # type: ignore[attr-defined]
+    row3.addElement(c6)  # type: ignore[attr-defined]
     sheet1.addElement(row3)  # type: ignore[attr-defined]
 
     doc.spreadsheet.addElement(sheet1)  # type: ignore[attr-defined]
@@ -124,10 +128,12 @@ def sample_ods_multi_sheet_bytes() -> bytes:
     p7 = text.P()  # type: ignore[attr-defined]
     p7.addText("Total")  # type: ignore[attr-defined]
     c7.addElement(p7)  # type: ignore[attr-defined]
+    row4.addElement(c7)  # type: ignore[attr-defined]
     c8 = table.TableCell()  # type: ignore[attr-defined]
     p8 = text.P()  # type: ignore[attr-defined]
     p8.addText("3.5")  # type: ignore[attr-defined]
     c8.addElement(p8)  # type: ignore[attr-defined]
+    row4.addElement(c8)  # type: ignore[attr-defined]
     sheet2.addElement(row4)  # type: ignore[attr-defined]
 
     doc.spreadsheet.addElement(sheet2)  # type: ignore[attr-defined]

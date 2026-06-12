@@ -8,7 +8,7 @@ import httpx
 import pytest
 from app.api import app, task_manager
 
-from fixtures.batch import docx_bytes, pdf_bytes_1, pdf_bytes_2  # type: ignore[import-not-found]
+from tests.fixtures.batch import docx_bytes, pdf_bytes_1, pdf_bytes_2
 
 @pytest.fixture(autouse=True)
 def reset_state():
