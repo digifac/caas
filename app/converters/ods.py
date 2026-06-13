@@ -162,7 +162,7 @@ def _extract_ods_content(file_bytes: bytes) -> list[tuple[int, str, list[list[st
     results: list[tuple[int, str, list[list[str]]]] = []
 
     if not sheets:
-        return [(1, "Empty", [])]  # type: ignore[return-value]
+        return [(1, "Empty", [])]
 
     for sheet_idx, sheet in enumerate(sheets):
         sheet_name = sheet.getAttribute("name") or f"Sheet {sheet_idx + 1}"

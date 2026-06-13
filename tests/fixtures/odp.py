@@ -1,4 +1,4 @@
-# type: ignore
+
 
 """Fixtures for ODP tests using odfpy."""
 
@@ -12,9 +12,9 @@ __all__ = [
 ]
 
 import io
-from odf import opendocument, office  # type: ignore[import-untyped]
-from odf.text import P, List, ListItem  # type: ignore[import-untyped]
-from odf import draw  # type: ignore[import-untyped]
+from odf import opendocument, office
+from odf.text import P, List, ListItem
+from odf import draw
 
 import pytest
 

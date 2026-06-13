@@ -276,7 +276,7 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[s
     for i, r in enumerate(results):
         print(f"[DEBUG] Result {i}: sheet_num={r[0]}, title='{r[1]}', rows={len(r[2])}", flush=True)
     wb.close()
-    return results  # type: ignore[return-value]
+    return results
 
 
 def convert_xlsx_to_json(file_bytes: bytes) -> dict:

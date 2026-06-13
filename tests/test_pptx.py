@@ -12,9 +12,9 @@ from starlette.testclient import TestClient as StarletteTestClient
 
 # Import PPTX-specific fixtures directly from fixture modules
 from tests.fixtures.pptx import (
-    sample_pptx_bytes, # type: ignore[import-not-found]
-    sample_pptx_empty_slide_bytes, # type: ignore[import-not-found]
-    sample_pptx_with_table_bytes, # type: ignore[import-not-found]
+    sample_pptx_bytes,
+    sample_pptx_empty_slide_bytes,
+    sample_pptx_with_table_bytes,
 )
 
 
@@ -202,7 +202,7 @@ class TestConvertPptxIntegration:
         self, client: StarletteTestClient, sample_pptx_bytes: bytes
     ) -> None:
         """Streaming SSE pour PPTX (TestClient sync — StreamingResponse non supporté par httpx.AsyncClient)."""
-        response = client.post(  # type: ignore[union-attr]
+        response = client.post(
             "/convert?streaming=true",
             files={
                 "file": (
@@ -212,13 +212,13 @@ class TestConvertPptxIntegration:
                 )
             },
         )
-        assert response.status_code == 200  # type: ignore[union-attr]
-        assert "text/event-stream" in response.headers.get("content-type", "")  # type: ignore[union-attr]
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
         # The response should contain SSE data
-        text = response.text  # type: ignore[union-attr]
+        text = response.text
         assert "data:" in text
         # Should have start and complete events
-        events: list[str] = [line for line in text.split("\n") if line.startswith("data:")]  # type: ignore[union-attr]
+        events: list[str] = [line for line in text.split("\n") if line.startswith("data:")]
         assert len(events) >= 2
 
 

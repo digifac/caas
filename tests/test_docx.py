@@ -9,7 +9,7 @@ import httpx
 import pytest
 
 # Import fixtures from modules
-from tests.fixtures.docx import sample_docx_bytes  # type: ignore[import-not-found]
+from tests.fixtures.docx import sample_docx_bytes
 
 
 # ─── sanitize_url ─────────────────────────────────────────────────────────────
@@ -100,10 +100,10 @@ class TestEscapeMdText:
 class TestConvertDocxToMd:
     """Test full DOCX to Markdown conversion with security post-processing."""
 
-    def test_conversion_with_mammoth_warnings(self, sample_docx_bytes, caplog) -> None:  # type: ignore[no-untyped-def]
+    def test_conversion_with_mammoth_warnings(self, sample_docx_bytes, caplog) -> None:
         """Warnings from mammoth should be logged."""
         mock_msg = MagicMock()
-        type(mock_msg).__str__ = lambda self: "Unknown element: w:sdt"  # type: ignore[method-assign]
+        type(mock_msg).__str__ = lambda self: "Unknown element: w:sdt"
 
         mock_result = MagicMock()
         mock_result.value = "# Document"
@@ -111,14 +111,14 @@ class TestConvertDocxToMd:
 
         with patch("app.converters.docx.mammoth") as mock_mammoth:
             mock_mammoth.convert_to_markdown.return_value = mock_result
-            with caplog.at_level(logging.WARNING):  # type: ignore[attr-defined]
+            with caplog.at_level(logging.WARNING):
                 from app.converters.docx import convert_docx_to_md
 
-                result = convert_docx_to_md(sample_docx_bytes)  # type: ignore[arg-type]
+                result = convert_docx_to_md(sample_docx_bytes)
 
-        assert "DOCX Warning:" in caplog.text  # type: ignore[attr-defined]
+        assert "DOCX Warning:" in caplog.text
 
-    def test_dangerous_link_in_markdown_sanitized(self, sample_docx_bytes) -> None:  # type: ignore[no-untyped-def]
+    def test_dangerous_link_in_markdown_sanitized(self, sample_docx_bytes) -> None:
         """JavaScript URLs in links should be replaced with #."""
         mock_result = MagicMock()
         mock_result.value = "[Click here](javascript:void(0))"
@@ -128,14 +128,14 @@ class TestConvertDocxToMd:
             mock_mammoth.convert_to_markdown.return_value = mock_result
             from app.converters.docx import convert_docx_to_md
 
-            result = convert_docx_to_md(sample_docx_bytes)  # type: ignore[arg-type]
+            result = convert_docx_to_md(sample_docx_bytes)
 
         # The regex [^)]* stops at first ')', so javascript:void(0) captures as "javascript:void(0"
         # which is sanitized to #, leaving the trailing )
         assert "javascript" not in result
         assert "[#]" in result or result.count("#") >= 1
 
-    def test_dangerous_image_url_sanitized(self, sample_docx_bytes) -> None:  # type: ignore[no-untyped-def]
+    def test_dangerous_image_url_sanitized(self, sample_docx_bytes) -> None:
         """JavaScript URLs in images should be blocked."""
         mock_result = MagicMock()
         mock_result.value = "![Click](javascript:void(0))"
@@ -145,13 +145,13 @@ class TestConvertDocxToMd:
             mock_mammoth.convert_to_markdown.return_value = mock_result
             from app.converters.docx import convert_docx_to_md
 
-            result = convert_docx_to_md(sample_docx_bytes)  # type: ignore[arg-type]
+            result = convert_docx_to_md(sample_docx_bytes)
 
         # Same regex behavior - javascript scheme is blocked
         assert "javascript" not in result
         assert "[#]" in result or result.count("#") >= 1
 
-    def test_file_url_in_image_sanitized(self, sample_docx_bytes) -> None:  # type: ignore[no-untyped-def]
+    def test_file_url_in_image_sanitized(self, sample_docx_bytes) -> None:
         """File URLs in images should be blocked."""
         mock_result = MagicMock()
         mock_result.value = "![Secret](file:///etc/passwd)"
@@ -161,11 +161,11 @@ class TestConvertDocxToMd:
             mock_mammoth.convert_to_markdown.return_value = mock_result
             from app.converters.docx import convert_docx_to_md
 
-            result = convert_docx_to_md(sample_docx_bytes)  # type: ignore[arg-type]
+            result = convert_docx_to_md(sample_docx_bytes)
 
         assert result == "![Secret](#)"
 
-    def test_multiple_links_and_images_sanitized(self, sample_docx_bytes) -> None:  # type: ignore[no-untyped-def]
+    def test_multiple_links_and_images_sanitized(self, sample_docx_bytes) -> None:
         """Multiple links and images should all be sanitized."""
         mock_result = MagicMock()
         mock_result.value = (
@@ -178,14 +178,14 @@ class TestConvertDocxToMd:
             mock_mammoth.convert_to_markdown.return_value = mock_result
             from app.converters.docx import convert_docx_to_md
 
-            result = convert_docx_to_md(sample_docx_bytes)  # type: ignore[arg-type]
+            result = convert_docx_to_md(sample_docx_bytes)
 
         assert "[Safe](https://ok.com)" in result
         assert "[Danger](#)" in result
         assert "![Safe](https://ok.com/img.png)" in result
         assert "![Danger](#)" in result
 
-    def test_empty_markdown_output(self, sample_docx_bytes) -> None:  # type: ignore[no-untyped-def]
+    def test_empty_markdown_output(self, sample_docx_bytes) -> None:
         """Empty markdown from mammoth should return empty string."""
         mock_result = MagicMock()
         mock_result.value = ""
@@ -195,11 +195,11 @@ class TestConvertDocxToMd:
             mock_mammoth.convert_to_markdown.return_value = mock_result
             from app.converters.docx import convert_docx_to_md
 
-            result = convert_docx_to_md(sample_docx_bytes)  # type: ignore[arg-type]
+            result = convert_docx_to_md(sample_docx_bytes)
 
         assert result == ""
 
-    def test_whitespace_only_markdown(self, sample_docx_bytes) -> None:  # type: ignore[no-untyped-def]
+    def test_whitespace_only_markdown(self, sample_docx_bytes) -> None:
         """Whitespace-only markdown should return empty string."""
         mock_result = MagicMock()
         mock_result.value = "   \n\n  "
@@ -209,7 +209,7 @@ class TestConvertDocxToMd:
             mock_mammoth.convert_to_markdown.return_value = mock_result
             from app.converters.docx import convert_docx_to_md
 
-            result = convert_docx_to_md(sample_docx_bytes)  # type: ignore
+            result = convert_docx_to_md(sample_docx_bytes)
 
         assert result == ""
 
@@ -246,12 +246,12 @@ async def test_convert_async_docx_completes(
         await asyncio.sleep(0.25)
         status_res = await async_client.get(f"/task/{task_id}")
         assert status_res.status_code == 200
-        status_data = status_res.json()  # type: ignore
+        status_data = status_res.json()
         if status_data["status"] in ("completed", "failed"):
             break
 
     assert status_data["status"] == "completed"
-    assert status_data["result"]["format"] == "docx"  # type: ignore
+    assert status_data["result"]["format"] == "docx"
 
 
 @pytest.mark.anyio
@@ -274,7 +274,7 @@ async def test_convert_docx_to_json(
     # DOCX should have pages or content
     if "pages" in json_data:
         assert isinstance(json_data["pages"], list)
-        assert len(json_data["pages"]) > 0  # type: ignore[arg-type]
+        assert len(json_data["pages"]) > 0
 
 
 @pytest.mark.anyio

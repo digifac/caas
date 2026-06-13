@@ -77,23 +77,23 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
             extracted_text = page.extract_text() or ""
             text_cache[page_idx] = extracted_text
             if not extracted_text.strip():
-                ocr_page_indices.append(page_idx)  # type: ignore
+                ocr_page_indices.append(page_idx)
 
         # 2. Batch OCR all scanned pages at once (pypdfium2 opened only once)
         ocr_results: dict[int, str] = {}
         if ocr_page_indices:
-            ocr_results = ocr_pdf_pages(file_bytes, ocr_page_indices)  # type: ignore
+            ocr_results = ocr_pdf_pages(file_bytes, ocr_page_indices)
 
         # 3. Second pass: build results from cached text + OCR results
         results: list[tuple[int, str, list[str]]] = []
         for page_idx, page in enumerate(pdf.pages):
-            page_text = ocr_results[page_idx] if page_idx in ocr_results else text_cache[page_idx]  # type: ignore
+            page_text = ocr_results[page_idx] if page_idx in ocr_results else text_cache[page_idx]
 
             # Clean text
             page_md = ""
             if page_text:
-                cleaned_lines = clean_lines(page_text.split("\n"))  # type: ignore
-                page_md = "\n".join(cleaned_lines)  # type: ignore
+                cleaned_lines = clean_lines(page_text.split("\n"))
+                page_md = "\n".join(cleaned_lines)
 
             # Extract hyperlinks
             links: list[str] = []
@@ -101,7 +101,7 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
             if hyperlinks:
                 seen_uris: set[str] = set()
                 for link in hyperlinks:
-                    uri = link.get("uri")  # type: ignore
+                    uri = link.get("uri")
                     if uri and uri not in seen_uris:
                         seen_uris.add(uri)
                         safe_uri = _sanitize_url(uri)
@@ -123,12 +123,12 @@ def convert_pdf_to_md(file_bytes: bytes) -> str:
 
     for _page_idx, page_md, links in results:
         if page_md:
-            md_blocks.append(page_md)  # type: ignore
+            md_blocks.append(page_md)
         if links:
             link_lines = [f"\n[{uri}]({uri})" for uri in links]
-            md_blocks.append("".join(link_lines))  # type: ignore
+            md_blocks.append("".join(link_lines))
 
-    return "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()  # type: ignore
+    return "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()
 
 
 async def convert_pdf_to_md_stream(
@@ -153,13 +153,13 @@ async def convert_pdf_to_md_stream(
 
     for _page_idx, page_md, links in results:
         if page_md:
-            md_blocks.append(page_md)  # type: ignore
+            md_blocks.append(page_md)
         if links:
             link_lines = [f"\n[{uri}]({uri})" for uri in links]
-            md_blocks.append("".join(link_lines))  # type: ignore
+            md_blocks.append("".join(link_lines))
 
         # Yield accumulated markdown for this page
-        chunk: str = "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()  # type: ignore
+        chunk: str = "\n\n".join(md_blocks).replace("\n\n\n", "\n\n").strip()
         if chunk:
             yield chunk
             # Allow other tasks to run between pages

@@ -13,8 +13,8 @@ from reportlab.pdfgen import canvas
 
 
 # Import fixtures from modules
-from tests.fixtures.common import sample_pdf_bytes, sample_scanned_pdf_bytes  # type: ignore[import-not-found]
-from tests.fixtures.pdf import sample_pdf_with_link_bytes  # type: ignore[import-not-found]
+from tests.fixtures.common import sample_pdf_bytes, sample_scanned_pdf_bytes
+from tests.fixtures.pdf import sample_pdf_with_link_bytes
 
 from pytest import MonkeyPatch
 
@@ -75,7 +75,7 @@ async def test_convert_pdf_with_link(
     # Extract URLs from markdown links and parse hostnames for strict host validation
     urls = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", markdown)
     parsed_hosts: set[str | None] = {
-        urlparse(url).hostname  # type: ignore[union-attr]
+        urlparse(url).hostname
         for _, url in urls
     }
     assert any(host == "example.com" for host in parsed_hosts if host)
@@ -248,10 +248,10 @@ async def test_convert_pdf_to_json_structure(
     json_data = data["json"]
     assert isinstance(json_data, dict)
     assert "pages" in json_data
-    pages_list: list[dict] = json_data["pages"]  # type: ignore[assignment]
-    assert len(pages_list) > 0  # type: ignore[arg-type]
+    pages_list: list[dict] = json_data["pages"]
+    assert len(pages_list) > 0
     
-    page: dict = pages_list[0]  # type: ignore[index]
+    page: dict = pages_list[0]
     assert "index" in page or "page_idx" in page
     assert "content" in page or "markdown_text" in page
 

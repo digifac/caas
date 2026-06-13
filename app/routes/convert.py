@@ -102,7 +102,7 @@ def register_convert_routes(app: FastAPI) -> None:
 
             if async_mode and async_mode.lower() == "true":
                 task_id = app.state.task_manager.submit(convert_worker, content, ext)
-                content = None  # type: ignore[assignment]  # Explicit memory release
+                content = None
                 return {
                     "success": True,
                     "task_id": task_id,
@@ -126,7 +126,7 @@ def register_convert_routes(app: FastAPI) -> None:
                 # Convertir en JSONL et retourner comme structure JSON avec champ jsonl (liste d'objets)
                 result_content = await convert_worker(content, ext, output_format="jsonl")
                 # Le résultat est déjà une liste d'objets dans result_content["jsonl"]
-                jsonl_lines: list[dict[str, Any]] = [event.model_dump() for event in result_content.get("jsonl", [])]  # type: ignore[list-item,assignment]
+                jsonl_lines: list[dict[str, Any]] = [event.model_dump() for event in result_content.get("jsonl", [])]
                 
                 return JSONResponse(
                     content={

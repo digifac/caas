@@ -8,10 +8,10 @@ from app.converters.ods import convert_ods_to_md
 
 # Import fixtures from modules
 from tests.fixtures.ods import (  # noqa: E402
-    sample_ods_bytes,# type: ignore[import-not-found]
-    sample_ods_multi_sheet_bytes,# type: ignore[import-not-found]
-    sample_ods_empty_sheet_bytes,# type: ignore[import-not-found]
-    sample_ods_special_chars_bytes,# type: ignore[import-not-found]
+    sample_ods_bytes,
+    sample_ods_multi_sheet_bytes,
+    sample_ods_empty_sheet_bytes,
+    sample_ods_special_chars_bytes,
 )
 
 
@@ -67,41 +67,41 @@ class TestConvertOdsToMd:
 
     def test_empty_cells(self) -> None:
         """Test that empty cells are handled correctly."""
-        from odf import table, text  # type: ignore[import-not-found]
-        from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[import-not-found]
+        from odf import table, text
+        from odf.opendocument import OpenDocumentSpreadsheet
 
-        doc = OpenDocumentSpreadsheet()  # type: ignore[arg-type]
-        table_elem = table.Table(name="Test")  # type: ignore[attr-defined]
+        doc = OpenDocumentSpreadsheet()
+        table_elem = table.Table(name="Test")
 
         # Row 1: headers
-        row1 = table.TableRow()  # type: ignore[attr-defined]
-        c1 = table.TableCell()  # type: ignore[attr-defined]
-        p1 = text.P()  # type: ignore[attr-defined]
-        p1.addText("Header")  # type: ignore[attr-defined]
-        c1.addElement(p1)  # type: ignore[attr-defined]
-        row1.addElement(c1)  # type: ignore[attr-defined]
-        c2 = table.TableCell()  # type: ignore[attr-defined]
-        p2 = text.P()  # type: ignore[attr-defined]
-        p2.addText("Data")  # type: ignore[attr-defined]
-        c2.addElement(p2)  # type: ignore[attr-defined]
-        row1.addElement(c2)  # type: ignore[attr-defined]
-        table_elem.addElement(row1)  # type: ignore[attr-defined]
+        row1 = table.TableRow()
+        c1 = table.TableCell()
+        p1 = text.P()
+        p1.addText("Header")
+        c1.addElement(p1)
+        row1.addElement(c1)
+        c2 = table.TableCell()
+        p2 = text.P()
+        p2.addText("Data")
+        c2.addElement(p2)
+        row1.addElement(c2)
+        table_elem.addElement(row1)
 
         # Row 2: one value, one empty cell
-        row2 = table.TableRow()  # type: ignore[attr-defined]
-        c3 = table.TableCell()  # type: ignore[attr-defined]
-        p3 = text.P()  # type: ignore[attr-defined]
-        p3.addText("value")  # type: ignore[attr-defined]
-        c3.addElement(p3)  # type: ignore[attr-defined]
-        row2.addElement(c3)  # type: ignore[attr-defined]
-        c4 = table.TableCell()  # Empty cell  # type: ignore[attr-defined]
-        row2.addElement(c4)  # type: ignore[attr-defined]
-        table_elem.addElement(row2)  # type: ignore[attr-defined]
+        row2 = table.TableRow()
+        c3 = table.TableCell()
+        p3 = text.P()
+        p3.addText("value")
+        c3.addElement(p3)
+        row2.addElement(c3)
+        c4 = table.TableCell()  # Empty cell
+        row2.addElement(c4)
+        table_elem.addElement(row2)
 
-        doc.spreadsheet.addElement(table_elem)  # type: ignore[union-attr]
+        doc.spreadsheet.addElement(table_elem)
 
         buf = io.BytesIO()
-        doc.save(buf)  # type: ignore[arg-type]
+        doc.save(buf)
         buf.seek(0)
 
         result = convert_ods_to_md(buf.getvalue())

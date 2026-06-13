@@ -23,7 +23,7 @@ class TestMainReExports:
         from app.main import AppError
 
         assert hasattr(AppError, "_messages")
-        assert "SERVER_ERROR" in AppError._messages  # type: ignore[attr-defined]
+        assert "SERVER_ERROR" in AppError._messages
         assert hasattr(AppError, "get")
 
     def test_clean_lines_reexported(self):

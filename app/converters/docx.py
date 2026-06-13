@@ -59,12 +59,12 @@ def convert_docx_to_md(file_bytes: bytes) -> str:
     - Escape HTML entities in text content to prevent XSS
     - Sanitize URLs in links to block dangerous schemes
     """
-    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore[union-attr]
+    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))
     if hasattr(result, 'messages') and result.messages:
         for msg in result.messages:
             logger.warning("DOCX Warning: %s", str(msg))
 
-    markdown: str = result.value.strip()  # type: ignore[union-attr]
+    markdown: str = result.value.strip()
 
     # Sanitize URLs in Markdown links [text](url)
     def sanitize_link(match: re.Match[str]) -> str:
@@ -96,12 +96,12 @@ def _extract_docx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
     Returns:
         List of tuples (page_num, title, text_list).
     """
-    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))  # type: ignore[union-attr]
+    result = mammoth.convert_to_markdown(io.BytesIO(file_bytes))
     if hasattr(result, 'messages') and result.messages:
         for msg in result.messages:
             logger.warning("DOCX Warning: %s", str(msg))
 
-    markdown: str = result.value.strip()  # type: ignore[union-attr]
+    markdown: str = result.value.strip()
 
     # Split into paragraphs/pages - DOCX doesn't have natural page breaks,
     # so we treat the entire document as a single "page" with paragraph content

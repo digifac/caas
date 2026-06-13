@@ -12,9 +12,9 @@ from app.converters.odt import convert_odt_to_md
 
 # Import fixtures from modules
 from tests.fixtures.odt import (  # noqa: E402
-    sample_odt_bytes, # type: ignore[import-not-found]
-    sample_odt_with_list_bytes, # type: ignore[import-not-found]
-    sample_odt_with_special_chars_bytes, # type: ignore[import-not-found]
+    sample_odt_bytes,
+    sample_odt_with_list_bytes,
+    sample_odt_with_special_chars_bytes,
 )
 
 
@@ -149,7 +149,7 @@ class _MockElement:
         get_text: str | None = None,
         get_attr_ns: str | None = None,
     ) -> None:
-        self.localName = local_name  # type: ignore[attr-defined]
+        self.localName = local_name
         self._get_text: str | None = get_text
         self._get_attr_ns: str | None = get_attr_ns
 
@@ -289,7 +289,7 @@ class TestGetElementTextSpan:
         """Span without _getText returns empty string."""
 
         class _SpanNoGetText:
-            localName = "span"  # type: ignore[attr-defined]  # noqa: N815
+            localName = "span"
 
         mock_span = _SpanNoGetText()
         with patch.object(odt_module.opendocument, "load") as mock_load:
@@ -396,9 +396,9 @@ async def test_convert_odt_to_json(
     assert isinstance(json_data, dict)
     # ODT should have pages with content
     if "pages" in json_data:
-        pages = json_data["pages"]  # type: ignore[assignment]
+        pages = json_data["pages"]
         assert isinstance(pages, list)
-        assert len(pages) > 0  # type: ignore[arg-type]
+        assert len(pages) > 0
 
 
 @pytest.mark.anyio

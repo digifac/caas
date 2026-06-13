@@ -8,8 +8,8 @@ import pytest
 from app.converters.html import sanitize_url, convert_html_to_md
 
 # Import fixtures from modules
-from tests.fixtures.common import async_client # type: ignore[import-not-found]
-from tests.fixtures.html import sample_html_bytes, sample_html_latin1_bytes, sample_html_minimal_bytes # type: ignore[import-not-found]
+from tests.fixtures.common import async_client
+from tests.fixtures.html import sample_html_bytes, sample_html_latin1_bytes, sample_html_minimal_bytes
 
 
 @pytest.mark.anyio

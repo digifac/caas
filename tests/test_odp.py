@@ -7,10 +7,10 @@ from app.converters.odp import convert_odp_to_md
 
 # Import fixtures from modules
 from tests.fixtures.odp import (
-    sample_odp_bytes, # type: ignore[import-not-found]
-    sample_odp_with_list_bytes, # type: ignore[import-not-found]
-    sample_odp_with_special_chars_bytes, # type: ignore[import-not-found]
-    sample_odp_with_groups_bytes, # type: ignore[import-not-found]
+    sample_odp_bytes,
+    sample_odp_with_list_bytes,
+    sample_odp_with_special_chars_bytes,
+    sample_odp_with_groups_bytes,
   )
 
 # =============================================================================

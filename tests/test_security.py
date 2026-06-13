@@ -201,15 +201,15 @@ class TestHTMLSanitization:
         soup = BeautifulSoup(
             '<div onclick="x" onmouseover="y">text</div>', "html.parser"
         )
-        html_converter._sanitize_soup(soup)  # type: ignore[attr-defined]
+        html_converter._sanitize_soup(soup)
         div = soup.find("div")
-        assert "onclick" not in (div.attrs if div else {})  # type: ignore[union-attr]
-        assert "onmouseover" not in (div.attrs if div else {})  # type: ignore[union-attr]
+        assert "onclick" not in (div.attrs if div else {})
+        assert "onmouseover" not in (div.attrs if div else {})
 
     def test_sanitize_soup_sanitizes_href(self):
         """_sanitize_soup should sanitize href attributes."""
         soup = BeautifulSoup('<a href="javascript:alert(1)">Link</a>', "html.parser")
-        html_converter._sanitize_soup(soup)  # type: ignore[attr-defined]
+        html_converter._sanitize_soup(soup)
         anchor = soup.find("a")
         assert anchor is not None
         assert anchor["href"] == "#"
@@ -219,7 +219,7 @@ class TestHTMLSanitization:
         soup = BeautifulSoup(
             '<img src="data:text/html,<script>x</script>">', "html.parser"
         )
-        html_converter._sanitize_soup(soup)  # type: ignore[attr-defined]
+        html_converter._sanitize_soup(soup)
         img = soup.find("img")
         assert img is not None
         assert img["src"] == "#"
@@ -342,13 +342,13 @@ class TestAntiSpoofingIP:
 
     def test_is_trusted_proxy_single_ip(self):
         """Exact IP match should return True."""
-        assert ip_helpers._is_trusted_proxy("192.168.1.1") is False  # type: ignore[attr-defined]  # Not in default (empty) list
+        assert ip_helpers._is_trusted_proxy("192.168.1.1") is False
         # With a configured proxy
         original = settings.trusted_proxies
         settings.trusted_proxies = "192.168.1.1"
         try:
-            assert ip_helpers._is_trusted_proxy("192.168.1.1") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("10.0.0.1") is False  # type: ignore[attr-defined]
+            assert ip_helpers._is_trusted_proxy("192.168.1.1") is True
+            assert ip_helpers._is_trusted_proxy("10.0.0.1") is False
         finally:
             settings.trusted_proxies = original
 
@@ -357,9 +357,9 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "10.0.0.0/8"
         try:
-            assert ip_helpers._is_trusted_proxy("10.0.0.1") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("10.255.255.255") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("192.168.1.1") is False  # type: ignore[attr-defined]
+            assert ip_helpers._is_trusted_proxy("10.0.0.1") is True
+            assert ip_helpers._is_trusted_proxy("10.255.255.255") is True
+            assert ip_helpers._is_trusted_proxy("192.168.1.1") is False
         finally:
             settings.trusted_proxies = original
 
@@ -368,10 +368,10 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "192.168.1.1,10.0.0.0/8,172.16.0.0/12"
         try:
-            assert ip_helpers._is_trusted_proxy("192.168.1.1") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("10.5.5.5") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("172.16.0.1") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("8.8.8.8") is False  # type: ignore[attr-defined]
+            assert ip_helpers._is_trusted_proxy("192.168.1.1") is True
+            assert ip_helpers._is_trusted_proxy("10.5.5.5") is True
+            assert ip_helpers._is_trusted_proxy("172.16.0.1") is True
+            assert ip_helpers._is_trusted_proxy("8.8.8.8") is False
         finally:
             settings.trusted_proxies = original
 
@@ -380,8 +380,8 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "not_an_ip,192.168.1.1"
         try:
-            assert ip_helpers._is_trusted_proxy("192.168.1.1") is True  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("8.8.8.8") is False  # type: ignore[attr-defined]
+            assert ip_helpers._is_trusted_proxy("192.168.1.1") is True
+            assert ip_helpers._is_trusted_proxy("8.8.8.8") is False
         finally:
             settings.trusted_proxies = original
 
@@ -390,8 +390,8 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = ""
         try:
-            assert ip_helpers._is_trusted_proxy("192.168.1.1") is False  # type: ignore[attr-defined]
-            assert ip_helpers._is_trusted_proxy("10.0.0.1") is False  # type: ignore[attr-defined]
+            assert ip_helpers._is_trusted_proxy("192.168.1.1") is False
+            assert ip_helpers._is_trusted_proxy("10.0.0.1") is False
         finally:
             settings.trusted_proxies = original
 
@@ -427,7 +427,7 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "10.0.0.0/8"
         try:
-            ip = ip_helpers._get_client_ip(request)  # type: ignore[attr-defined]
+            ip = ip_helpers._get_client_ip(request)
             assert ip == "203.0.113.50"
         finally:
             settings.trusted_proxies = original
@@ -444,7 +444,7 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "10.0.0.0/8"  # 8.8.8.8 is NOT in this range
         try:
-            ip = ip_helpers._get_client_ip(request)  # type: ignore[attr-defined]
+            ip = ip_helpers._get_client_ip(request)
             assert ip == "8.8.8.8"
         finally:
             settings.trusted_proxies = original
@@ -461,7 +461,7 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "10.0.0.0/8"
         try:
-            ip = ip_helpers._get_client_ip(request)  # type: ignore[attr-defined]
+            ip = ip_helpers._get_client_ip(request)
             assert ip == "203.0.113.50"
         finally:
             settings.trusted_proxies = original
@@ -478,7 +478,7 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = "10.0.0.0/8"
         try:
-            ip = ip_helpers._get_client_ip(request)  # type: ignore[attr-defined]
+            ip = ip_helpers._get_client_ip(request)
             assert ip == "10.0.0.1"
         finally:
             settings.trusted_proxies = original
@@ -497,7 +497,7 @@ class TestAntiSpoofingIP:
         original = settings.trusted_proxies
         settings.trusted_proxies = ""
         try:
-            ip = ip_helpers._get_client_ip(request)  # type: ignore[attr-defined]
+            ip = ip_helpers._get_client_ip(request)
             assert ip == "203.0.113.100"
         finally:
             settings.trusted_proxies = original

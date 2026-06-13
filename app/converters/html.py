@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Any
 
-from bs4 import BeautifulSoup  # type: ignore[import-not-found]
+from bs4 import BeautifulSoup
 from bs4 import Tag as _bs4_Tag
 from bs4.element import NavigableString as _bs4_NavigableString
 
@@ -15,7 +15,7 @@ from app.config import settings
 from app.models.response import JsonlEvent
 
 # Alias for type annotations
-bs4 = type('bs4', (), {'Tag': _bs4_Tag, 'NavigableString': _bs4_NavigableString})()  # type: ignore[misc]
+bs4 = type('bs4', (), {'Tag': _bs4_Tag, 'NavigableString': _bs4_NavigableString})()
 
 logger = logging.getLogger(__name__)
 
@@ -164,16 +164,16 @@ def _sanitize_soup(soup: BeautifulSoup) -> None:
         ):
             src_val = element["src"]
             if isinstance(src_val, list):
-                src_val = " ".join(src_val)  # type: ignore
+                src_val = " ".join(src_val)
             element["src"] = sanitize_url(src_val)
 
 
-def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # type: ignore[misc]
+def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:
     """Recursively convert a BeautifulSoup element to Markdown lines."""
     from bs4 import Comment
 
     if isinstance(element, Comment):
-        return []  # type: ignore
+        return []
 
     if isinstance(element, _bs4_NavigableString):
         text = str(element)
@@ -189,7 +189,7 @@ def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # 
     # This check is redundant since we already handle Tag in the Union type
     # Keeping it for clarity but mypy will complain
 
-    tag = element.name  # type: ignore[union-attr]
+    tag = element.name
 
     # Headings - process children to preserve inline formatting
     if tag in ("h1", "h2", "h3", "h4", "h5", "h6"):
@@ -198,7 +198,7 @@ def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # 
         for child in element.children:
             child_lines = _convert_element(child)
             for line in child_lines:
-                stripped = line.strip()  # type: ignore
+                stripped = line.strip()
                 if stripped:
                     parts.append(stripped)
 
@@ -211,7 +211,7 @@ def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # 
         for child in element.children:
             child_lines = _convert_element(child)
             for line in child_lines:
-                stripped = line.strip()  # type: ignore
+                stripped = line.strip()
                 if stripped:
                     parts.append(stripped)
 
@@ -252,21 +252,21 @@ def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # 
     # Code blocks
     if tag == "pre":
         code_tag = element.find("code")
-        code = code_tag.string if code_tag else element.get_text()  # type: ignore
+        code = code_tag.string if code_tag else element.get_text()
         return [f"```\n{code}\n```", ""]
 
     if tag == "code":
         # Inline code (not inside <pre>)
         if element.parent and element.parent.name == "pre":
             return []  # Already handled by <pre>
-        text = element.get_text()  # type: ignore
+        text = element.get_text()
         return [f"`{text}`"]
 
     # Blockquotes
     if tag == "blockquote":
         lines = []
         for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
+            lines.extend(_convert_element(child))
         quoted: list[str] = []
         for line in lines:
             if line.strip():
@@ -299,7 +299,7 @@ def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # 
     if tag in ("div", "section", "article", "main", "header", "footer", "body", "html"):
         lines = []
         for child in element.children:
-            lines.extend(_convert_element(child))  # type: ignore
+            lines.extend(_convert_element(child))
         return lines
 
     # Span (inline container)
@@ -310,33 +310,33 @@ def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # 
     # For other tags, just process children
     lines = []
     for child in element.children:
-        lines.extend(_convert_element(child))  # type: ignore
+        lines.extend(_convert_element(child))
     return lines
 
 
-def _get_text(element: _bs4_Tag | _bs4_NavigableString) -> str:  # type: ignore[misc]
+def _get_text(element: _bs4_Tag | _bs4_NavigableString) -> str:
     """Get stripped text content from an element."""
-    text: str = element.get_text()  # type: ignore
-    return text.strip()  # type: ignore
+    text: str = element.get_text()
+    return text.strip()
 
 
-def _convert_list(element: _bs4_Tag, ordered: bool) -> list[str]:  # type: ignore[misc]
+def _convert_list(element: _bs4_Tag, ordered: bool) -> list[str]:
     """Convert a <ul> or <ol> to Markdown list."""
     lines: list[str] = []
     index = 1
-    for li in element.find_all("li", recursive=False):  # type: ignore[union-attr]
+    for li in element.find_all("li", recursive=False):
         li_lines: list[str] = []
-        for child in li.children:  # type: ignore[attr-defined]
-            li_lines.extend(_convert_element(child))  # type: ignore
+        for child in li.children:
+            li_lines.extend(_convert_element(child))
 
         # Flatten the list item content
         content_parts: list[str] = []
         for line in li_lines:
-            stripped = line.strip()  # type: ignore
+            stripped = line.strip()
             if stripped:
                 content_parts.append(stripped)
 
-        content = " ".join(content_parts) if content_parts else ""  # type: ignore
+        content = " ".join(content_parts) if content_parts else ""
 
         if ordered:
             lines.append(f"{index}. {content}")
@@ -354,13 +354,13 @@ def _convert_table(element: _bs4_Tag) -> list[str]:
     rows: list[list[str]] = []
 
     # Get all rows (from <thead>, <tbody>, <tfoot>, or direct <tr>)
-    for tr in element.find_all("tr"):  # type: ignore[union-attr]
+    for tr in element.find_all("tr"):
         cells: list[str] = []
-        for cell in tr.find_all(["td", "th"], recursive=False):  # type: ignore[union-attr]
+        for cell in tr.find_all(["td", "th"], recursive=False):
             lines: list[str] = []
-            for child in cell.children:  # type: ignore[attr-defined]
-                lines.extend(_convert_element(child))  # type: ignore
-            content = "".join(lines).strip().replace("\n", " ")  # type: ignore
+            for child in cell.children:
+                lines.extend(_convert_element(child))
+            content = "".join(lines).strip().replace("\n", " ")
             cells.append(content)
         if cells:
             rows.append(cells)
@@ -369,12 +369,12 @@ def _convert_table(element: _bs4_Tag) -> list[str]:
         return []
 
     # Find max columns
-    max_cols = max(len(row) for row in rows)  # type: ignore
+    max_cols = max(len(row) for row in rows)
 
     # Normalize row lengths
     for row in rows:
         while len(row) < max_cols:
-            row.append("")  # type: ignore
+            row.append("")
 
     # Build Markdown table
     md_lines: list[str] = []
@@ -382,13 +382,13 @@ def _convert_table(element: _bs4_Tag) -> list[str]:
     md_lines.append("| " + " | ".join(["---"] * max_cols) + " |")
 
     for row in rows[1:]:
-        md_lines.append("| " + " | ".join(row) + " |")  # type: ignore[list-item]
+        md_lines.append("| " + " | ".join(row) + " |")
 
     md_lines.append("")
     return md_lines
 
 
-def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:  # type: ignore[misc]
+def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
     """Extract HTML content as sections.
 
     Args:
@@ -409,7 +409,7 @@ def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
     soup = BeautifulSoup(html_content, "html.parser")
 
     # Remove dangerous elements and sanitize
-    for tag in soup.find_all(_DANGEROUS_TAGS):  # type: ignore[union-attr]
+    for tag in soup.find_all(_DANGEROUS_TAGS):
         tag.decompose()
 
     _sanitize_soup(soup)
@@ -423,7 +423,7 @@ def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
     if container is None:
         return []
 
-    for element in container.find_all(True):  # type: ignore[union-attr]
+    for element in container.find_all(True):
         tag_name = str(element.name)
 
         # Headings as section titles
@@ -437,14 +437,14 @@ def _extract_html_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
                 # Extract content after heading
                 lines: list[str] = []
                 for child in element.children:
-                    lines.extend(_convert_element(child))  # type: ignore[arg-type]
+                    lines.extend(_convert_element(child))
 
                 sections.append((section_num, title, lines))
 
     return sections
 
 
-def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:  # type: ignore[misc]
+def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:
     """Convert HTML to JSON format.
 
     Args:
@@ -455,16 +455,16 @@ def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:  # type: ignore[m
     """
     from app.models.response import HtmlElementJson
 
-    results = _extract_html_content(file_bytes)  # type: ignore[list-item]
+    results = _extract_html_content(file_bytes)
 
-    return {  # type: ignore[dict-item]
+    return {
         "format": "html",
         "sections": [
             HtmlElementJson(
                 tag="section",
                 content=section[1]
             ).model_dump()
-            for section in results  # type: ignore[tuple, list-item]
+            for section in results
         ],
         "metadata": {
             "format": "html",
@@ -508,7 +508,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
 
     # Convert to text representation for chunking
     all_text: list[str] = []
-    for section_num, title, section_lines in results:  # type: ignore[tuple]
+    for section_num, title, section_lines in results:
         all_text.append(f"Section {section_num}: {title}")
         all_text.extend(section_lines)
 

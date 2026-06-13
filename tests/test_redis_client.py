@@ -13,8 +13,8 @@ from app.redis_client import (
 )
 
 # Import private helpers for testing (intentional)
-from app.redis_client import _inject_password  # type: ignore[attr-defined]
-from app.redis_client import _mask_url  # type: ignore[attr-defined]
+from app.redis_client import _inject_password
+from app.redis_client import _mask_url
 
 
 class TestMaskUrl:
@@ -84,17 +84,17 @@ class TestRedisManagerPassword:
 
     def test_init_with_password_injects_into_url(self):
         manager = RedisManager("redis://localhost:6379/0", password="secret")
-        assert manager._url == "redis://:secret@localhost:6379/0"  # type: ignore[protected]
+        assert manager._url == "redis://:secret@localhost:6379/0"
 
     def test_init_without_password_preserves_url(self):
         manager = RedisManager("redis://localhost:6379/0")
-        assert manager._url == "redis://localhost:6379/0"  # type: ignore[protected]
+        assert manager._url == "redis://localhost:6379/0"
 
     def test_init_skips_injection_when_credentials_embedded(self):
         manager = RedisManager(
             "redis://:embedded@localhost:6379/0", password="ignored"
         )
-        assert manager._url == "redis://:embedded@localhost:6379/0"  # type: ignore[protected]
+        assert manager._url == "redis://:embedded@localhost:6379/0"
 
     def test_client_uses_injected_password_url(self):
         self._cleanup_sys_modules()
@@ -128,7 +128,7 @@ class TestRedisManagerPassword:
 
                 # Verify the log does NOT contain the raw password
                 for record in caplog.records:
-                    assert "secret" not in record.message  # type: ignore[attr-defined]
+                    assert "secret" not in record.message
         finally:
             self._cleanup_sys_modules()
 
@@ -139,12 +139,12 @@ class TestRedisManagerInit:
 
     def test_init_sets_url(self) -> None:
         manager = RedisManager("redis://localhost:6379/0")
-        assert manager._url == "redis://localhost:6379/0"  # type: ignore[protected]
-        assert manager._client is None  # type: ignore[protected]
+        assert manager._url == "redis://localhost:6379/0"
+        assert manager._client is None
 
     def test_init_with_custom_url(self) -> None:
         manager = RedisManager("redis://user:pass@host:1234/5")
-        assert manager._url == "redis://user:pass@host:1234/5"  # type: ignore[protected]
+        assert manager._url == "redis://user:pass@host:1234/5"
 
 
 class TestRedisManagerClientProperty:
@@ -309,7 +309,7 @@ class TestRedisManagerClose:
             await manager.close()
 
             mock_client.aclose.assert_awaited_once()
-            assert manager._client is None  # type: ignore[protected]
+            assert manager._client is None
         finally:
             self._cleanup_sys_modules()
 
@@ -331,7 +331,7 @@ class TestRedisManagerClose:
             _ = manager.client
             await manager.close()
 
-            assert manager._client is None  # type: ignore[protected]
+            assert manager._client is None
         finally:
             self._cleanup_sys_modules()
 

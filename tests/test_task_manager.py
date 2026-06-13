@@ -17,7 +17,7 @@ from app.task_manager import (
 )
 
 # Import fixtures from modules
-from tests.fixtures.common import sample_pdf_bytes # type: ignore[import-not-found]
+from tests.fixtures.common import sample_pdf_bytes
 
 # --- Task submission tests ---
 
@@ -431,7 +431,7 @@ class TestCanAccept:
     async def test_can_accept_true_when_empty(self):
         """_can_accept returns True when queue is empty."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        assert manager._can_accept() is True  # type: ignore[attr-defined]
+        assert manager._can_accept() is True
 
     @pytest.mark.anyio
     async def test_can_accept_false_when_full(self):
@@ -443,7 +443,7 @@ class TestCanAccept:
 
         manager.submit(slow)
         manager.submit(slow)
-        assert manager._can_accept() is False  # type: ignore[attr-defined]
+        assert manager._can_accept() is False
 
 
 # --- restore_active_tasks tests ---
@@ -465,7 +465,7 @@ class TestRestoreActiveTasks:
             created_at=time.time(),
             completed_at=None,
         )
-        await manager._storage.set(  # type: ignore[attr-defined]
+        await manager._storage.set(
             f"{manager.ACTIVE_TASK_IDS_KEY}:restore-me", task_data.to_json()
         )
 
@@ -488,7 +488,7 @@ class TestRestoreActiveTasks:
             created_at=time.time(),
             completed_at=time.time(),
         )
-        await manager._storage.set(  # type: ignore[attr-defined]
+        await manager._storage.set(
             f"{manager.ACTIVE_TASK_IDS_KEY}:completed-task", task_data.to_json()
         )
 
@@ -500,7 +500,7 @@ class TestRestoreActiveTasks:
         """Invalid JSON in storage is skipped during restore."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
 
-        await manager._storage.set(  # type: ignore[attr-defined]
+        await manager._storage.set(
             f"{manager.ACTIVE_TASK_IDS_KEY}:bad-key", "not-json{{{"
         )
 
@@ -512,7 +512,7 @@ class TestRestoreActiveTasks:
         """Storage exception during restore is logged and doesn't crash."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
 
-        manager._storage.keys = AsyncMock(  # type: ignore[attr-defined]
+        manager._storage.keys = AsyncMock(
             side_effect=RuntimeError("storage down")
         )
 
@@ -537,7 +537,7 @@ class TestEvictCompletedTasks:
         manager.submit(quick)
         await asyncio.sleep(0.3)
 
-        evicted = await manager._evict_completed_tasks()  # type: ignore[attr-defined]
+        evicted = await manager._evict_completed_tasks()
         assert evicted == 0
 
     @pytest.mark.anyio
@@ -569,8 +569,8 @@ class TestEvictCompletedTasks:
         manager.submit(quick)
         await asyncio.sleep(0.3)
 
-        json_str = await manager._storage.get(  # type: ignore[attr-defined]
-            manager._task_key(tid)  # type: ignore[attr-defined]
+        json_str = await manager._storage.get(
+            manager._task_key(tid)
         )
         assert json_str is not None
 
@@ -631,16 +631,16 @@ class TestCleanupEdgeCases:
         tid = manager.submit(quick)
         await asyncio.sleep(0.3)
 
-        json_str = await manager._storage.get(  # type: ignore[attr-defined]
-            manager._task_key(tid)  # type: ignore[attr-defined]
+        json_str = await manager._storage.get(
+            manager._task_key(tid)
         )
         assert json_str is not None
 
         await manager.cleanup_completed(max_age_seconds=0)
         await asyncio.sleep(0.1)
 
-        json_str = await manager._storage.get(  # type: ignore[attr-defined]
-            manager._task_key(tid)  # type: ignore[attr-defined]
+        json_str = await manager._storage.get(
+            manager._task_key(tid)
         )
         assert json_str is None
 
@@ -749,8 +749,8 @@ class TestGetBatchWithStorage:
             created_at=time.time(),
             total_files=1,
         )
-        await manager._storage.set(  # type: ignore[attr-defined]
-            manager._batch_key("stored-batch"),  # type: ignore[attr-defined]
+        await manager._storage.set(
+            manager._batch_key("stored-batch"),
             batch.to_json(),
         )
 
@@ -780,8 +780,8 @@ class TestSubmitBatchQueueFull:
         async def slow(content: bytes, ext: str) -> None:
             await asyncio.sleep(10)
 
-        manager.submit(slow)  # type: ignore[arg-type]
-        manager.submit(slow)  # type: ignore[arg-type]
+        manager.submit(slow)
+        manager.submit(slow)
 
         with pytest.raises(QueueFullError, match="Queue is full"):
             manager.submit_batch(
@@ -848,8 +848,8 @@ class TestGetTaskStorageFallback:
             created_at=time.time(),
             completed_at=time.time(),
         )
-        await manager._storage.set(  # type: ignore[attr-defined]
-            manager._task_key("storage-only"),  # type: ignore[attr-defined]
+        await manager._storage.set(
+            manager._task_key("storage-only"),
             task.to_json(),
         )
 
@@ -932,13 +932,13 @@ class TestTaskKeyAndBatchKey:
     async def test_task_key_format(self):
         """_task_key returns correct format."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        assert manager._task_key("abc") == "task:abc"  # type: ignore[attr-defined]
+        assert manager._task_key("abc") == "task:abc"
 
     @pytest.mark.anyio
     async def test_batch_key_format(self):
         """_batch_key returns correct format."""
         manager = TaskManager(max_concurrent=2, max_queue_size=5)
-        assert manager._batch_key("xyz") == "batch:xyz"  # type: ignore[attr-defined]
+        assert manager._batch_key("xyz") == "batch:xyz"
 
 
 # --- ACTIVE_TASK_IDS_KEY tests ---

@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse, Response
 from app.config import settings
 from app.converter import convert_worker
 from app.error_handler import ErrorHandler, error
-from app.ip_helpers import _get_client_ip  # type: ignore[import-untyped]
+from app.ip_helpers import _get_client_ip
 from app.task_manager import QueueFullError, TaskManager, TaskStatus
 from app.validation import validate_file_content, validate_filename
 
@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 def register_batch_routes(app: FastAPI) -> None:
     """Register batch-related routes on the FastAPI app instance."""
 
-    @app.post("/convert/batch", response_model=dict[str, Any])  # type: ignore[misc]
-    async def convert_batch(  # type: ignore[misc]
+    @app.post("/convert/batch", response_model=dict[str, Any])
+    async def convert_batch(
         request: Request,
         files: list[UploadFile] = File(...),  # noqa: B008
         format: str | None = Query(default=None, alias="format"),
@@ -244,7 +244,7 @@ def register_batch_routes(app: FastAPI) -> None:
                 failed += 1
 
         # Determine status code: 207 if any failure, 200 if all succeeded
-        status_code: int = 207 if failed > 0 else 200  # type: ignore[misc]
+        status_code: int = 207 if failed > 0 else 200
 
         # --- 7. Logging: batch request completed ---
         logger.info(
@@ -288,8 +288,8 @@ def register_batch_routes(app: FastAPI) -> None:
             markdown_content = "\n\n".join(r.get("markdown", "") for r in results if r.get("success"))
             return Response(content=markdown_content, media_type="text/markdown; charset=utf-8")
 
-    @app.get("/batch/{batch_id}", response_model=dict[str, Any])  # type: ignore[misc]
-    async def get_batch_status(batch_id: str):  # type: ignore[misc]
+    @app.get("/batch/{batch_id}", response_model=dict[str, Any])
+    async def get_batch_status(batch_id: str):
         """
         Retrieve the status and results of an asynchronous batch.
 
@@ -395,7 +395,7 @@ async def _handle_async_batch(
     # Phase 3 — submit remaining valid files as real tasks
     for index, filename, content, ext in valid_files:
         try:
-            entries.append(  # type: ignore[typeddict-item]
+            entries.append(
                 (index, filename, task_manager.submit(convert_worker, content, ext), None)
             )
         except QueueFullError as e:
@@ -416,10 +416,10 @@ async def _handle_async_batch(
     task_manager.register_batch(batch_id, task_ids, filenames, len(files))
 
     # Build response — use actual task status from the task manager
-    tasks: list[dict[str, Any]] = []  # type: ignore[var-annotated]
+    tasks: list[dict[str, Any]] = []
     for i, task_id in enumerate(task_ids):
         task_result = await task_manager.get_task(task_id)
-        tasks.append(  # type: ignore[arg-type]
+        tasks.append(
             {
                 "index": i,
                 "filename": filenames[i],

@@ -103,7 +103,7 @@ def sample_scanned_pdf_bytes() -> bytes:
     from reportlab.lib.utils import ImageReader
 
     c = canvas.Canvas(buf, pagesize=A4)
-    c.drawImage(ImageReader(img_bytes), 50, 50, width=495, height=200)  # type: ignore[attr-defined]
+    c.drawImage(ImageReader(img_bytes), 50, 50, width=495, height=200)
     c.save()
     buf.seek(0)
     return buf.getvalue()

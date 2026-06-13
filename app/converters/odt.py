@@ -6,8 +6,8 @@ import html
 import io
 import logging
 
-from odf import opendocument, text  # type: ignore[import-untyped]
-from odf.namespaces import TEXTNS  # type: ignore[import-untyped]
+from odf import opendocument, text
+from odf.namespaces import TEXTNS
 
 from app.config import settings
 from app.models.response import JsonlEvent

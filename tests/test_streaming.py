@@ -8,18 +8,18 @@ import pytest
 from app.api import create_app
 from app.config import settings
 from app.streaming import (
-    _convert_docx_stream,  # type: ignore[attr-defined]
-    _convert_html_stream,  # type: ignore[attr-defined]
-    _convert_odp_stream,  # type: ignore[attr-defined]
-    _convert_odt_stream,  # type: ignore[attr-defined]
-    _convert_pdf_stream,  # type: ignore[attr-defined]
-    _convert_xlsx_stream,  # type: ignore[attr-defined]
-    _sse_event,  # type: ignore[attr-defined]
+    _convert_docx_stream,
+    _convert_html_stream,
+    _convert_odp_stream,
+    _convert_odt_stream,
+    _convert_pdf_stream,
+    _convert_xlsx_stream,
+    _sse_event,
     convert_stream,
 )
 from fastapi.testclient import TestClient
 # Import fixtures from modules
-from tests.fixtures.common import sample_docx_bytes # type: ignore[import-not-found]
+from tests.fixtures.common import sample_docx_bytes
 
 @pytest.fixture
 def app() -> Any:

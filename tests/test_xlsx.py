@@ -5,16 +5,16 @@ from typing import Any
 
 import pytest
 from app.converters.xlsx import (
-    _escape_md_table,  # type: ignore[attr-defined, private]
-    _sanitize_url,  # type: ignore[attr-defined, private]
-    convert_xlsx_to_md,  # type: ignore[attr-defined, private]
+    _escape_md_table,
+    _sanitize_url,
+    convert_xlsx_to_md,
 )
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 
 # Import fixtures from modules (used by pytest as fixture injection)
 # These are imported to make them available to pytest's fixture system
-from tests.fixtures.xlsx import (  # type: ignore[import-not-found]
+from tests.fixtures.xlsx import (
     sample_xlsx_bytes,
     sample_xlsx_dates_numbers_bytes,
     sample_xlsx_empty_sheet_bytes,
@@ -160,7 +160,7 @@ class TestConvertXlsxToMd:
     def test_empty_cells(self):
         """Test that empty cells are handled correctly."""
         wb: Workbook = Workbook()
-        ws: Worksheet = wb.active  # type: ignore[assignment]
+        ws: Worksheet = wb.active
         ws.title = "Test"
         ws["A1"] = "Header"
         ws["B1"] = "Data"
@@ -180,7 +180,7 @@ class TestConvertXlsxToMd:
     def test_boolean_values(self):
         """Test boolean cell values."""
         wb: Workbook = Workbook()
-        ws: Worksheet = wb.active  # type: ignore[assignment]
+        ws: Worksheet = wb.active
         ws.title = "Bool"
         ws["A1"] = "Col"
         ws["B1"] = "Bool"

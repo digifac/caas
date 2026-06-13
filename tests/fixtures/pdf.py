@@ -32,7 +32,7 @@ def sample_pdf_with_link_bytes() -> bytes:
     c.setFont("Helvetica", 12)
     c.drawString(72, 750, "Visitez notre site")
     # Add an URI link with reportlab
-    c.linkURL("https://example.com", (72, 740, 200, 760), thickness=0)  # type: ignore[attr-defined]
+    c.linkURL("https://example.com", (72, 740, 200, 760), thickness=0)
     c.save()
     buf.seek(0)
     return buf.getvalue()

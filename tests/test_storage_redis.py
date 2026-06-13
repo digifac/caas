@@ -6,7 +6,7 @@ Marked with @pytest.mark.redis so they can be selected/deselected with -m redis.
 import asyncio
 from typing import Any
 
-import fakeredis.aioredis  # type: ignore[import-untyped]
+import fakeredis.aioredis
 import pytest
 from app.storage.redis import RedisStorage
 
@@ -20,7 +20,7 @@ def fake_redis() -> Any:
 @pytest.fixture
 def storage(fake_redis: Any) -> RedisStorage:
     """RedisStorage backed by fakeredis."""
-    return RedisStorage(fake_redis)  # type: ignore[arg-type]
+    return RedisStorage(fake_redis)
 
 
 # -- get / set --

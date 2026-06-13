@@ -34,7 +34,7 @@ class ConversionResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     format: str = Field(..., description="Source document format (pdf, docx, xlsx, etc.)")
-    pages: list[PageJson] = Field(default_factory=list, description="List of pages/sections with content")  # type: ignore[misc]
+    pages: list[PageJson] = Field(default_factory=list, description="List of pages/sections with content")
     raw_content: str | None = Field(None, alias="_content", description="Raw Markdown content (alternative to pages for simple formats)")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Format-specific metadata")
     request_id: str | None = Field(None, description="Unique request ID for tracing")
@@ -51,7 +51,7 @@ class SheetJson(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str = Field(..., description="Sheet name")
-    data: list[list[Any]] = Field(default_factory=list, description="Raw data (list of lists)")  # type: ignore[misc]
+    data: list[list[Any]] = Field(default_factory=list, description="Raw data (list of lists)")
     headers: list[str] | None = Field(None, description="Column headers if available")
 
 
@@ -79,7 +79,7 @@ class SlideJson(BaseModel):
     index: int = Field(..., description="Slide index")
     title: str | None = Field(None, description="Slide title")
     content: list[str] = Field(default_factory=list, description="List of paragraphs/text")
-    tables: list[list[list[Any]]] = Field(default_factory=list, description="Extracted tables")  # type: ignore[misc]
+    tables: list[list[list[Any]]] = Field(default_factory=list, description="Extracted tables")
 
 
 class HtmlElementJson(BaseModel):
@@ -118,7 +118,7 @@ class OdpSlideJson(BaseModel):
     index: int = Field(..., description="Slide index")
     title: str | None = Field(None, description="Slide title")
     content: list[str] = Field(default_factory=list, description="Textual content of frames")
-    lists: list[str] = Field(default_factory=list, description="Bulleted/numbered lists")  # type: ignore[misc]
+    lists: list[str] = Field(default_factory=list, description="Bulleted/numbered lists")
 
 
 # Standardized JSONL events (consistent across all converters)
@@ -155,7 +155,7 @@ class BatchConversionResponse(BaseModel):
     total_files: int = Field(0, description="Total files submitted")
     succeeded: int = Field(0, description="Successful conversions count")
     failed: int = Field(0, description="Failed conversions count")
-    results: list[dict[str, Any]] = Field(default_factory=list, description="Results per file")  # type: ignore[misc]
+    results: list[dict[str, Any]] = Field(default_factory=list, description="Results per file")
 
     attributes: dict[str, Any] = Field(default_factory=dict, description="Extracted HTML attributes")
-    children: list[dict[str, Any]] = Field(default_factory=list, description="Recursive children (if applicable)")  # type: ignore[misc]
+    children: list[dict[str, Any]] = Field(default_factory=list, description="Recursive children (if applicable)")

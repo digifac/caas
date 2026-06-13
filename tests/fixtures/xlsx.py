@@ -20,13 +20,13 @@ from openpyxl import Workbook
 def sample_xlsx_bytes() -> bytes:
     """Generate a minimal XLSX file in memory with one sheet and several cells."""
     wb: Workbook = Workbook()
-    ws = wb.active  # type: ignore[misc]
-    ws.title = "Feuille1"  # type: ignore[attr-defined]
+    ws = wb.active
+    ws.title = "Feuille1"
     
     # En-têtes - plusieurs colonnes pour générer plus de texte
     headers = ["ID", "Nom", "Description_détaillée", "Prix_unitaire", "Quantité_disponible", "Catégorie_produit"]
     for col, header in enumerate(headers, 1):
-        ws[f"A{col}"] = header  # type: ignore[index]
+        ws[f"A{col}"] = header
     
     # Données - beaucoup de lignes avec du texte long pour générer des chunks
     descriptions = [
@@ -36,13 +36,13 @@ def sample_xlsx_bytes() -> bytes:
     ]
     
     for i in range(2, 51):  # Lignes 2 à 50 (49 lignes de données)
-        ws[f"A{i}"] = i  # type: ignore[index]
-        ws[f"B{i}"] = f"Produit {i}"  # type: ignore[index]
+        ws[f"A{i}"] = i
+        ws[f"B{i}"] = f"Produit {i}"
         desc_idx = (i - 2) % len(descriptions)
-        ws[f"C{i}"] = descriptions[desc_idx].format(i=i)  # type: ignore[index]
-        ws[f"D{i}"] = float(i * 1.5)  # type: ignore[index]
-        ws[f"E{i}"] = i * 10  # type: ignore[index]
-        ws[f"F{i}"] = f"Catégorie_{i % 5}"  # type: ignore[index]
+        ws[f"C{i}"] = descriptions[desc_idx].format(i=i)
+        ws[f"D{i}"] = float(i * 1.5)
+        ws[f"E{i}"] = i * 10
+        ws[f"F{i}"] = f"Catégorie_{i % 5}"
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -60,13 +60,13 @@ def sample_xlsx_simple_bytes() -> bytes:
     ws.title = "Feuille1"
     
     # En-têtes simples pour les tests Markdown (ligne 1)
-    ws["A1"] = "Nom"  # type: ignore[index]
-    ws["B1"] = "Valeur"  # type: ignore[index]
+    ws["A1"] = "Nom"
+    ws["B1"] = "Valeur"
     
     # Données simples (lignes 2 à 6)
     for i in range(1, 6):
-        ws[f"A{i+1}"] = f"Produit {i}"  # type: ignore[index]
-        ws[f"B{i+1}"] = i  # type: ignore[index]
+        ws[f"A{i+1}"] = f"Produit {i}"
+        ws[f"B{i+1}"] = i
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -80,18 +80,18 @@ def sample_xlsx_multi_sheet_bytes() -> bytes:
     from openpyxl import Workbook
 
     wb: Workbook = Workbook()
-    ws1 = wb.active  # type: ignore[misc]
-    ws1.title = "Données"  # type: ignore[attr-defined]
-    ws1["A1"] = "Produit"  # type: ignore[index]
-    ws1["B1"] = "Prix"  # type: ignore[index]
-    ws1["A2"] = "Pomme"  # type: ignore[index]
-    ws1["B2"] = 1.5  # type: ignore[index]
-    ws1["A3"] = "Orange"  # type: ignore[index]
-    ws1["B3"] = 2.0  # type: ignore[index]
+    ws1 = wb.active
+    ws1.title = "Données"
+    ws1["A1"] = "Produit"
+    ws1["B1"] = "Prix"
+    ws1["A2"] = "Pomme"
+    ws1["B2"] = 1.5
+    ws1["A3"] = "Orange"
+    ws1["B3"] = 2.0
 
-    ws2 = wb.create_sheet(title="Résumé")  # type: ignore[misc]
-    ws2["A1"] = "Total"  # type: ignore[index]
-    ws2["B1"] = 3.5  # type: ignore[index]
+    ws2 = wb.create_sheet(title="Résumé")
+    ws2["A1"] = "Total"
+    ws2["B1"] = 3.5
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -105,16 +105,16 @@ def sample_xlsx_merged_cells_bytes() -> bytes:
     from openpyxl import Workbook
 
     wb: Workbook = Workbook()
-    ws = wb.active  # type: ignore[misc]
-    ws.title = "Fusionné"  # type: ignore[attr-defined]
-    ws["A1"] = "En-tête fusionné"  # type: ignore[index]
-    ws.merge_cells("A1:C1")  # type: ignore[attr-defined]
-    ws["A2"] = "Col1"  # type: ignore[index]
-    ws["B2"] = "Col2"  # type: ignore[index]
-    ws["C2"] = "Col3"  # type: ignore[index]
-    ws["A3"] = "v1"  # type: ignore[index]
-    ws["B3"] = "v2"  # type: ignore[index]
-    ws["C3"] = "v3"  # type: ignore[index]
+    ws = wb.active
+    ws.title = "Fusionné"
+    ws["A1"] = "En-tête fusionné"
+    ws.merge_cells("A1:C1")
+    ws["A2"] = "Col1"
+    ws["B2"] = "Col2"
+    ws["C2"] = "Col3"
+    ws["A3"] = "v1"
+    ws["B3"] = "v2"
+    ws["C3"] = "v3"
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -128,20 +128,20 @@ def sample_xlsx_dates_numbers_bytes() -> bytes:
     from openpyxl import Workbook
 
     wb: Workbook = Workbook()
-    ws = wb.active  # type: ignore[misc]
-    ws.title = "Types"  # type: ignore[attr-defined]
-    ws["A1"] = "Texte"  # type: ignore[index]
-    ws["B1"] = "Nombre"  # type: ignore[index]
-    ws["C1"] = "Date"  # type: ignore[index]
-    ws["D1"] = "Booléen"  # type: ignore[index]
-    ws["A2"] = "hello"  # type: ignore[index]
-    ws["B2"] = 42.5  # type: ignore[index]
-    ws["C2"] = date(2024, 1, 15)  # type: ignore[index]
-    ws["D2"] = True  # type: ignore[index]
-    ws["A3"] = "world"  # type: ignore[index]
-    ws["B3"] = -10  # type: ignore[index]
-    ws["C3"] = datetime(2024, 6, 30, 12, 0, 0)  # type: ignore[index]
-    ws["D3"] = False  # type: ignore[index]
+    ws = wb.active
+    ws.title = "Types"
+    ws["A1"] = "Texte"
+    ws["B1"] = "Nombre"
+    ws["C1"] = "Date"
+    ws["D1"] = "Booléen"
+    ws["A2"] = "hello"
+    ws["B2"] = 42.5
+    ws["C2"] = date(2024, 1, 15)
+    ws["D2"] = True
+    ws["A3"] = "world"
+    ws["B3"] = -10
+    ws["C3"] = datetime(2024, 6, 30, 12, 0, 0)
+    ws["D3"] = False
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -155,13 +155,13 @@ def sample_xlsx_special_chars_bytes() -> bytes:
     from openpyxl import Workbook
 
     wb: Workbook = Workbook()
-    ws = wb.active  # type: ignore[misc]
-    ws.title = "Spécial"  # type: ignore[attr-defined]
-    ws["A1"] = "Colonne A"  # type: ignore[index]
-    ws["B1"] = "Colonne B"  # type: ignore[index]
-    ws["A2"] = "Texte avec | pipe"  # type: ignore[index]
-    ws["B2"] = "Texte avec \\ backslash"  # type: ignore[index]
-    ws["A3"] = "Ligne 1\nLigne 2"  # type: ignore[index]
+    ws = wb.active
+    ws.title = "Spécial"
+    ws["A1"] = "Colonne A"
+    ws["B1"] = "Colonne B"
+    ws["A2"] = "Texte avec | pipe"
+    ws["B2"] = "Texte avec \\ backslash"
+    ws["A3"] = "Ligne 1\nLigne 2"
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -175,8 +175,8 @@ def sample_xlsx_empty_sheet_bytes() -> bytes:
     from openpyxl import Workbook
 
     wb: Workbook = Workbook()
-    ws = wb.active  # type: ignore[misc]
-    ws.title = "Vide"  # type: ignore[attr-defined]
+    ws = wb.active
+    ws.title = "Vide"
 
     buf = io.BytesIO()
     wb.save(buf)

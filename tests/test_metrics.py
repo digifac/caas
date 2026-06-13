@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 # Import fixtures from modules
-from tests.fixtures.common import async_client # type: ignore[import-not-found]
+from tests.fixtures.common import async_client
 
 
 @pytest.mark.anyio

@@ -36,7 +36,7 @@ class AppMetrics:
         route = request.scope.get("route")
         route_path = getattr(route, "path", None)
         if isinstance(route_path, str):
-            return route_path  # type: ignore[return-value]
+            return route_path
         return str(request.url.path)
 
     def start_request(self, method: str, path: str) -> None:

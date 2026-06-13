@@ -9,7 +9,7 @@ Uses fakeredis so no real Redis server is required.
 import asyncio
 import json
 
-import fakeredis.aioredis  # type: ignore[import-untyped]
+import fakeredis.aioredis
 import pytest
 from app.rate_limiter import RateLimiter
 from typing import TYPE_CHECKING

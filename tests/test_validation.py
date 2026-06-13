@@ -8,11 +8,11 @@ import zipfile
 
 from app.config import settings
 from app.validation import (
-    _detect_mime_type, # type: ignore[attr-defined, private]
-    _validate_docx_structure, # type: ignore[attr-defined, private]
-    _validate_xlsx_structure, # type: ignore[attr-defined, private]
-    _validate_zip_bomb, # type: ignore[attr-defined, private]
-    validate_file_content, # type: ignore[attr-defined, private]
+    _detect_mime_type,
+    _validate_docx_structure,
+    _validate_xlsx_structure,
+    _validate_zip_bomb,
+    validate_file_content,
 )
 
 

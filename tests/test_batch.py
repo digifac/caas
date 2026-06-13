@@ -524,8 +524,8 @@ class TestBatchQueueSaturation:
             await asyncio.sleep(5)
             return {"ok": True}
 
-        small_manager.submit(slow_task)  # type: ignore[misc]
-        small_manager.submit(slow_task)  # type: ignore[misc]
+        small_manager.submit(slow_task)
+        small_manager.submit(slow_task)
 
         # Now try to submit a batch — should fail with queue full
         files = [
@@ -907,14 +907,14 @@ class TestBatchOdp:
         for _ in range(40):
             await asyncio.sleep(0.25)
             status_res = await async_client.get(f"/task/{task_id}")
-            status_data = cast(dict[str, Any], status_res.json())  # type: ignore[assignment]
+            status_data = cast(dict[str, Any], status_res.json())
             if status_data.get("status") in ("completed", "failed"):
                 break
 
-        assert status_data["status"] == "completed"  # type: ignore[index]
-        result = status_data.get("result", {})  # type: ignore[index]
-        assert "markdown" in result  # type: ignore[index]
-        assert "Présentation de Test" in result["markdown"]  # type: ignore[index]
+        assert status_data["status"] == "completed"
+        result = status_data.get("result", {})
+        assert "markdown" in result
+        assert "Présentation de Test" in result["markdown"]
 
     @pytest.mark.anyio
     async def test_invalid_odp_in_batch(

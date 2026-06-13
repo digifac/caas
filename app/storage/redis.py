@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from app.storage.base import StorageProtocol
 
 if TYPE_CHECKING:
-    import redis.asyncio as aioredis  # type: ignore[import-not-found]
+    import redis.asyncio as aioredis
 
 
 class RedisStorage(StorageProtocol):

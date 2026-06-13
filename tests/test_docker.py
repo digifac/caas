@@ -23,7 +23,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 # Import fixtures from modules
-from tests.fixtures.common import sample_pdf_bytes  # type: ignore[import-not-found]
+from tests.fixtures.common import sample_pdf_bytes
 
 IMAGE_NAME = "caas-test"
 CONTAINER_NAME = "caas-test-container"

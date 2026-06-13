@@ -14,22 +14,22 @@ import pytest
 @pytest.fixture
 def sample_ods_bytes() -> bytes:
     """Generate a minimal ODS spreadsheet file with one sheet and sample data using odfpy."""
-    from odf import table, text  # type: ignore[attr-defined]
-    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
+    from odf import table, text
+    from odf.opendocument import OpenDocumentSpreadsheet
 
-    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
-    table_elem = table.Table(name="Feuille1")  # type: ignore[attr-defined]
+    doc = OpenDocumentSpreadsheet()
+    table_elem = table.Table(name="Feuille1")
 
     # Row 1: headers - plusieurs colonnes pour générer plus de texte
     headers = ["ID", "Nom", "Description_détaillée", "Prix_unitaire", "Quantité_disponible", "Catégorie_produit"]
     for _col, header in enumerate(headers, 1):
-        c = table.TableCell()  # type: ignore[attr-defined]
-        p = text.P()  # type: ignore[attr-defined]
-        p.addText(header)  # type: ignore[attr-defined]
-        c.addElement(p)  # type: ignore[attr-defined]
-        row1 = table.TableRow()  # type: ignore[attr-defined]
-        row1.addElement(c)  # type: ignore[attr-defined]
-        table_elem.addElement(row1)  # type: ignore[attr-defined]
+        c = table.TableCell()
+        p = text.P()
+        p.addText(header)
+        c.addElement(p)
+        row1 = table.TableRow()
+        row1.addElement(c)
+        table_elem.addElement(row1)
 
     # Descriptions variées pour générer du texte long
     descriptions = [
@@ -40,51 +40,51 @@ def sample_ods_bytes() -> bytes:
 
     # Multiple rows of data to generate chunks
     for i in range(2, 51):  # Lignes 2 à 50 (49 lignes de données)
-        row = table.TableRow()  # type: ignore[attr-defined]
+        row = table.TableRow()
         
-        c_id = table.TableCell()  # type: ignore[attr-defined]
-        p_id = text.P()  # type: ignore[attr-defined]
-        p_id.addText(str(i))  # type: ignore[attr-defined]
-        c_id.addElement(p_id)  # type: ignore[attr-defined]
-        row.addElement(c_id)  # type: ignore[attr-defined]
+        c_id = table.TableCell()
+        p_id = text.P()
+        p_id.addText(str(i))
+        c_id.addElement(p_id)
+        row.addElement(c_id)
 
-        c_nom = table.TableCell()  # type: ignore[attr-defined]
-        p_nom = text.P()  # type: ignore[attr-defined]
-        p_nom.addText(f"Produit {i}")  # type: ignore[attr-defined]
-        c_nom.addElement(p_nom)  # type: ignore[attr-defined]
-        row.addElement(c_nom)  # type: ignore[attr-defined]
+        c_nom = table.TableCell()
+        p_nom = text.P()
+        p_nom.addText(f"Produit {i}")
+        c_nom.addElement(p_nom)
+        row.addElement(c_nom)
 
         desc_idx = (i - 2) % len(descriptions)
-        c_desc = table.TableCell()  # type: ignore[attr-defined]
-        p_desc = text.P()  # type: ignore[attr-defined]
-        p_desc.addText(descriptions[desc_idx].format(i=i))  # type: ignore[attr-defined]
-        c_desc.addElement(p_desc)  # type: ignore[attr-defined]
-        row.addElement(c_desc)  # type: ignore[attr-defined]
+        c_desc = table.TableCell()
+        p_desc = text.P()
+        p_desc.addText(descriptions[desc_idx].format(i=i))
+        c_desc.addElement(p_desc)
+        row.addElement(c_desc)
 
-        c_price = table.TableCell()  # type: ignore[attr-defined]
-        p_price = text.P()  # type: ignore[attr-defined]
-        p_price.addText(str(float(i * 1.5)))  # type: ignore[attr-defined]
-        c_price.addElement(p_price)  # type: ignore[attr-defined]
-        row.addElement(c_price)  # type: ignore[attr-defined]
+        c_price = table.TableCell()
+        p_price = text.P()
+        p_price.addText(str(float(i * 1.5)))
+        c_price.addElement(p_price)
+        row.addElement(c_price)
 
-        c_qty = table.TableCell()  # type: ignore[attr-defined]
-        p_qty = text.P()  # type: ignore[attr-defined]
-        p_qty.addText(str(i * 10))  # type: ignore[attr-defined]
-        c_qty.addElement(p_qty)  # type: ignore[attr-defined]
-        row.addElement(c_qty)  # type: ignore[attr-defined]
+        c_qty = table.TableCell()
+        p_qty = text.P()
+        p_qty.addText(str(i * 10))
+        c_qty.addElement(p_qty)
+        row.addElement(c_qty)
 
-        c_cat = table.TableCell()  # type: ignore[attr-defined]
-        p_cat = text.P()  # type: ignore[attr-defined]
-        p_cat.addText(f"Catégorie_{i % 5}")  # type: ignore[attr-defined]
-        c_cat.addElement(p_cat)  # type: ignore[attr-defined]
-        row.addElement(c_cat)  # type: ignore[attr-defined]
+        c_cat = table.TableCell()
+        p_cat = text.P()
+        p_cat.addText(f"Catégorie_{i % 5}")
+        c_cat.addElement(p_cat)
+        row.addElement(c_cat)
 
-        table_elem.addElement(row)  # type: ignore[attr-defined]
+        table_elem.addElement(row)
 
-    doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
+    doc.spreadsheet.addElement(table_elem)
 
     buf = io.BytesIO()
-    doc.save(buf)  # type: ignore[attr-defined]
+    doc.save(buf)
     buf.seek(0)
     return buf.getvalue()
 
@@ -92,73 +92,73 @@ def sample_ods_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_multi_sheet_bytes() -> bytes:
     """Generate an ODS spreadsheet file containing multiple sheets using odfpy."""
-    from odf import table, text  # type: ignore[attr-defined]
-    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
+    from odf import table, text
+    from odf.opendocument import OpenDocumentSpreadsheet
 
-    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
+    doc = OpenDocumentSpreadsheet()
 
     # Sheet 1: Données
-    sheet1 = table.Table(name="Données")  # type: ignore[attr-defined]
-    row1 = table.TableRow()  # type: ignore[attr-defined]
-    c1 = table.TableCell()  # type: ignore[attr-defined]
-    p1 = text.P()  # type: ignore[attr-defined]
-    p1.addText("Produit")  # type: ignore[attr-defined]
-    c1.addElement(p1)  # type: ignore[attr-defined]
-    row1.addElement(c1)  # type: ignore[attr-defined]
-    c2 = table.TableCell()  # type: ignore[attr-defined]
-    p2 = text.P()  # type: ignore[attr-defined]
-    p2.addText("Prix")  # type: ignore[attr-defined]
-    c2.addElement(p2)  # type: ignore[attr-defined]
-    row1.addElement(c2)  # type: ignore[attr-defined]
-    sheet1.addElement(row1)  # type: ignore[attr-defined]
+    sheet1 = table.Table(name="Données")
+    row1 = table.TableRow()
+    c1 = table.TableCell()
+    p1 = text.P()
+    p1.addText("Produit")
+    c1.addElement(p1)
+    row1.addElement(c1)
+    c2 = table.TableCell()
+    p2 = text.P()
+    p2.addText("Prix")
+    c2.addElement(p2)
+    row1.addElement(c2)
+    sheet1.addElement(row1)
 
-    row2 = table.TableRow()  # type: ignore[attr-defined]
-    c3 = table.TableCell()  # type: ignore[attr-defined]
-    p3 = text.P()  # type: ignore[attr-defined]
-    p3.addText("Pomme")  # type: ignore[attr-defined]
-    c3.addElement(p3)  # type: ignore[attr-defined]
-    row2.addElement(c3)  # type: ignore[attr-defined]
-    c4 = table.TableCell()  # type: ignore[attr-defined]
-    p4 = text.P()  # type: ignore[attr-defined]
-    p4.addText("1.5")  # type: ignore[attr-defined]
-    c4.addElement(p4)  # type: ignore[attr-defined]
-    row2.addElement(c4)  # type: ignore[attr-defined]
-    sheet1.addElement(row2)  # type: ignore[attr-defined]
+    row2 = table.TableRow()
+    c3 = table.TableCell()
+    p3 = text.P()
+    p3.addText("Pomme")
+    c3.addElement(p3)
+    row2.addElement(c3)
+    c4 = table.TableCell()
+    p4 = text.P()
+    p4.addText("1.5")
+    c4.addElement(p4)
+    row2.addElement(c4)
+    sheet1.addElement(row2)
 
-    row3 = table.TableRow()  # type: ignore[attr-defined]
-    c5 = table.TableCell()  # type: ignore[attr-defined]
-    p5 = text.P()  # type: ignore[attr-defined]
-    p5.addText("Orange")  # type: ignore[attr-defined]
-    c5.addElement(p5)  # type: ignore[attr-defined]
-    row3.addElement(c5)  # type: ignore[attr-defined]
-    c6 = table.TableCell()  # type: ignore[attr-defined]
-    p6 = text.P()  # type: ignore[attr-defined]
-    p6.addText("2.0")  # type: ignore[attr-defined]
-    c6.addElement(p6)  # type: ignore[attr-defined]
-    row3.addElement(c6)  # type: ignore[attr-defined]
-    sheet1.addElement(row3)  # type: ignore[attr-defined]
+    row3 = table.TableRow()
+    c5 = table.TableCell()
+    p5 = text.P()
+    p5.addText("Orange")
+    c5.addElement(p5)
+    row3.addElement(c5)
+    c6 = table.TableCell()
+    p6 = text.P()
+    p6.addText("2.0")
+    c6.addElement(p6)
+    row3.addElement(c6)
+    sheet1.addElement(row3)
 
-    doc.spreadsheet.addElement(sheet1)  # type: ignore[attr-defined]
+    doc.spreadsheet.addElement(sheet1)
 
     # Sheet 2: Résumé
-    sheet2 = table.Table(name="Résumé")  # type: ignore[attr-defined]
-    row4 = table.TableRow()  # type: ignore[attr-defined]
-    c7 = table.TableCell()  # type: ignore[attr-defined]
-    p7 = text.P()  # type: ignore[attr-defined]
-    p7.addText("Total")  # type: ignore[attr-defined]
-    c7.addElement(p7)  # type: ignore[attr-defined]
-    row4.addElement(c7)  # type: ignore[attr-defined]
-    c8 = table.TableCell()  # type: ignore[attr-defined]
-    p8 = text.P()  # type: ignore[attr-defined]
-    p8.addText("3.5")  # type: ignore[attr-defined]
-    c8.addElement(p8)  # type: ignore[attr-defined]
-    row4.addElement(c8)  # type: ignore[attr-defined]
-    sheet2.addElement(row4)  # type: ignore[attr-defined]
+    sheet2 = table.Table(name="Résumé")
+    row4 = table.TableRow()
+    c7 = table.TableCell()
+    p7 = text.P()
+    p7.addText("Total")
+    c7.addElement(p7)
+    row4.addElement(c7)
+    c8 = table.TableCell()
+    p8 = text.P()
+    p8.addText("3.5")
+    c8.addElement(p8)
+    row4.addElement(c8)
+    sheet2.addElement(row4)
 
-    doc.spreadsheet.addElement(sheet2)  # type: ignore[attr-defined]
+    doc.spreadsheet.addElement(sheet2)
 
     buf = io.BytesIO()
-    doc.save(buf)  # type: ignore[attr-defined]
+    doc.save(buf)
     buf.seek(0)
     return buf.getvalue()
 
@@ -166,16 +166,16 @@ def sample_ods_multi_sheet_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_empty_sheet_bytes() -> bytes:
     """Generate an ODS file with an empty sheet using odfpy."""
-    from odf import table  # type: ignore[attr-defined]
-    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
+    from odf import table
+    from odf.opendocument import OpenDocumentSpreadsheet
 
-    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
-    table_elem = table.Table(name="Vide")  # type: ignore[attr-defined]
+    doc = OpenDocumentSpreadsheet()
+    table_elem = table.Table(name="Vide")
     # No rows added — empty sheet
-    doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
+    doc.spreadsheet.addElement(table_elem)
 
     buf = io.BytesIO()
-    doc.save(buf)  # type: ignore[attr-defined]
+    doc.save(buf)
     buf.seek(0)
     return buf.getvalue()
 
@@ -183,57 +183,57 @@ def sample_ods_empty_sheet_bytes() -> bytes:
 @pytest.fixture
 def sample_ods_special_chars_bytes() -> bytes:
     """Generate an ODS file with special characters using odfpy."""
-    from odf import table, text  # type: ignore[attr-defined]
-    from odf.opendocument import OpenDocumentSpreadsheet  # type: ignore[attr-defined]
+    from odf import table, text
+    from odf.opendocument import OpenDocumentSpreadsheet
 
-    doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
-    table_elem = table.Table(name="Spécial")  # type: ignore[attr-defined]
+    doc = OpenDocumentSpreadsheet()
+    table_elem = table.Table(name="Spécial")
 
     # Row 1: headers
-    row1 = table.TableRow()  # type: ignore[attr-defined]
-    c1 = table.TableCell()  # type: ignore[attr-defined]
-    p1 = text.P()  # type: ignore[attr-defined]
-    p1.addText("Colonne A")  # type: ignore[attr-defined]
-    c1.addElement(p1)  # type: ignore[attr-defined]
-    row1.addElement(c1)  # type: ignore[attr-defined]
-    c2 = table.TableCell()  # type: ignore[attr-defined]
-    p2 = text.P()  # type: ignore[attr-defined]
-    p2.addText("Colonne B")  # type: ignore[attr-defined]
-    c2.addElement(p2)  # type: ignore[attr-defined]
-    row1.addElement(c2)  # type: ignore[attr-defined]
-    table_elem.addElement(row1)  # type: ignore[attr-defined]
+    row1 = table.TableRow()
+    c1 = table.TableCell()
+    p1 = text.P()
+    p1.addText("Colonne A")
+    c1.addElement(p1)
+    row1.addElement(c1)
+    c2 = table.TableCell()
+    p2 = text.P()
+    p2.addText("Colonne B")
+    c2.addElement(p2)
+    row1.addElement(c2)
+    table_elem.addElement(row1)
 
     # Row 2: pipe and backslash
-    row2 = table.TableRow()  # type: ignore[attr-defined]
-    c3 = table.TableCell()  # type: ignore[attr-defined]
-    p3 = text.P()  # type: ignore[attr-defined]
-    p3.addText("Texte avec | pipe")  # type: ignore[attr-defined]
-    c3.addElement(p3)  # type: ignore[attr-defined]
-    row2.addElement(c3)  # type: ignore[attr-defined]
-    c4 = table.TableCell()  # type: ignore[attr-defined]
-    p4 = text.P()  # type: ignore[attr-defined]
-    p4.addText("Texte avec \\ backslash")  # type: ignore[attr-defined]
-    c4.addElement(p4)  # type: ignore[attr-defined]
-    row2.addElement(c4)  # type: ignore[attr-defined]
-    table_elem.addElement(row2)  # type: ignore[attr-defined]
+    row2 = table.TableRow()
+    c3 = table.TableCell()
+    p3 = text.P()
+    p3.addText("Texte avec | pipe")
+    c3.addElement(p3)
+    row2.addElement(c3)
+    c4 = table.TableCell()
+    p4 = text.P()
+    p4.addText("Texte avec \\ backslash")
+    c4.addElement(p4)
+    row2.addElement(c4)
+    table_elem.addElement(row2)
 
     # Row 3: accents
-    row3 = table.TableRow()  # type: ignore[attr-defined]
-    c5 = table.TableCell()  # type: ignore[attr-defined]
-    p5 = text.P()  # type: ignore[attr-defined]
-    p5.addText("Àéîôù")  # type: ignore[attr-defined]
-    c5.addElement(p5)  # type: ignore[attr-defined]
-    row3.addElement(c5)  # type: ignore[attr-defined]
-    c6 = table.TableCell()  # type: ignore[attr-defined]
-    p6 = text.P()  # type: ignore[attr-defined]
-    p6.addText("Ñ ü ö ä")  # type: ignore[attr-defined]
-    c6.addElement(p6)  # type: ignore[attr-defined]
-    row3.addElement(c6)  # type: ignore[attr-defined]
-    table_elem.addElement(row3)  # type: ignore[attr-defined]
+    row3 = table.TableRow()
+    c5 = table.TableCell()
+    p5 = text.P()
+    p5.addText("Àéîôù")
+    c5.addElement(p5)
+    row3.addElement(c5)
+    c6 = table.TableCell()
+    p6 = text.P()
+    p6.addText("Ñ ü ö ä")
+    c6.addElement(p6)
+    row3.addElement(c6)
+    table_elem.addElement(row3)
 
-    doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
+    doc.spreadsheet.addElement(table_elem)
 
     buf = io.BytesIO()
-    doc.save(buf)  # type: ignore[attr-defined]
+    doc.save(buf)
     buf.seek(0)
     return buf.getvalue()

@@ -132,4 +132,4 @@ def _to_jsonl_format(pages: list[dict[str, Any]]) -> str:
     Returns:
         JSONL string with one JSON object per line, suitable for streaming.
     """
-    return "\n".join(json.dumps(page, ensure_ascii=False) for page in pages)  # type: ignore[return-value]
+    return "\n".join(json.dumps(page, ensure_ascii=False) for page in pages)

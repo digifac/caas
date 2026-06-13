@@ -7,8 +7,8 @@ import io
 import logging
 from typing import Any
 
-from odf import opendocument  # type: ignore[import-untyped]
-from odf.namespaces import DRAWNS, STYLENS  # type: ignore[import-untyped]
+from odf import opendocument
+from odf.namespaces import DRAWNS, STYLENS
 
 from app.config import settings
 from app.converters.base import clean_lines
@@ -29,7 +29,7 @@ def _get_attr_ns(element: Any, namespace_local: str, attr_name: str) -> str | No
         The attribute value or None if not found.
     """
     if hasattr(element, "getAttrNS"):
-        return element.getAttrNS(namespace_local, attr_name)  # type: ignore[no-any-return]
+        return element.getAttrNS(namespace_local, attr_name)
     return None
 
 
@@ -55,7 +55,7 @@ def _get_local_name(element: Any) -> str | None:
         The local name (without namespace) or None if not available.
     """
     if hasattr(element, "qname") and element.qname is not None:
-        return element.qname[1]  # type: ignore[no-any-return]
+        return element.qname[1]
     return None
 
 
@@ -297,7 +297,7 @@ def convert_odp_to_md(file_bytes: bytes) -> str:
         Exception: If the file is not a valid ODP.
     """
     try:
-        doc = opendocument.load(io.BytesIO(file_bytes))  # type: ignore[assignment]
+        doc = opendocument.load(io.BytesIO(file_bytes))
     except Exception as e:
         logger.error("Invalid ODP file: %s", e)
         raise
@@ -308,9 +308,9 @@ def convert_odp_to_md(file_bytes: bytes) -> str:
 
     # Collect all draw:page elements (slides) from the presentation body
     if hasattr(doc, "body"):
-        for child in getattr(doc.body, 'childNodes', []):  # type: ignore[attr-defined]
+        for child in getattr(doc.body, 'childNodes', []):
             if _get_local_name(child) == "presentation":
-                for page in getattr(child, 'childNodes', []):  # type: ignore[attr-defined]
+                for page in getattr(child, 'childNodes', []):
                     if _get_local_name(page) == "page":
                         slides.append(page)
 
@@ -370,7 +370,7 @@ def _extract_odp_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
         List of tuples (slide_num, title, text_lines).
     """
     try:
-        doc = opendocument.load(io.BytesIO(file_bytes))  # type: ignore[assignment]
+        doc = opendocument.load(io.BytesIO(file_bytes))
     except Exception as e:
         logger.error("Invalid ODP file: %s", e)
         raise
@@ -378,9 +378,9 @@ def _extract_odp_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
     slides: list[Any] = []
 
     if hasattr(doc, "body"):
-        for child in getattr(doc.body, 'childNodes', []):  # type: ignore[attr-defined]
+        for child in getattr(doc.body, 'childNodes', []):
             if _get_local_name(child) == "presentation":
-                for page in getattr(child, 'childNodes', []):  # type: ignore[attr-defined]
+                for page in getattr(child, 'childNodes', []):
                     if _get_local_name(page) == "page":
                         slides.append(page)
 
