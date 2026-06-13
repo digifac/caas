@@ -12,6 +12,7 @@ __all__ = [
 
 import io
 from datetime import date, datetime
+
 import pytest
 from openpyxl import Workbook
 
@@ -21,12 +22,14 @@ def sample_xlsx_bytes() -> bytes:
     """Generate a minimal XLSX file in memory with one sheet and several cells."""
     wb: Workbook = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Feuille1"
     
     # En-têtes - plusieurs colonnes pour générer plus de texte
+    from openpyxl.utils import get_column_letter
     headers = ["ID", "Nom", "Description_détaillée", "Prix_unitaire", "Quantité_disponible", "Catégorie_produit"]
     for col, header in enumerate(headers, 1):
-        ws[f"A{col}"] = header
+        ws[f"{get_column_letter(col)}1"] = header
     
     # Données - beaucoup de lignes avec du texte long pour générer des chunks
     descriptions = [
@@ -57,6 +60,7 @@ def sample_xlsx_simple_bytes() -> bytes:
 
     wb: Workbook = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Feuille1"
     
     # En-têtes simples pour les tests Markdown (ligne 1)
@@ -81,6 +85,7 @@ def sample_xlsx_multi_sheet_bytes() -> bytes:
 
     wb: Workbook = Workbook()
     ws1 = wb.active
+    assert ws1 is not None
     ws1.title = "Données"
     ws1["A1"] = "Produit"
     ws1["B1"] = "Prix"
@@ -106,6 +111,7 @@ def sample_xlsx_merged_cells_bytes() -> bytes:
 
     wb: Workbook = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Fusionné"
     ws["A1"] = "En-tête fusionné"
     ws.merge_cells("A1:C1")
@@ -129,6 +135,7 @@ def sample_xlsx_dates_numbers_bytes() -> bytes:
 
     wb: Workbook = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Types"
     ws["A1"] = "Texte"
     ws["B1"] = "Nombre"
@@ -156,6 +163,7 @@ def sample_xlsx_special_chars_bytes() -> bytes:
 
     wb: Workbook = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Spécial"
     ws["A1"] = "Colonne A"
     ws["B1"] = "Colonne B"
@@ -176,6 +184,7 @@ def sample_xlsx_empty_sheet_bytes() -> bytes:
 
     wb: Workbook = Workbook()
     ws = wb.active
+    assert ws is not None
     ws.title = "Vide"
 
     buf = io.BytesIO()

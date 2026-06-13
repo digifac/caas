@@ -236,24 +236,23 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     return "\n".join(json.dumps(e.model_dump(), ensure_ascii=False) for e in chunks)
 
 
-def convert_pdf_to_json(file_bytes: bytes) -> list[PageJson]:
+def convert_pdf_to_json(file_bytes: bytes) -> dict[str, Any]:
     """Extract text in memory via pdfplumber, with OCR for scanned pages and link extraction.
 
     Single-pass design: text is extracted once per page and cached, so the PDF is never
     re-parsed by pdfplumber.  pypdfium2 is opened only for pages that need OCR.
+    
+    Returns:
+        Structured JSON dict with pages and metadata, ready for serialization.
     """
     results = _extract_pdf_content(file_bytes)
-
-    json_results: list[PageJson] = []
-    for page_idx, page_md, links in results:
-        json_result = PageJson(
-            page_idx=page_idx,
-            markdown_text=page_md,
-            links=links
-        )
-        json_results.append(json_result)
-
-    return json_results
+    json_result = _to_json(results)
+    # Convert PageJson objects to dicts for JSON serialization (by_alias for 'index')
+    return {
+        "format": json_result["format"],
+        "pages": [page.model_dump(by_alias=True) for page in json_result["pages"]],
+        "metadata": json_result["metadata"],
+    }
 
 
 def convert_pdf_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
@@ -261,19 +260,47 @@ def convert_pdf_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
 
     Single-pass design: text is extracted once per page and cached, so the PDF is never
     re-parsed by pdfplumber.  pypdfium2 is opened only for pages that need OCR.
+    
+    Returns:
+        List of JsonlEvent objects with start, chunk(s), and end events per page.
     """
+    from app.config import settings
+    
     results = _extract_pdf_content(file_bytes)
-
     jsonl_results: list[JsonlEvent] = []
+    
     for page_idx, page_md, links in results:
-        jsonl_result = JsonlEvent(
-            type="chunk",
+        # Start event for the page
+        jsonl_results.append(JsonlEvent(
+            type="start",
             page_idx=page_idx,
-            markdown_text=page_md,
-            links=links,
+            markdown_text="",
+            links=[],
             offset=0,
-            length=len(page_md)
-        )
-        jsonl_results.append(jsonl_result)
-
+            length=0
+        ))
+        
+        # Chunk events (split by chunk_size)
+        chunk_size = settings.jsonl_chunk_size or 1024
+        for i in range(0, max(len(page_md), 1), chunk_size):
+            chunk_content = page_md[i:i + chunk_size]
+            jsonl_results.append(JsonlEvent(
+                type="chunk",
+                page_idx=None,
+                markdown_text=chunk_content,
+                links=links if i == 0 else [],
+                offset=i,
+                length=len(chunk_content)
+            ))
+        
+        # End event for the page
+        jsonl_results.append(JsonlEvent(
+            type="end",
+            page_idx=None,
+            markdown_text="",
+            links=[],
+            offset=0,
+            length=0
+        ))
+    
     return jsonl_results

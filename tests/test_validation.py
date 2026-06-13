@@ -2,8 +2,9 @@
 
 import io
 import os
-from typing import Union
+from typing import Any, Union
 
+import pytest
 import zipfile
 
 from app.config import settings
@@ -14,6 +15,11 @@ from app.validation import (
     _validate_zip_bomb,
     validate_file_content,
 )
+
+# Import fixtures from modules (used by pytest as fixture injection)
+from tests.fixtures.docx import sample_docx_bytes
+from tests.fixtures.odp import sample_odp_bytes
+from tests.fixtures.xlsx import sample_xlsx_bytes
 
 
 def _make_zip(files: dict[str, Union[str, bytes]]) -> bytes:

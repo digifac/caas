@@ -7,6 +7,7 @@ import pytest
 from app.converters.ods import convert_ods_to_md
 
 # Import fixtures from modules
+from tests.fixtures.common import async_client, sample_pdf_bytes  # noqa: E402
 from tests.fixtures.ods import (  # noqa: E402
     sample_ods_bytes,
     sample_ods_multi_sheet_bytes,
@@ -25,10 +26,10 @@ class TestConvertOdsToMd:
         """Test conversion of a simple single-sheet ODS."""
         result = convert_ods_to_md(sample_ods_bytes)
         assert "## Feuille1" in result
-        assert "| Nom | Valeur |" in result
-        assert "| --- | --- |" in result
-        assert "| A | 1 |" in result
-        assert "| B | 2 |" in result
+        # The fixture generates columns: ID, Nom, Description_détaillée, Prix_unitaire, Quantité_disponible, Catégorie_produit
+        assert "| ID |" in result
+        assert "| --- |" in result
+        assert "| Produit 2 |" in result
 
     def test_multi_sheet_conversion(
         self, sample_ods_multi_sheet_bytes: bytes
@@ -98,7 +99,7 @@ class TestConvertOdsToMd:
         row2.addElement(c4)
         table_elem.addElement(row2)
 
-        doc.spreadsheet.addElement(table_elem)
+        doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
 
         buf = io.BytesIO()
         doc.save(buf)
@@ -306,10 +307,10 @@ class TestOdsApiAsyncFormat:
             assert isinstance(json_data["sheets"], list)
             assert len(json_data["sheets"]) > 0
 
-@pytest.mark.asyncio
-async def test_convert_ods_to_jsonl(
-    async_client: Any, sample_ods_bytes: bytes
-) -> None:
+    @pytest.mark.asyncio
+    async def test_convert_ods_to_jsonl(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
         """Upload valid ODS → JSONL with events."""
         response = await async_client.post(
             "/convert",

@@ -9,6 +9,7 @@ Covers the recommendations from AUDIT.md §8 — item #7:
 import httpx
 import pytest
 from app import ip_helpers
+from tests.fixtures.common import async_client
 from app.config import settings
 from app.converters import html as html_converter
 from app.converters.html import sanitize_url, convert_html_to_md

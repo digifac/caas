@@ -19,7 +19,7 @@ class PageJson(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    page_idx: int | None = Field(None, description="Page/section index")
+    page_idx: int | None = Field(None, alias="index", description="Page/section index")
     markdown_text: str = Field(..., description="Raw content (Markdown or text)")
     links: list[str] = Field(default_factory=list, description="Extracted links")
 

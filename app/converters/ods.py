@@ -211,12 +211,13 @@ def convert_ods_to_json(file_bytes: bytes) -> dict:
                 data=[
                     [
                         CellJson(
-                            row=int(cell_row) + 1,
+                            row=int(row_idx) + 1,
                             col=int(cell_col) + 1,
                             value=_escape_md_table(str(cell_val)) if cell_val else ""
                         ).model_dump()
-                        for cell_row, cell_col, cell_val in sheet[2]
+                        for cell_col, cell_val in enumerate(row)
                     ]
+                    for row_idx, row in enumerate(sheet[2])
                 ],
                 headers=None
             ).model_dump()

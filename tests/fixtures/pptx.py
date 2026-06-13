@@ -15,7 +15,7 @@ def sample_pptx_bytes() -> bytes:
     """Generate a minimal PPTX presentation in memory using python-pptx."""
     from pptx import Presentation
 
-    prs: Presentation = Presentation()
+    prs = Presentation()
 
     # Slide 1: title slide
     slide_layout = prs.slide_layouts[0]

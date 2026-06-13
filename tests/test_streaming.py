@@ -18,8 +18,19 @@ from app.streaming import (
     convert_stream,
 )
 from fastapi.testclient import TestClient
+
 # Import fixtures from modules
-from tests.fixtures.common import sample_docx_bytes
+from tests.fixtures.docx import sample_docx_bytes
+from tests.fixtures.odp import (
+    sample_odp_bytes,
+    sample_odp_with_list_bytes,
+    sample_odp_with_special_chars_bytes,
+)
+from tests.fixtures.odt import sample_odt_bytes
+from tests.fixtures.xlsx import (
+    sample_xlsx_bytes,
+    sample_xlsx_multi_sheet_bytes,
+)
 
 @pytest.fixture
 def app() -> Any:

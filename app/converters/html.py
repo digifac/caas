@@ -515,7 +515,7 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
     chunk_size = settings.jsonl_chunk_size
 
     if all_text:
-        chunks: list[str] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+        chunks: list[str] = ["\n".join(all_text[i:i + chunk_size]) for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
             events.append(JsonlEvent(type="chunk", markdown_text=chunk))

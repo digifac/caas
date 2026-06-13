@@ -143,9 +143,10 @@ async def test_convert_xlsx_valid_file(
     assert "markdown" in data
     # The markdown should contain the sheet heading and table
     assert "# Feuille1" in data["markdown"]
-    assert "| Nom" in data["markdown"] or "|Nom" in data["markdown"]
-    assert "A" in data["markdown"]
-    assert "B" in data["markdown"]
+    assert "| ID |" in data["markdown"]
+    assert "| Nom |" in data["markdown"] or "|Nom|" in data["markdown"]
+    assert "Produit 2" in data["markdown"]
+    assert "Catégorie_" in data["markdown"]
 
 
 @pytest.mark.anyio

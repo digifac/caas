@@ -138,8 +138,10 @@ async def convert_worker(file_bytes: bytes, ext: str, output_format: str = "mark
         raise ValueError(f"Unsupported format: {ext}")
 
     if output_format == "json":
+        assert json_converter is not None, f"No JSON converter for {ext}"
         result = await asyncio.to_thread(json_converter, file_bytes)
     elif output_format == "jsonl":
+        assert jsonl_converter is not None, f"No JSONL converter for {ext}"
         result = await asyncio.to_thread(jsonl_converter, file_bytes)
     else:  # markdown (default)
         result = await asyncio.to_thread(converter, file_bytes)

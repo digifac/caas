@@ -32,8 +32,10 @@ def _sanitize_url(url: str | None) -> str | None:
     Returns:
         The sanitized URL, "#" if the URL uses a dangerous scheme, or None.
     """
-    if not url:
+    if url is None:
         return None
+    if not url:
+        return ""
     stripped = url.strip()
     if _DANGEROUS_URL_SCHEMES.match(stripped):
         logger.warning("Blocked dangerous URL scheme in XLSX: %s", stripped[:50])
