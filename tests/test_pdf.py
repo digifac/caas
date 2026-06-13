@@ -227,3 +227,99 @@ async def test_convert_pdf_within_pages_limit(async_client: httpx.AsyncClient):
     assert data["success"] is True
     assert "Page 1" in data["markdown"]
     assert "Page 10" in data["markdown"]
+
+
+@pytest.mark.anyio
+async def test_convert_pdf_to_json_structure(
+    async_client: httpx.AsyncClient, sample_pdf_bytes: bytes
+):
+    """Test PDF → JSON (structure correcte)."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.pdf", sample_pdf_bytes)}, params={"format": "json"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "pdf"
+    assert "json" in data
+    assert data["json"] is not None
+    
+    json_data = data["json"]
+    assert isinstance(json_data, dict)
+    assert "pages" in json_data
+    pages_list: list[dict] = json_data["pages"]  # type: ignore[assignment]
+    assert len(pages_list) > 0  # type: ignore[arg-type]
+    
+    page: dict = pages_list[0]  # type: ignore[index]
+    assert "index" in page or "page_idx" in page
+    assert "content" in page or "markdown_text" in page
+
+
+@pytest.mark.anyio
+async def test_convert_pdf_to_jsonl_structure(
+    async_client: httpx.AsyncClient, sample_pdf_bytes: bytes
+):
+    """Test PDF → JSONL (une ligne par page)."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.pdf", sample_pdf_bytes)}, params={"format": "jsonl"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "pdf"
+    assert "jsonl" in data
+    assert data["jsonl"] is not None
+    
+    jsonl_data = data["jsonl"]
+    assert isinstance(jsonl_data, list)
+    # Should have start, chunk, and end events
+    assert len(jsonl_data) >= 3  # type: ignore[arg-type]
+    
+    # First event should be "start"
+    first_event: str = jsonl_data[0]  # type: ignore[index]
+    assert first_event.startswith('{"type": "start"')  # type: ignore[attr-defined]
+    
+    # Last event should be "end"
+    last_event: str = jsonl_data[-1]  # type: ignore[index]
+    assert last_event.startswith('{"type": "end"')  # type: ignore[attr-defined]
+
+
+@pytest.mark.anyio
+async def test_convert_pdf_to_json_multi_page(
+    async_client: httpx.AsyncClient, multi_page_pdf_bytes: bytes
+):
+    """Test PDF → JSON with multiple pages."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.pdf", multi_page_pdf_bytes)}, params={"format": "json"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    json_data = data["json"]
+    pages = json_data.get("pages", [])
+    assert len(pages) > 1
+    # Each page should have index and content
+    for i, page in enumerate(pages):
+        assert "index" in page or "page_idx" in page
+        assert page["index"] == i
+
+
+@pytest.mark.anyio
+async def test_convert_pdf_to_jsonl_multi_page(
+    async_client: httpx.AsyncClient, multi_page_pdf_bytes: bytes
+):
+    """Test PDF → JSONL with multiple pages."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.pdf", multi_page_pdf_bytes)}, params={"format": "jsonl"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    jsonl_data = data["jsonl"]
+    # Should have at least start, one chunk per page, and end
+    assert len(jsonl_data) >= 3
+    
+    # Verify event types
+    event_types = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+    assert "start" in event_types
+    assert "end" in event_types

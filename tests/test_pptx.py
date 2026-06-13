@@ -271,3 +271,61 @@ class TestValidatePptx:
         error = validate_file_content(b"", "pptx")
         assert error is not None
         assert "empty" in error.lower()
+
+
+@pytest.mark.asyncio
+async def test_convert_pptx_to_json(
+    async_client: Any, sample_pptx_bytes: bytes
+) -> None:
+    """Upload valid PPTX → JSON with slides."""
+    response = await async_client.post(
+        "/convert",
+        files={
+            "file": (
+                "test.pptx",
+                sample_pptx_bytes,
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            )
+        },
+        params={"format": "json"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "pptx"
+    assert "json" in data
+    
+    json_data = data["json"]
+    # PPTX should have slides with content
+    if "slides" in json_data:
+        assert isinstance(json_data["slides"], list)
+        assert len(json_data["slides"]) > 0
+
+
+@pytest.mark.asyncio
+async def test_convert_pptx_to_jsonl(
+    async_client: Any, sample_pptx_bytes: bytes
+) -> None:
+    """Upload valid PPTX → JSONL with events."""
+    response = await async_client.post(
+        "/convert",
+        files={
+            "file": (
+                "test.pptx",
+                sample_pptx_bytes,
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            )
+        },
+        params={"format": "jsonl"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    jsonl_data: list[str] = data["jsonl"]
+    assert isinstance(jsonl_data, list)
+    assert len(jsonl_data) >= 3
+    
+    # Verify event types
+    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]  # type: ignore[misc]
+    assert "start" in event_types
+    assert "end" in event_types

@@ -374,3 +374,52 @@ class TestParagraphChildNodes:
             assert "First" in markdown
             assert "Second" in markdown
             assert "Third" in markdown
+
+
+@pytest.mark.anyio
+async def test_convert_odt_to_json(
+    async_client: httpx.AsyncClient, sample_odt_bytes: bytes
+):
+    """Test ODT → JSON."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.odt", sample_odt_bytes)}, params={"format": "json"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "odt"
+    assert "json" in data
+    assert data["json"] is not None
+    
+    json_data = data["json"]
+    assert isinstance(json_data, dict)
+    # ODT should have pages with content
+    if "pages" in json_data:
+        pages = json_data["pages"]  # type: ignore[assignment]
+        assert isinstance(pages, list)
+        assert len(pages) > 0  # type: ignore[arg-type]
+
+
+@pytest.mark.anyio
+async def test_convert_odt_to_jsonl(
+    async_client: httpx.AsyncClient, sample_odt_bytes: bytes
+):
+    """Test ODT → JSONL."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.odt", sample_odt_bytes)}, params={"format": "jsonl"}
+    )
+    assert response.status_code == 200
+    
+    # JSONL est retourné comme texte brut, pas comme JSON parseable
+    jsonl_content = response.text
+    
+    # Parse le contenu JSONL ligne par ligne
+    import json
+    lines = jsonl_content.strip().split("\n")
+    assert len(lines) >= 3
+    
+    # Vérifier les types d'événements (start, end, chunk sont valides)
+    for line in lines:
+        event_dict = json.loads(line)
+        event_type = event_dict.get("type", "")
+        assert event_type in ("start", "end", "chunk")

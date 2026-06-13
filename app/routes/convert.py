@@ -123,10 +123,10 @@ def register_convert_routes(app: FastAPI) -> None:
                 )
 
             if result_format == "jsonl":
-                # Convertir en JSONL et retourner comme texte brut
+                # Convertir en JSONL et retourner comme texte brut (JSONL n'est pas parseable en JSON)
                 result_content = await convert_worker(content, ext, output_format="jsonl")
                 return Response(
-                    content=result_content,
+                    content=result_content["jsonl"],
                     media_type="text/plain; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="{file.filename}.jsonl"'}
                 )

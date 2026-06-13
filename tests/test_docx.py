@@ -252,3 +252,47 @@ async def test_convert_async_docx_completes(
 
     assert status_data["status"] == "completed"
     assert status_data["result"]["format"] == "docx"  # type: ignore
+
+
+@pytest.mark.anyio
+async def test_convert_docx_to_json(
+    async_client: httpx.AsyncClient, sample_docx_bytes: bytes
+) -> None:
+    """Test DOCX → JSON."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.docx", sample_docx_bytes)}, params={"format": "json"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "docx"
+    assert "json" in data
+    assert data["json"] is not None
+    
+    json_data = data["json"]
+    assert isinstance(json_data, dict)
+    # DOCX should have pages or content
+    if "pages" in json_data:
+        assert isinstance(json_data["pages"], list)
+        assert len(json_data["pages"]) > 0  # type: ignore[arg-type]
+
+
+@pytest.mark.anyio
+async def test_convert_docx_to_jsonl(
+    async_client: httpx.AsyncClient, sample_docx_bytes: bytes
+) -> None:
+    """Test DOCX → JSONL."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.docx", sample_docx_bytes)}, params={"format": "jsonl"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    jsonl_data = data["jsonl"]
+    assert isinstance(jsonl_data, list)
+    assert len(jsonl_data) >= 3  # type: ignore[arg-type]
+    
+    # Verify event types
+    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]  # type: ignore[list-item]
+    assert "start" in event_types
+    assert "end" in event_types

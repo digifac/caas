@@ -373,3 +373,44 @@ class TestOdpValidation:
         )
         # Should return an error (either 400 or 500 depending on implementation)
         assert response.status_code in (400, 500)
+
+@pytest.mark.anyio
+async def test_convert_odp_to_json(
+    async_client: httpx.AsyncClient, sample_odp_bytes: bytes
+):
+    """POST /convert with ODP → JSON."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.odp", sample_odp_bytes)}, params={"format": "json"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "odp"
+    assert "json" in data
+    
+    json_data = data["json"]
+    # ODP should have slides with content
+    if "slides" in json_data:
+        assert isinstance(json_data["slides"], list)
+        assert len(json_data["slides"]) > 0
+
+
+@pytest.mark.anyio
+async def test_convert_odp_to_jsonl(
+    async_client: httpx.AsyncClient, sample_odp_bytes: bytes
+):
+    """POST /convert with ODP → JSONL."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.odp", sample_odp_bytes)}, params={"format": "jsonl"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    jsonl_data = data["jsonl"]
+    assert isinstance(jsonl_data, list)
+    assert len(list(jsonl_data)) >= 3  # type: ignore[arg-type]
+    
+    # Verify event types
+    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data if isinstance(e, str)]  # type: ignore[assignment]
+    assert "start" in event_types
+    assert "end" in event_types

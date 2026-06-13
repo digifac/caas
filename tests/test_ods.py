@@ -273,3 +273,62 @@ class TestOdsApiAsync:
         pdf_result = next(r for r in data["results"] if r["filename"] == "test.pdf")
         assert pdf_result["success"] is True
         assert "Hello World" in pdf_result["markdown"]
+
+
+class TestOdsApiAsyncFormat:
+    """Asynchronous API tests for ODS conversion with different formats."""
+
+    @pytest.mark.asyncio
+    async def test_convert_ods_to_json(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
+        """Upload valid ODS → JSON with sheets."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.ods",
+                    sample_ods_bytes,
+                    "application/vnd.oasis.opendocument.spreadsheet",
+                )
+            },
+            params={"format": "json"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["format"] == "ods"
+        assert "json" in data
+
+        json_data = data["json"]
+        # ODS should have sheets with tables
+        if "sheets" in json_data:
+            assert isinstance(json_data["sheets"], list)
+            assert len(json_data["sheets"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_convert_ods_to_jsonl(
+        self, async_client: Any, sample_ods_bytes: bytes
+    ) -> None:
+        """Upload valid ODS → JSONL with events."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.ods",
+                    sample_ods_bytes,
+                    "application/vnd.oasis.opendocument.spreadsheet",
+                )
+            },
+            params={"format": "jsonl"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        jsonl_data: list[str] = data["jsonl"]
+        assert len(jsonl_data) >= 3
+
+        # Verify event types
+        event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+        assert "start" in event_types
+        assert "end" in event_types

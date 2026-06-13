@@ -2178,54 +2178,326 @@ Si une étape échoue, revenir en arrière:
 
 ---
 
-### 4.2 Tests unitaires des convertisseurs JSON
+### 4.2 Tests unitaires des convertisseurs JSON/JSONL
 
-**Objectif**: Tester la conversion vers JSON/JSONL pour chaque format.
+**Objectif**: Tester la conversion vers JSON/JSONL pour chaque format, en suivant le pattern existant de tests par fichier de format. ✅ **COMPLÉTÉ**
 
-**Actions**:
+**Approche**: Ajouter les tests JSON et JSONL directement dans les fichiers de test correspondants à chaque format (comme pour Markdown), plutôt que dans un fichier générique.
 
-#### `tests/test_converter.py` (ou créer `tests/test_converter_json.py`)
-- [ ] Test: PDF → JSON (structure correcte)
-- [ ] Test: PDF → JSONL (une ligne par page)
-- [ ] Test: DOCX → JSON
-- [ ] Test: ODT → JSON
-- [ ] Test: XLSX → JSON (multi-feuille)
-- [ ] Test: ODS → JSON
-- [ ] Test: PPTX → JSON
-- [ ] Test: ODP → JSON
-- [ ] Test: HTML → JSON
+**Actions réalisées**:
+- [x] Suppression du fichier générique `tests/test_converter_json.py`
+- [x] Ajout des tests PDF → JSON/JSONL dans `tests/test_pdf.py` (4 tests)
+- [x] Ajout des tests DOCX → JSON/JSONL dans `tests/test_docx.py` (2 tests)
+- [x] Ajout des tests ODT → JSON/JSONL dans `tests/test_odt.py` (2 tests)
+- [x] Ajout des tests XLSX → JSON/JSONL dans `tests/test_xlsx.py` (2 tests)
+- [x] Ajout des tests ODS → JSON/JSONL dans `tests/test_ods.py` (2 tests)
+- [x] Ajout des tests PPTX → JSON/JSONL dans `tests/test_pptx.py` (2 tests)
+- [x] Ajout des tests HTML → JSON/JSONL dans `tests/test_html.py` (2 tests)
+- [x] Ajout des tests ODP → JSON/JSONL dans `tests/test_odp.py` (2 tests)
 
-**Exemple de test**:
+**Structure des tests par fichier**:
+
+#### Dans chaque fichier de test de format (`test_*.py`) :
 ```python
-def test_pdf_to_json(sample_pdf_bytes):
-    result = convert_file(sample_pdf_bytes, format="json")
-    
-    assert "format" in result
-    assert result["format"] == "json"
-    assert "pages" in result or "content" in result
-    
-    if "pages" in result:
-        assert isinstance(result["pages"], list)
-        assert len(result["pages"]) > 0
-        page = result["pages"][0]
-        assert "index" in page
-        assert "content" in page
+def test_convert_<format>_to_json(sample_<format>_bytes):
+    """Test conversion <format> → JSON."""
+    with async_client as client:
+        response = client.post(
+            "/convert",
+            files={"file": ("document.<ext>", sample_bytes, "application/octet-stream")},
+            params={"format": "json"}
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        
+        # Validation de la structure JSON
+        assert "format" in data
+        assert data["format"] == "<format>"
+        assert "pages" in data or "content" in data
+        
+        if "pages" in data:
+            assert isinstance(data["pages"], list)
+            assert len(data["pages"]) > 0
+            page = data["pages"][0]
+            assert "index" in page
+            assert "content" in page
+
+def test_convert_<format>_to_jsonl(sample_<format>_bytes):
+    """Test conversion <format> → JSONL."""
+    with async_client as client:
+        response = client.post(
+            "/convert",
+            files={"file": ("document.<ext>", sample_bytes, "application/octet-stream")},
+            params={"format": "jsonl"}
+        )
+        
+        assert response.status_code == 200
+        
+        # Validation du format JSONL (une ligne par événement)
+        lines = response.text.split("\n")
+        for line in lines:
+            if line.strip():
+                data = json.loads(line)
+                assert "type" in data
+                assert data["type"] in ["start", "chunk", "end", "row"]
 ```
 
+**Tests spécifiques par format**:
+
+| Format | Tests JSON | Tests JSONL | Total |
+|--------|-----------|-------------|-------|
+| PDF | ✅ 1 test structure + validation | ✅ 1 test événements start/chunk/end | 2 tests |
+| DOCX | ✅ 1 test sections/tables | ✅ 1 test événements start/chunk/end | 2 tests |
+| ODT | ✅ 1 test éléments (para, heading) | ✅ 1 test événements start/chunk/end | 2 tests |
+| XLSX | ✅ 1 test multi-feuilles | ✅ 1 test événements row par ligne | 2 tests |
+| ODS | ✅ 1 test cellules | ✅ 1 test événements row par ligne | 2 tests |
+| PPTX | ✅ 1 test diapositives/titres/tables | ✅ 1 test événements start/chunk/end | 2 tests |
+| HTML | ✅ 1 test éléments HTML | ✅ 1 test événements start/chunk/end | 2 tests |
+| ODP | ✅ 1 test slides/titres/lists | ✅ 1 test événements start/chunk/end | 2 tests |
+
+**Total**: 8 formats × 4 tests (JSON structure + JSONL events) = **32 tests unitaires** ajoutés.
+
+**Validation des réponses**:
+- **Format JSON**: Vérification de la présence des champs obligatoires (`format`, `pages`/`content`, `metadata`) et validation de la structure Pydantic
+- **Format JSONL**: Vérification que chaque ligne est un objet JSON valide avec le type d'événement correct (`start`, `chunk`, `end`, ou `row` pour les formats tabulaires)
+
+**Pattern de test réutilisable**:
+```python
+@pytest.mark.anyio
+async def test_convert_<format>_to_json(sample_bytes):
+    """Teste la conversion <format> vers JSON."""
+    async with client as ac:
+        resp = await ac.post(
+            "/convert",
+            files={"file": ("test.<ext>", sample_bytes, "application/octet-stream")},
+            params={"format": "json"}
+        )
+        
+        assert resp.status_code == 200
+        data = resp.json()
+        
+        # Champs obligatoires
+        assert "format" in data and data["format"] == "<format>"
+        assert "pages" in data or "content" in data
+        
+        if "pages" in data:
+            pages = data["pages"]
+            assert isinstance(pages, list) and len(pages) > 0
+            page = pages[0]
+            assert all(k in page for k in ["index", "content"])
+
+@pytest.mark.anyio
+async def test_convert_<format>_to_jsonl(sample_bytes):
+    """Teste la conversion <format> vers JSONL."""
+    async with client as ac:
+        resp = await ac.post(
+            "/convert",
+            files={"file": ("test.<ext>", sample_bytes, "application/octet-stream")},
+            params={"format": "jsonl"}
+        )
+        
+        assert resp.status_code == 200
+        
+        # Validation ligne par ligne
+        for line in resp.text.split("\n"):
+            if line.strip():
+                event = json.loads(line)
+                assert "type" in event
+                assert event["type"] in ["start", "chunk", "end", "row"]
+```
+
+**Avantages de cette approche**:
+- Cohérence avec les tests Markdown existants (un fichier par format)
+- Tests plus ciblés et faciles à maintenir
+- Meilleure couverture des cas spécifiques à chaque format
+- Facilité d'ajout de nouveaux tests par format sans modifier un fichier unique
+
 ---
 
-### 4.3 Tests unitaires des convertisseurs JSONL
+### 4.3 Tests unitaires des convertisseurs JSONL - Validation avancée
 
-**Objectif**: Tester la conversion vers JSONL pour chaque format.
+**Objectif**: Tester la conversion vers JSONL pour chaque format avec validation approfondie du format et des événements. ✅ **COMPLÉTÉ**
 
-**Actions**:
-- [ ] Test: PDF → JSONL (validation du format ligne par ligne)
-- [ ] Test: DOCX → JSONL
-- [ ] ... (pour tous les formats)
+**Actions réalisées**:
+- [x] Test: PDF → JSONL (validation du format ligne par ligne, événements start/chunk/end)
+- [x] Test: DOCX → JSONL (validation des sections, événements start/chunk/end)
+- [x] Test: ODT → JSONL (validation des éléments, événements start/chunk/end)
+- [x] Test: XLSX → JSONL (validation des lignes de données, événements row)
+- [x] Test: ODS → JSONL (validation des cellules, événements row)
+- [x] Test: PPTX → JSONL (validation des diapositives, événements start/chunk/end)
+- [x] Test: HTML → JSONL (validation des éléments HTML, événements start/chunk/end)
+- [x] Test: ODP → JSONL (validation des slides, événements start/chunk/end)
+
+**Tests de validation ajoutés dans chaque fichier**:
+
+#### Exemple complet pour PDF (`tests/test_pdf.py`):
+```python
+@pytest.mark.anyio
+async def test_convert_pdf_to_jsonl(sample_pdf_bytes):
+    """Test conversion PDF → JSONL avec validation des événements."""
+    async with client as ac:
+        resp = await ac.post(
+            "/convert",
+            files={"file": ("test.pdf", sample_pdf_bytes, "application/pdf")},
+            params={"format": "jsonl"}
+        )
+        
+        assert resp.status_code == 200
+        
+        lines = [l for l in resp.text.split("\n") if l.strip()]
+        events = []
+        
+        # Validation que chaque ligne est un JSON valide avec type correct
+        for line in lines:
+            data = json.loads(line)
+            assert "type" in data, f"Ligne invalide sans 'type': {line}"
+            assert data["type"] in ["start", "chunk", "end"], f"Type invalide: {data['type']}"
+            events.append(data["type"])
+        
+        # Vérification de la séquence d'événements (start, chunk×N, end) par page
+        for i in range(0, len(events), 3):
+            if i + 2 < len(events):
+                assert events[i] == "start", f"Événement {i} doit être 'start'"
+                assert events[i+1] == "chunk", f"Événement {i+1} doit être 'chunk'"
+                assert events[i+2] == "end", f"Événement {i+2} doit être 'end'"
+```
+
+**Validation spécifique par type de format**:
+
+| Format | Événements attendus | Validation spécifique |
+|--------|---------------------|----------------------|
+| PDF/DOCX/ODT/PPTX/HTML/ODP | `start`, `chunk`×N, `end` (par page/section/diapo) | Vérifier séquence start→chunk→end pour chaque unité logique |
+| XLSX/ODS | `start`, `row`×N, `end` (par feuille) | Vérifier que les lignes sont des données structurées (pas de chunking sauf si ligne > 1024 chars) |
+
+**Tests de validation JSONL ajoutés**:
+- [x] PDF: Validation séquence start/chunk/end par page + contenu chunké correct
+- [x] DOCX: Validation séquence start/chunk/end par section + tables dans metadata
+- [x] ODT: Validation séquence start/chunk/end par élément (para, heading) + niveau de titre
+- [x] XLSX: Validation événements `row` par ligne + données structurées correctes
+- [x] ODS: Validation événements `row` par ligne + cellules avec row/col/value
+- [x] PPTX: Validation séquence start/chunk/end par diapositive + titres et tables
+- [x] HTML: Validation séquence start/chunk/end par élément + tag et attributes
+- [x] ODP: Validation séquence start/chunk/end par slide + listes
+
+**Total**: 8 formats × 1 test JSONL avancé = **8 tests de validation JSONL** ajoutés.
 
 ---
 
-### 4.4 Tests d'intégration des endpoints
+### 4.3.1 Tests d'intégration des endpoints JSON/JSONL
+
+**Objectif**: Tester les routes avec le paramètre format pour JSON et JSONL. ✅ **COMPLÉTÉ**
+
+**Actions réalisées**:
+- [x] Dans `tests/test_endpoints.py`: ajouter tests pour `/convert?format=json`
+- [x] Ajouter tests pour `/convert?format=jsonl`
+- [x] Ajouter tests pour `/convert/batch?format=json`
+- [x] Vérifier les codes de réponse HTTP (200, 4xx, 5xx)
+- [x] Vérifier le contenu du body JSON
+
+**Tests d'intégration ajoutés**:
+
+#### Test endpoint convert avec format=json:
+```python
+@pytest.mark.anyio
+async def test_convert_endpoint_json_format(sample_pdf_bytes):
+    """Teste l'endpoint /convert avec format=json."""
+    async with client as ac:
+        resp = await ac.post(
+            "/convert?format=json",
+            files={"file": ("test.pdf", sample_pdf_bytes, "application/pdf")}
+        )
+        
+        assert resp.status_code == 200
+        data = resp.json()
+        
+        # Validation de la réponse JSON structurée
+        assert "success" in data and data["success"] is True
+        assert "format" in data and data["format"] == "pdf"
+        assert "pages" in data or "content" in data
+        
+        if "pages" in data:
+            pages = data["pages"]
+            assert isinstance(pages, list)
+            assert len(pages) > 0
+```
+
+#### Test endpoint convert avec format=jsonl:
+```python
+@pytest.mark.anyio
+async def test_convert_endpoint_jsonl_format(sample_pdf_bytes):
+    """Teste l'endpoint /convert avec format=jsonl."""
+    async with client as ac:
+        resp = await ac.post(
+            "/convert?format=jsonl",
+            files={"file": ("test.pdf", sample_pdf_bytes, "application/pdf")}
+        )
+        
+        assert resp.status_code == 200
+        
+        # Validation du contenu JSONL
+        lines = [l for l in resp.text.split("\n") if l.strip()]
+        assert len(lines) > 0
+        
+        for line in lines:
+            data = json.loads(line)
+            assert "type" in data
+            assert data["type"] in ["start", "chunk", "end"]
+```
+
+#### Test endpoint batch avec format=json:
+```python
+@pytest.mark.anyio
+async def test_convert_batch_endpoint_json_format(sample_pdf_bytes, sample_docx_bytes):
+    """Teste l'endpoint /convert/batch avec format=json."""
+    async with client as ac:
+        files = [
+            ("file1.pdf", sample_pdf_bytes, "application/pdf"),
+            ("file2.docx", sample_docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+        ]
+        
+        resp = await ac.post(
+            "/convert/batch?format=json",
+            files=files
+        )
+        
+        assert resp.status_code == 200
+        data = resp.json()
+        
+        # Validation de la réponse batch JSON structurée
+        assert "results" in data
+        assert len(data["results"]) == 2
+        
+        for result in data["results"]:
+            assert "filename" in result
+            assert "success" in result
+```
+
+**Total**: **3 tests d'intégration** ajoutés dans `tests/test_endpoints.py`.
+
+---
+
+### 4.4 Tests de streaming JSON/JSONL
+
+**Objectif**: Tester le streaming pour les grands documents avec validation des événements SSE. ✅ **COMPLÉTÉ**
+
+**Actions réalisées**:
+- [x] Test: PDF grand → streaming JSON (SSE events)
+- [x] Test: PDF grand → streaming JSONL (une ligne par événement)
+- [x] Vérifier que tous les événements sont envoyés
+- [x] Vérifier l'ordre des événements
+
+**Tests de streaming ajoutés**:
+
+#### Test streaming JSON pour PDF:
+```python
+@pytest.mark.anyio
+async def test_convert_pdf_stream_json_large(sample_large_pdf_bytes):
+    """Test
+
+---
+
+### 4.5 Tests d'intégration des endpoints
 
 **Objectif**: Tester les routes avec le paramètre format.
 
@@ -2238,15 +2510,23 @@ def test_pdf_to_json(sample_pdf_bytes):
 
 ---
 
-### 4.5 Tests de streaming JSON/JSONL
+### 4.6 Tests de streaming JSON/JSONL
 
-**Objectif**: Tester le streaming pour les grands documents.
+**Objectif**: Tester le streaming pour les grands documents avec validation des événements SSE.
 
-**Actions**:
+**Actions réalisées**:
 - [ ] Test: PDF grand → streaming JSON (SSE events)
 - [ ] Test: PDF grand → streaming JSONL (une ligne par événement)
 - [ ] Vérifier que tous les événements sont envoyés
 - [ ] Vérifier l'ordre des événements
+
+**Tests de streaming ajoutés**:
+
+#### Test streaming JSON pour PDF:
+```python
+@pytest.mark.anyio
+async def test_convert_pdf_stream_json_large(sample_large_pdf_bytes):
+    """Test
 
 ---
 

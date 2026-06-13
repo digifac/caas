@@ -274,3 +274,89 @@ class TestXlsxApiIntegration:
         data = response.json()
         assert "# Données" in data["markdown"]
         assert "# Résumé" in data["markdown"]
+
+
+class TestXlsxApiIntegrationJson:
+    @pytest.mark.asyncio
+    async def test_convert_xlsx_to_json(
+        self, async_client: Any, sample_xlsx_bytes: bytes
+    ) -> None:
+        """Upload valid XLSX → JSON with sheets."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.xlsx",
+                    sample_xlsx_bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            params={"format": "json"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["format"] == "xlsx"
+        assert "json" in data
+
+        json_data = data["json"]
+        # XLSX should have sheets with tables
+        if "sheets" in json_data:
+            assert isinstance(json_data["sheets"], list)
+            assert len(json_data["sheets"]) > 0
+
+    @pytest.mark.asyncio
+    async def test_convert_xlsx_to_jsonl(
+        self, async_client: Any, sample_xlsx_bytes: bytes
+    ) -> None:
+        """Upload valid XLSX → JSONL with events."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.xlsx",
+                    sample_xlsx_bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            params={"format": "jsonl"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        jsonl_data: list[str] = data["jsonl"]
+        assert len(jsonl_data) >= 3
+
+        # Verify event types
+        event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+        assert "start" in event_types
+        assert "end" in event_types
+
+
+class TestXlsxApiIntegrationStreaming:
+    @pytest.mark.asyncio
+    async def test_convert_xlsx_streaming(
+        self, async_client: Any, sample_xlsx_bytes: bytes
+    ) -> None:
+        """Upload valid XLSX → JSONL with events."""
+        response = await async_client.post(
+            "/convert",
+            files={
+                "file": (
+                    "test.xlsx",
+                    sample_xlsx_bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
+            params={"format": "jsonl"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        jsonl_data: list[str] = data["jsonl"]
+        assert len(jsonl_data) >= 3
+
+        # Verify event types
+        event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+        assert "start" in event_types
+        assert "end" in event_types

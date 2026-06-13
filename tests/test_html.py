@@ -409,3 +409,45 @@ class TestHTMLSanitizationIntegration:
         html = b'<a href="\njavascript:alert(1)">Newline</a>'
         md = convert_html_to_md(html)
         assert "javascript:" not in md
+
+
+@pytest.mark.anyio
+async def test_convert_html_to_json(
+    async_client: httpx.AsyncClient, sample_html_bytes: bytes
+):
+    """POST /convert with HTML → JSON."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.html", sample_html_bytes)}, params={"format": "json"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["format"] == "html"
+    assert "json" in data
+    
+    json_data = data["json"]
+    # HTML should have pages with content
+    if "pages" in json_data:
+        assert isinstance(json_data["pages"], list)
+        assert len(json_data["pages"]) > 0
+
+
+@pytest.mark.anyio
+async def test_convert_html_to_jsonl(
+    async_client: httpx.AsyncClient, sample_html_bytes: bytes
+):
+    """POST /convert with HTML → JSONL."""
+    response = await async_client.post(
+        "/convert", files={"file": ("test.html", sample_html_bytes)}, params={"format": "jsonl"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    
+    jsonl_data = data["jsonl"]
+    assert isinstance(jsonl_data, list)
+    assert len(list(jsonl_data)) >= 3  # type: ignore[arg-type]
+    
+    # Verify event types
+    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data if isinstance(e, str)]  # type: ignore[assignment]
+    assert "start" in event_types
+    assert "end" in event_types
