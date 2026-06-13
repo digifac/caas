@@ -6,7 +6,6 @@ Extracts all sheets, cells, and formats them as Markdown tables.
 
 import html
 import io
-import json
 import logging
 
 from odf import opendocument, table, text

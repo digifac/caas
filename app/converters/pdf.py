@@ -4,9 +4,10 @@ Provides both synchronous and async streaming conversion, sharing a common
 extraction core to avoid code duplication.
 """
 
+from __future__ import annotations
+
 import asyncio
 import io
-import json
 import logging
 import re
 from collections.abc import AsyncGenerator
@@ -17,8 +18,6 @@ import pdfplumber
 from app.config import settings
 from app.converters.base import clean_lines
 from app.models.response import JsonlEvent, PageJson
-from typing import Any
-
 from app.ocr import ocr_pdf_pages
 
 logger = logging.getLogger(__name__)
@@ -88,10 +87,7 @@ def _extract_pdf_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]:
         # 3. Second pass: build results from cached text + OCR results
         results: list[tuple[int, str, list[str]]] = []
         for page_idx, page in enumerate(pdf.pages):
-            if page_idx in ocr_results:
-                page_text = ocr_results[page_idx]  # type: ignore
-            else:
-                page_text = text_cache[page_idx]  # type: ignore
+            page_text = ocr_results[page_idx] if page_idx in ocr_results else text_cache[page_idx]  # type: ignore
 
             # Clean text
             page_md = ""
@@ -234,6 +230,8 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
             offset=0,
             length=0
         ))
+
+    import json
 
     return "\n".join(json.dumps(e.model_dump(), ensure_ascii=False) for e in chunks)
 

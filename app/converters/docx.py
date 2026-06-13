@@ -1,22 +1,22 @@
 """DOCX to Markdown conversion using mammoth."""
 
-from typing import Any, Pattern
+from __future__ import annotations
 
 import html
 import io
-import json
 import logging
 import re
+from typing import Any
 
 import mammoth
 
 from app.config import settings
-from app.models.response import PageJson
+from app.models.response import JsonlEvent, PageJson
 
 logger = logging.getLogger(__name__)
 
 # Dangerous URL schemes that must be blocked to prevent injection attacks
-_DANGEROUS_URL_SCHEMES: Pattern[str] = re.compile(
+_DANGEROUS_URL_SCHEMES = re.compile(
     r"^(?:javascript|vbscript|data|file|blob):",
     re.IGNORECASE,
 )
@@ -102,7 +102,7 @@ def _extract_docx_content(file_bytes: bytes) -> list[tuple[int, str, list[str]]]
             logger.warning("DOCX Warning: %s", str(msg))
 
     markdown: str = result.value.strip()  # type: ignore[union-attr]
-    
+
     # Split into paragraphs/pages - DOCX doesn't have natural page breaks,
     # so we treat the entire document as a single "page" with paragraph content
     paragraphs = [p.strip() for p in markdown.split("\n\n") if p.strip()]

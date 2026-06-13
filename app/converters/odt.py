@@ -1,5 +1,7 @@
 """ODT to Markdown conversion using odfpy."""
 
+from __future__ import annotations
+
 import html
 import io
 import logging
@@ -8,6 +10,7 @@ from odf import opendocument, text  # type: ignore[import-untyped]
 from odf.namespaces import TEXTNS  # type: ignore[import-untyped]
 
 from app.config import settings
+from app.models.response import JsonlEvent
 
 logger = logging.getLogger(__name__)
 

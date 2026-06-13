@@ -22,7 +22,7 @@ def sample_ods_bytes() -> bytes:
 
     # Row 1: headers - plusieurs colonnes pour générer plus de texte
     headers = ["ID", "Nom", "Description_détaillée", "Prix_unitaire", "Quantité_disponible", "Catégorie_produit"]
-    for col, header in enumerate(headers, 1):
+    for _col, header in enumerate(headers, 1):
         c = table.TableCell()  # type: ignore[attr-defined]
         p = text.P()  # type: ignore[attr-defined]
         p.addText(header)  # type: ignore[attr-defined]

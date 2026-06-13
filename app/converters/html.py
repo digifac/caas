@@ -1,17 +1,21 @@
 """HTML to Markdown conversion using beautifulsoup4 and html2text."""
 
+from __future__ import annotations
+
 import html
 import logging
 import re
-from typing import Any, Union
+from typing import Any
 
-from bs4 import BeautifulSoup, Comment, Tag as _bs4_Tag  # type: ignore[import-not-found]
+from bs4 import BeautifulSoup  # type: ignore[import-not-found]
+from bs4 import Tag as _bs4_Tag
 from bs4.element import NavigableString as _bs4_NavigableString
+
+from app.config import settings
+from app.models.response import JsonlEvent
 
 # Alias for type annotations
 bs4 = type('bs4', (), {'Tag': _bs4_Tag, 'NavigableString': _bs4_NavigableString})()  # type: ignore[misc]
-
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +168,7 @@ def _sanitize_soup(soup: BeautifulSoup) -> None:
             element["src"] = sanitize_url(src_val)
 
 
-def _convert_element(element: Union[_bs4_Tag, _bs4_NavigableString]) -> list[str]:  # type: ignore[misc]
+def _convert_element(element: _bs4_Tag | _bs4_NavigableString) -> list[str]:  # type: ignore[misc]
     """Recursively convert a BeautifulSoup element to Markdown lines."""
     from bs4 import Comment
 
@@ -522,4 +526,4 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
         metadata={"format": "html", "total_sections": len(results)}
     ))
 
-    return "\n".join(lines)  # type: ignore[list-item]
+    return events

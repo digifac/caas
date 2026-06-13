@@ -1,18 +1,18 @@
 """XLSX to Markdown conversion using openpyxl."""
 
+from __future__ import annotations
+
 import html
 import io
-import json
 import logging
 import re
 from datetime import date, datetime
-from typing import Optional
 
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 from app.config import settings
-from app.models.response import JsonlEvent
+from app.models.response import JsonlEvent, SheetJson
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ _DANGEROUS_URL_SCHEMES = re.compile(
 )
 
 
-def _sanitize_url(url: Optional[str]) -> Optional[str]:
+def _sanitize_url(url: str | None) -> str | None:
     """Sanitize a URL by blocking dangerous schemes.
 
     Args:
@@ -32,10 +32,8 @@ def _sanitize_url(url: Optional[str]) -> Optional[str]:
     Returns:
         The sanitized URL, "#" if the URL uses a dangerous scheme, or None.
     """
-    if url is None:
-        return None
     if not url:
-        return url
+        return None
     stripped = url.strip()
     if _DANGEROUS_URL_SCHEMES.match(stripped):
         logger.warning("Blocked dangerous URL scheme in XLSX: %s", stripped[:50])
@@ -43,7 +41,7 @@ def _sanitize_url(url: Optional[str]) -> Optional[str]:
     return url
 
 
-def _escape_md_table(text: Optional[str]) -> Optional[str]:
+def _escape_md_table(text: str | None) -> str | None:
     r"""Escape characters that have special meaning in Markdown tables.
 
     Escapes `|` and `\` to prevent table structure corruption.
@@ -115,7 +113,7 @@ def _get_merged_cell_value(ws, row: int, col: int) -> str:
                         row=merged_range.min_row, column=merged_range.min_col
                     )
                     return _cell_to_string(top_cell)
-    except AttributeError as e:
+    except AttributeError:
         # ReadOnlyWorksheet doesn't have merged_cells attribute
         pass
     return _cell_to_string(ws.cell(row=row, column=col))
@@ -220,10 +218,9 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[s
     Returns:
         List of tuples (sheet_num, title, cell_values_list_of_lists).
     """
-    import logging
     logger = logging.getLogger(__name__)
     print(f"[DEBUG] Starting _extract_xlsx_content with {len(file_bytes)} bytes", flush=True)
-    
+
     try:
         wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
         print(f"[DEBUG] Loaded workbook with {len(wb.worksheets)} worksheets", flush=True)
@@ -234,7 +231,7 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[s
     results: list[tuple[int, str, list[list[str]]]] = []
     sheet_num = 0
 
-    print(f"[DEBUG] Starting loop over worksheets", flush=True)
+    print("[DEBUG] Starting loop over worksheets", flush=True)
     for ws in wb.worksheets:
         print(f"[DEBUG] Processing sheet '{ws.title}'", flush=True)
         try:
@@ -243,7 +240,7 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[s
             max_row = ws.max_row if hasattr(ws, 'max_row') else 0
             max_col = ws.max_column if hasattr(ws, 'max_column') else 0
             print(f"[DEBUG] Sheet '{ws.title}': max_row={max_row}, max_col={max_col}", flush=True)
-            
+
             for row_idx in range(1, max_row + 1):
                 print(f"[DEBUG] Processing row {row_idx}", flush=True)
                 row_values = []
@@ -291,7 +288,6 @@ def convert_xlsx_to_json(file_bytes: bytes) -> dict:
     Returns:
         Dict with sheets and metadata in JSON structure.
     """
-    from app.models.response import CellJson, SheetJson
 
     results = _extract_xlsx_content(file_bytes)
 

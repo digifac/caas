@@ -1,5 +1,7 @@
 """PPTX to Markdown conversion using python-pptx."""
 
+from __future__ import annotations
+
 import html
 import io
 import logging
@@ -8,7 +10,7 @@ from pptx import Presentation
 
 from app.config import settings
 from app.converters.base import clean_lines
-from app.models.response import SlideJson
+from app.models.response import JsonlEvent, SlideJson
 
 logger = logging.getLogger(__name__)
 

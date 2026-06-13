@@ -1,5 +1,7 @@
 """ODP to Markdown conversion using odfpy."""
 
+from __future__ import annotations
+
 import html
 import io
 import logging
@@ -10,7 +12,7 @@ from odf.namespaces import DRAWNS, STYLENS  # type: ignore[import-untyped]
 
 from app.config import settings
 from app.converters.base import clean_lines
-from app.models.response import SlideJson
+from app.models.response import JsonlEvent, SlideJson
 
 logger = logging.getLogger(__name__)
 
@@ -493,4 +495,4 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
         metadata={"format": "odp", "total_slides": len(results)}
     ))
 
-    return "\n".join(lines)
+    return events
