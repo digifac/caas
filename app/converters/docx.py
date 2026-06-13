@@ -137,39 +137,39 @@ def convert_docx_to_json(file_bytes: bytes) -> dict[str, Any]:
     }
 
 
-def convert_docx_to_jsonl(file_bytes: bytes) -> str:
+def convert_docx_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """Convert DOCX to JSONL format with chunking.
 
     Args:
         file_bytes: Raw DOCX file bytes.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
     results = _extract_docx_content(file_bytes)
 
     return _to_jsonl(results)
 
 
-def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
     """Convert extraction results to JSONL format with chunking.
 
     Args:
         results: List of (page_num, title, text_list) tuples.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
-    lines: list[str] = []
+    from app.models.response import JsonlEvent
 
     # Start event
-    lines.append(json.dumps({
-        "type": "start",
-        "format": "docx",
-    }))
+    events: list[JsonlEvent] = [JsonlEvent(
+        type="start",
+        metadata={"format": "docx"}
+    )]
 
     # Chunk text content
-    all_text = "\n".join(
+    all_text: str = "\n".join(
         f"Page {page[0]}: {' '.join(page[2])}"
         for page in results
     )
@@ -177,19 +177,15 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     chunk_size = settings.jsonl_chunk_size
 
     if all_text:
-        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+        chunks: list[str] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({
-                "type": "chunk",
-                "content": chunk,
-            }))
+            events.append(JsonlEvent(type="chunk", markdown_text=chunk))
 
     # End event
-    lines.append(json.dumps({
-        "type": "end",
-        "format": "docx",
-        "total_pages": len(results),
-    }))
+    events.append(JsonlEvent(
+        type="end",
+        metadata={"format": "docx", "total_pages": len(results)}
+    ))
 
-    return "\n".join(lines)
+    return events

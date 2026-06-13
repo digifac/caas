@@ -2,6 +2,7 @@
 
 import io
 import zipfile
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -410,16 +411,12 @@ async def test_convert_odt_to_jsonl(
     )
     assert response.status_code == 200
     
-    # JSONL est retourné comme texte brut, pas comme JSON parseable
-    jsonl_content = response.text
-    
-    # Parse le contenu JSONL ligne par ligne
-    import json
-    lines = jsonl_content.strip().split("\n")
-    assert len(lines) >= 3
+    # JSONL est retourné comme une liste d'objets JSON dans le champ "jsonl"
+    data = response.json()
+    jsonl_data: list[dict[str, Any]] = data["jsonl"]
+    assert len(jsonl_data) >= 3
     
     # Vérifier les types d'événements (start, end, chunk sont valides)
-    for line in lines:
-        event_dict = json.loads(line)
-        event_type = event_dict.get("type", "")
+    for event in jsonl_data:
+        event_type = event.get("type", "")
         assert event_type in ("start", "end", "chunk")

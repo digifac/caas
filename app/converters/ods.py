@@ -12,6 +12,7 @@ import logging
 from odf import opendocument, table, text
 
 from app.config import settings
+from app.models.response import JsonlEvent
 
 
 def _escape_md_table(text: str) -> str:
@@ -230,14 +231,14 @@ def convert_ods_to_json(file_bytes: bytes) -> dict:
     }
 
 
-def convert_ods_to_jsonl(file_bytes: bytes) -> str:
+def convert_ods_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """Convert ODS to JSONL format with chunking.
 
     Args:
         file_bytes: Raw ODS file bytes.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
 
     results = _extract_ods_content(file_bytes)
@@ -245,23 +246,15 @@ def convert_ods_to_jsonl(file_bytes: bytes) -> str:
     return _to_jsonl(results)
 
 
-def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
+def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> list[JsonlEvent]:
     """Convert extraction results to JSONL format with chunking.
 
     Args:
         results: List of (sheet_num, title, cell_values_list_of_lists) tuples.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
-
-    lines = []
-
-    # Start event
-    lines.append(json.dumps({
-        "type": "start",
-        "format": "ods",
-    }))
 
     # Convert to tabular text representation for chunking
     all_text: list[str] = []
@@ -273,20 +266,22 @@ def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
 
     chunk_size = settings.jsonl_chunk_size
 
+    # Start event
+    events: list[JsonlEvent] = [JsonlEvent(
+        type="start",
+        metadata={"format": "ods"}
+    )]
+
     if all_text:
         chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({
-                "type": "chunk",
-                "content": "\n".join(chunk),
-            }))
+            events.append(JsonlEvent(type="chunk", markdown_text="\n".join(chunk)))
 
     # End event
-    lines.append(json.dumps({
-        "type": "end",
-        "format": "ods",
-        "total_sheets": len(results),
-    }))
+    events.append(JsonlEvent(
+        type="end",
+        metadata={"format": "ods", "total_sheets": len(results)}
+    ))
 
-    return "\n".join(lines)
+    return events

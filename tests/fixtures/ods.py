@@ -20,47 +20,66 @@ def sample_ods_bytes() -> bytes:
     doc = OpenDocumentSpreadsheet()  # type: ignore[attr-defined]
     table_elem = table.Table(name="Feuille1")  # type: ignore[attr-defined]
 
-    # Row 1: headers
-    row1 = table.TableRow()  # type: ignore[attr-defined]
-    c1 = table.TableCell()  # type: ignore[attr-defined]
-    p1 = text.P()  # type: ignore[attr-defined]
-    p1.addText("Nom")  # type: ignore[attr-defined]
-    c1.addElement(p1)  # type: ignore[attr-defined]
-    row1.addElement(c1)  # type: ignore[attr-defined]
-    c2 = table.TableCell()  # type: ignore[attr-defined]
-    p2 = text.P()  # type: ignore[attr-defined]
-    p2.addText("Valeur")  # type: ignore[attr-defined]
-    c2.addElement(p2)  # type: ignore[attr-defined]
-    row1.addElement(c2)  # type: ignore[attr-defined]
-    table_elem.addElement(row1)  # type: ignore[attr-defined]
+    # Row 1: headers - plusieurs colonnes pour générer plus de texte
+    headers = ["ID", "Nom", "Description_détaillée", "Prix_unitaire", "Quantité_disponible", "Catégorie_produit"]
+    for col, header in enumerate(headers, 1):
+        c = table.TableCell()  # type: ignore[attr-defined]
+        p = text.P()  # type: ignore[attr-defined]
+        p.addText(header)  # type: ignore[attr-defined]
+        c.addElement(p)  # type: ignore[attr-defined]
+        row1 = table.TableRow()  # type: ignore[attr-defined]
+        row1.addElement(c)  # type: ignore[attr-defined]
+        table_elem.addElement(row1)  # type: ignore[attr-defined]
 
-    # Row 2: data
-    row2 = table.TableRow()  # type: ignore[attr-defined]
-    c3 = table.TableCell()  # type: ignore[attr-defined]
-    p3 = text.P()  # type: ignore[attr-defined]
-    p3.addText("A")  # type: ignore[attr-defined]
-    c3.addElement(p3)  # type: ignore[attr-defined]
-    row2.addElement(c3)  # type: ignore[attr-defined]
-    c4 = table.TableCell()  # type: ignore[attr-defined]
-    p4 = text.P()  # type: ignore[attr-defined]
-    p4.addText("1")  # type: ignore[attr-defined]
-    c4.addElement(p4)  # type: ignore[attr-defined]
-    row2.addElement(c4)  # type: ignore[attr-defined]
-    table_elem.addElement(row2)  # type: ignore[attr-defined]
+    # Descriptions variées pour générer du texte long
+    descriptions = [
+        "Ceci est une description très détaillée pour le produit numéro {i}. Ce texte est suffisamment long pour dépasser la taille de chunk par défaut de 1024 caractères lors de la conversion JSONL.",
+        "Description complète du produit avec beaucoup d'informations techniques et des spécifications détaillées pour tester correctement le chunking.",
+        "Ceci est une description très longue et détaillée pour le produit numéro {i}. Le texte doit être assez long pour générer plusieurs chunks lors de la conversion en format JSONL.",
+    ]
 
-    # Row 3: data
-    row3 = table.TableRow()  # type: ignore[attr-defined]
-    c5 = table.TableCell()  # type: ignore[attr-defined]
-    p5 = text.P()  # type: ignore[attr-defined]
-    p5.addText("B")  # type: ignore[attr-defined]
-    c5.addElement(p5)  # type: ignore[attr-defined]
-    row3.addElement(c5)  # type: ignore[attr-defined]
-    c6 = table.TableCell()  # type: ignore[attr-defined]
-    p6 = text.P()  # type: ignore[attr-defined]
-    p6.addText("2")  # type: ignore[attr-defined]
-    c6.addElement(p6)  # type: ignore[attr-defined]
-    row3.addElement(c6)  # type: ignore[attr-defined]
-    table_elem.addElement(row3)  # type: ignore[attr-defined]
+    # Multiple rows of data to generate chunks
+    for i in range(2, 51):  # Lignes 2 à 50 (49 lignes de données)
+        row = table.TableRow()  # type: ignore[attr-defined]
+        
+        c_id = table.TableCell()  # type: ignore[attr-defined]
+        p_id = text.P()  # type: ignore[attr-defined]
+        p_id.addText(str(i))  # type: ignore[attr-defined]
+        c_id.addElement(p_id)  # type: ignore[attr-defined]
+        row.addElement(c_id)  # type: ignore[attr-defined]
+
+        c_nom = table.TableCell()  # type: ignore[attr-defined]
+        p_nom = text.P()  # type: ignore[attr-defined]
+        p_nom.addText(f"Produit {i}")  # type: ignore[attr-defined]
+        c_nom.addElement(p_nom)  # type: ignore[attr-defined]
+        row.addElement(c_nom)  # type: ignore[attr-defined]
+
+        desc_idx = (i - 2) % len(descriptions)
+        c_desc = table.TableCell()  # type: ignore[attr-defined]
+        p_desc = text.P()  # type: ignore[attr-defined]
+        p_desc.addText(descriptions[desc_idx].format(i=i))  # type: ignore[attr-defined]
+        c_desc.addElement(p_desc)  # type: ignore[attr-defined]
+        row.addElement(c_desc)  # type: ignore[attr-defined]
+
+        c_price = table.TableCell()  # type: ignore[attr-defined]
+        p_price = text.P()  # type: ignore[attr-defined]
+        p_price.addText(str(float(i * 1.5)))  # type: ignore[attr-defined]
+        c_price.addElement(p_price)  # type: ignore[attr-defined]
+        row.addElement(c_price)  # type: ignore[attr-defined]
+
+        c_qty = table.TableCell()  # type: ignore[attr-defined]
+        p_qty = text.P()  # type: ignore[attr-defined]
+        p_qty.addText(str(i * 10))  # type: ignore[attr-defined]
+        c_qty.addElement(p_qty)  # type: ignore[attr-defined]
+        row.addElement(c_qty)  # type: ignore[attr-defined]
+
+        c_cat = table.TableCell()  # type: ignore[attr-defined]
+        p_cat = text.P()  # type: ignore[attr-defined]
+        p_cat.addText(f"Catégorie_{i % 5}")  # type: ignore[attr-defined]
+        c_cat.addElement(p_cat)  # type: ignore[attr-defined]
+        row.addElement(c_cat)  # type: ignore[attr-defined]
+
+        table_elem.addElement(row)  # type: ignore[attr-defined]
 
     doc.spreadsheet.addElement(table_elem)  # type: ignore[attr-defined]
 

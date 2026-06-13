@@ -13,5 +13,6 @@ from .pdf import sample_pdf_bytes  # noqa: F401
 from .pptx import sample_pptx_bytes  # noqa: F401
 from .xlsx import (  # noqa: F401
     sample_xlsx_bytes,
+    sample_xlsx_simple_bytes,
     sample_xlsx_multi_sheet_bytes,
 )

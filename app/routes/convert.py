@@ -123,11 +123,18 @@ def register_convert_routes(app: FastAPI) -> None:
                 )
 
             if result_format == "jsonl":
-                # Convertir en JSONL et retourner comme texte brut (JSONL n'est pas parseable en JSON)
+                # Convertir en JSONL et retourner comme structure JSON avec champ jsonl (liste d'objets)
                 result_content = await convert_worker(content, ext, output_format="jsonl")
-                return Response(
-                    content=result_content["jsonl"],
-                    media_type="text/plain; charset=utf-8",
+                # Le résultat est déjà une liste d'objets dans result_content["jsonl"]
+                jsonl_lines: list[dict[str, Any]] = [event.model_dump() for event in result_content.get("jsonl", [])]  # type: ignore[list-item,assignment]
+                
+                return JSONResponse(
+                    content={
+                        "success": True,
+                        "format": ext,
+                        "jsonl": jsonl_lines,
+                        "size_bytes": len(result_content.get("markdown", "")) if isinstance(result_content.get("markdown"), str) else 0,
+                    },
                     headers={"Content-Disposition": f'attachment; filename="{file.filename}.jsonl"'}
                 )
             elif result_format == "json":

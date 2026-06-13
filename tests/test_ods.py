@@ -306,10 +306,10 @@ class TestOdsApiAsyncFormat:
             assert isinstance(json_data["sheets"], list)
             assert len(json_data["sheets"]) > 0
 
-    @pytest.mark.asyncio
-    async def test_convert_ods_to_jsonl(
-        self, async_client: Any, sample_ods_bytes: bytes
-    ) -> None:
+@pytest.mark.asyncio
+async def test_convert_ods_to_jsonl(
+    async_client: Any, sample_ods_bytes: bytes
+) -> None:
         """Upload valid ODS → JSONL with events."""
         response = await async_client.post(
             "/convert",
@@ -325,10 +325,10 @@ class TestOdsApiAsyncFormat:
         assert response.status_code == 200
         data = response.json()
 
-        jsonl_data: list[str] = data["jsonl"]
+        jsonl_data: list[dict[str, Any]] = data["jsonl"]
         assert len(jsonl_data) >= 3
 
-        # Verify event types
-        event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+        # Verify event types (each item is now a dict with "type" field)
+        event_types: list[str] = [e.get("type", "") for e in jsonl_data]
         assert "start" in event_types
         assert "end" in event_types

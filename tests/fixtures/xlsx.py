@@ -2,6 +2,7 @@
 
 __all__ = [
     "sample_xlsx_bytes",
+    "sample_xlsx_simple_bytes",  # Nouveau fixture pour les tests Markdown simples
     "sample_xlsx_multi_sheet_bytes",
     "sample_xlsx_merged_cells_bytes",
     "sample_xlsx_dates_numbers_bytes",
@@ -21,12 +22,51 @@ def sample_xlsx_bytes() -> bytes:
     wb: Workbook = Workbook()
     ws = wb.active  # type: ignore[misc]
     ws.title = "Feuille1"  # type: ignore[attr-defined]
+    
+    # En-têtes - plusieurs colonnes pour générer plus de texte
+    headers = ["ID", "Nom", "Description_détaillée", "Prix_unitaire", "Quantité_disponible", "Catégorie_produit"]
+    for col, header in enumerate(headers, 1):
+        ws[f"A{col}"] = header  # type: ignore[index]
+    
+    # Données - beaucoup de lignes avec du texte long pour générer des chunks
+    descriptions = [
+        "Ceci est une description très détaillée pour le produit numéro {i}. Ce texte est suffisamment long pour dépasser la taille de chunk par défaut de 1024 caractères lors de la conversion JSONL.",
+        "Description complète du produit avec beaucoup d'informations techniques et des spécifications détaillées pour tester correctement le chunking.",
+        "Ceci est une description très longue et détaillée pour le produit numéro {i}. Le texte doit être assez long pour générer plusieurs chunks lors de la conversion en format JSONL.",
+    ]
+    
+    for i in range(2, 51):  # Lignes 2 à 50 (49 lignes de données)
+        ws[f"A{i}"] = i  # type: ignore[index]
+        ws[f"B{i}"] = f"Produit {i}"  # type: ignore[index]
+        desc_idx = (i - 2) % len(descriptions)
+        ws[f"C{i}"] = descriptions[desc_idx].format(i=i)  # type: ignore[index]
+        ws[f"D{i}"] = float(i * 1.5)  # type: ignore[index]
+        ws[f"E{i}"] = i * 10  # type: ignore[index]
+        ws[f"F{i}"] = f"Catégorie_{i % 5}"  # type: ignore[index]
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
+@pytest.fixture
+def sample_xlsx_simple_bytes() -> bytes:
+    """Generate a minimal XLSX file with simple data for Markdown tests."""
+    from openpyxl import Workbook
+
+    wb: Workbook = Workbook()
+    ws = wb.active
+    ws.title = "Feuille1"
+    
+    # En-têtes simples pour les tests Markdown (ligne 1)
     ws["A1"] = "Nom"  # type: ignore[index]
     ws["B1"] = "Valeur"  # type: ignore[index]
-    ws["A2"] = "A"  # type: ignore[index]
-    ws["B2"] = 1  # type: ignore[index]
-    ws["A3"] = "B"  # type: ignore[index]
-    ws["B3"] = 2  # type: ignore[index]
+    
+    # Données simples (lignes 2 à 6)
+    for i in range(1, 6):
+        ws[f"A{i+1}"] = f"Produit {i}"  # type: ignore[index]
+        ws[f"B{i+1}"] = i  # type: ignore[index]
 
     buf = io.BytesIO()
     wb.save(buf)

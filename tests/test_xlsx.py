@@ -97,14 +97,14 @@ class TestSanitizeUrl:
 
 class TestConvertXlsxToMd:
     def test_simple_sheet_conversion(
-        self, sample_xlsx_bytes: bytes
+        self, sample_xlsx_simple_bytes: bytes
     ) -> None:
-        result = convert_xlsx_to_md(sample_xlsx_bytes)
+        result = convert_xlsx_to_md(sample_xlsx_simple_bytes)
         assert "# Feuille1" in result
         assert "| Nom | Valeur |" in result
         assert "| --- | --- |" in result
-        assert "| A | 1 |" in result
-        assert "| B | 2 |" in result
+        assert "| Produit 1 | 1 |" in result
+        assert "| Produit 2 | 2 |" in result
 
     def test_multi_sheet_conversion(
         self, sample_xlsx_multi_sheet_bytes: bytes
@@ -276,11 +276,10 @@ class TestXlsxApiIntegration:
         assert "# Résumé" in data["markdown"]
 
 
-class TestXlsxApiIntegrationJson:
-    @pytest.mark.asyncio
-    async def test_convert_xlsx_to_json(
-        self, async_client: Any, sample_xlsx_bytes: bytes
-    ) -> None:
+@pytest.mark.asyncio
+async def test_convert_xlsx_to_json(
+    async_client: Any, sample_xlsx_bytes: bytes
+) -> None:
         """Upload valid XLSX → JSON with sheets."""
         response = await async_client.post(
             "/convert",
@@ -305,10 +304,10 @@ class TestXlsxApiIntegrationJson:
             assert isinstance(json_data["sheets"], list)
             assert len(json_data["sheets"]) > 0
 
-    @pytest.mark.asyncio
-    async def test_convert_xlsx_to_jsonl(
-        self, async_client: Any, sample_xlsx_bytes: bytes
-    ) -> None:
+@pytest.mark.asyncio
+async def test_convert_xlsx_to_jsonl(
+    async_client: Any, sample_xlsx_bytes: bytes
+) -> None:
         """Upload valid XLSX → JSONL with events."""
         response = await async_client.post(
             "/convert",
@@ -324,20 +323,19 @@ class TestXlsxApiIntegrationJson:
         assert response.status_code == 200
         data = response.json()
 
-        jsonl_data: list[str] = data["jsonl"]
+        jsonl_data: list[dict[str, Any]] = data["jsonl"]
         assert len(jsonl_data) >= 3
 
-        # Verify event types
-        event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+        # Verify event types (each item is now a dict with "type" field)
+        event_types: list[str] = [e.get("type", "") for e in jsonl_data]
         assert "start" in event_types
         assert "end" in event_types
 
 
-class TestXlsxApiIntegrationStreaming:
-    @pytest.mark.asyncio
-    async def test_convert_xlsx_streaming(
-        self, async_client: Any, sample_xlsx_bytes: bytes
-    ) -> None:
+@pytest.mark.asyncio
+async def test_convert_xlsx_streaming(
+    async_client: Any, sample_xlsx_bytes: bytes
+) -> None:
         """Upload valid XLSX → JSONL with events."""
         response = await async_client.post(
             "/convert",
@@ -353,10 +351,10 @@ class TestXlsxApiIntegrationStreaming:
         assert response.status_code == 200
         data = response.json()
 
-        jsonl_data: list[str] = data["jsonl"]
+        jsonl_data: list[dict[str, Any]] = data["jsonl"]
         assert len(jsonl_data) >= 3
 
-        # Verify event types
-        event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+        # Verify event types (each item is now a dict with "type" field)
+        event_types: list[str] = [e.get("type", "") for e in jsonl_data]
         assert "start" in event_types
         assert "end" in event_types

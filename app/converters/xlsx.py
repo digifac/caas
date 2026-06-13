@@ -12,6 +12,7 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 from app.config import settings
+from app.models.response import JsonlEvent
 
 logger = logging.getLogger(__name__)
 
@@ -106,13 +107,17 @@ def _get_merged_cell_value(ws, row: int, col: int) -> str:
     """
     # In read_only mode, merged_cells is not available
     # We skip merged cell handling for better performance
-    if hasattr(ws, "merged_cells") and ws.merged_cells:
-        for merged_range in ws.merged_cells.ranges:
-            if (row, col) in merged_range:
-                top_cell = ws.cell(
-                    row=merged_range.min_row, column=merged_range.min_col
-                )
-                return _cell_to_string(top_cell)
+    try:
+        if hasattr(ws, "merged_cells") and ws.merged_cells:
+            for merged_range in ws.merged_cells.ranges:
+                if (row, col) in merged_range:
+                    top_cell = ws.cell(
+                        row=merged_range.min_row, column=merged_range.min_col
+                    )
+                    return _cell_to_string(top_cell)
+    except AttributeError as e:
+        # ReadOnlyWorksheet doesn't have merged_cells attribute
+        pass
     return _cell_to_string(ws.cell(row=row, column=col))
 
 
@@ -215,8 +220,13 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[s
     Returns:
         List of tuples (sheet_num, title, cell_values_list_of_lists).
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    print(f"[DEBUG] Starting _extract_xlsx_content with {len(file_bytes)} bytes", flush=True)
+    
     try:
         wb = load_workbook(io.BytesIO(file_bytes), read_only=True, data_only=True)
+        print(f"[DEBUG] Loaded workbook with {len(wb.worksheets)} worksheets", flush=True)
     except InvalidFileException as e:
         logger.error("Invalid XLSX file: %s", e)
         raise
@@ -224,24 +234,50 @@ def _extract_xlsx_content(file_bytes: bytes) -> list[tuple[int, str, list[list[s
     results: list[tuple[int, str, list[list[str]]]] = []
     sheet_num = 0
 
+    print(f"[DEBUG] Starting loop over worksheets", flush=True)
     for ws in wb.worksheets:
+        print(f"[DEBUG] Processing sheet '{ws.title}'", flush=True)
         try:
             # Collect all values into a 2D array
             rows = []
-            for row_idx in range(1, ws.max_row + 1):
+            max_row = ws.max_row if hasattr(ws, 'max_row') else 0
+            max_col = ws.max_column if hasattr(ws, 'max_column') else 0
+            print(f"[DEBUG] Sheet '{ws.title}': max_row={max_row}, max_col={max_col}", flush=True)
+            
+            for row_idx in range(1, max_row + 1):
+                print(f"[DEBUG] Processing row {row_idx}", flush=True)
                 row_values = []
-                for col_idx in range(1, ws.max_column + 1):
-                    value = _get_merged_cell_value(ws, row_idx, col_idx)
-                    row_values.append(value)
+                max_col_for_row = ws.max_column if hasattr(ws, 'max_column') else 0
+                for col_idx in range(1, max_col_for_row + 1):
+                    try:
+                        value = _get_merged_cell_value(ws, row_idx, col_idx)
+                        print(f"[DEBUG] Cell ({row_idx},{col_idx}): {value}", flush=True)
+                        row_values.append(value)
+                    except Exception as e:
+                        print(f"[ERROR] Error reading cell ({row_idx},{col_idx}): {e}", flush=True)
                 rows.append(row_values)
 
-            sheet_num += 1
-            _results: list[tuple[int, str, list[list[str]]]] = []
-            _results.append((sheet_num, html.escape(ws.title), rows))
+            try:
+                sheet_num += 1
+                print(f"[DEBUG] Sheet '{ws.title}' has {len(rows)} rows", flush=True)
+                escaped_title = html.escape(ws.title)
+                print(f"[DEBUG] Escaped title: {escaped_title}", flush=True)
+                result_tuple = (sheet_num, escaped_title, rows)
+                results.append(result_tuple)
+                print(f"[DEBUG] Successfully appended! len(results)={len(results)}", flush=True)
+            except Exception as e:
+                import traceback
+                print(f"[ERROR] Error saving sheet '{ws.title}': {e}", flush=True)
+                traceback.print_exc()
 
         except Exception as e:
-            logger.warning("Error extracting sheet '%s': %s", ws.title, e)
+            print(f"[ERROR] Error in try block for sheet '{ws.title}': {e}", flush=True)
+            import traceback
+            traceback.print_exc()
 
+    print(f"[DEBUG] Before close, len(results)={len(results)}", flush=True)
+    for i, r in enumerate(results):
+        print(f"[DEBUG] Result {i}: sheet_num={r[0]}, title='{r[1]}', rows={len(r[2])}", flush=True)
     wb.close()
     return results  # type: ignore[return-value]
 
@@ -277,14 +313,14 @@ def convert_xlsx_to_json(file_bytes: bytes) -> dict:
     }
 
 
-def convert_xlsx_to_jsonl(file_bytes: bytes) -> str:
+def convert_xlsx_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """Convert XLSX to JSONL format with chunking.
 
     Args:
         file_bytes: Raw XLSX file bytes.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
 
     results = _extract_xlsx_content(file_bytes)
@@ -292,23 +328,15 @@ def convert_xlsx_to_jsonl(file_bytes: bytes) -> str:
     return _to_jsonl(results)
 
 
-def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
+def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> list[JsonlEvent]:
     """Convert extraction results to JSONL format with chunking.
 
     Args:
         results: List of (sheet_num, title, cell_values_list_of_lists) tuples.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
-
-    lines = []
-
-    # Start event
-    lines.append(json.dumps({
-        "type": "start",
-        "format": "xlsx",
-    }))
 
     # Convert to tabular text representation for chunking
     all_text: list[str] = []
@@ -320,20 +348,22 @@ def _to_jsonl(results: list[tuple[int, str, list[list[str]]]]) -> str:
 
     chunk_size = settings.jsonl_chunk_size
 
+    # Start event
+    events: list[JsonlEvent] = [JsonlEvent(
+        type="start",
+        metadata={"format": "xlsx"}
+    )]
+
     if all_text:
         chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({
-                "type": "chunk",
-                "content": "\n".join(chunk),
-            }))
+            events.append(JsonlEvent(type="chunk", markdown_text="\n".join(chunk)))
 
     # End event
-    lines.append(json.dumps({
-        "type": "end",
-        "format": "xlsx",
-        "total_sheets": len(results),
-    }))
+    events.append(JsonlEvent(
+        type="end",
+        metadata={"format": "xlsx", "total_sheets": len(results)}
+    ))
 
-    return "\n".join(lines)
+    return events

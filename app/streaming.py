@@ -93,9 +93,8 @@ async def _convert_docx_stream(file_bytes: bytes, format: str = "markdown") -> A
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_docx_to_jsonl, file_bytes)
-        for line in result.split("\n"):
-            if line.strip():
-                yield _sse_event(line)
+        for event in result:
+            yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_docx_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -124,9 +123,8 @@ async def _convert_odt_stream(file_bytes: bytes, format: str = "markdown") -> As
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_odt_to_jsonl, file_bytes)
-        for line in result.split("\n"):
-            if line.strip():
-                yield _sse_event(line)
+        for event in result:
+            yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_odt_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -155,9 +153,8 @@ async def _convert_html_stream(file_bytes: bytes, format: str = "markdown") -> A
             await asyncio.sleep(0)
     elif format == "jsonl":
         result = await asyncio.to_thread(convert_html_to_jsonl, file_bytes)
-        for line in result.split("\n"):
-            if line.strip():
-                yield _sse_event(line)
+        for event in result:
+            yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_html_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -185,10 +182,13 @@ async def _convert_xlsx_stream(file_bytes: bytes, format: str = "markdown") -> A
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
+        from app.models.response import JsonlEvent
+        
         result = await asyncio.to_thread(convert_xlsx_to_jsonl, file_bytes)
-        for line in result.split("\n"):
-            if line.strip():
-                yield _sse_event(line)
+        # Result is now a list of JsonlEvent objects
+        for event in result:
+            if isinstance(event, JsonlEvent):
+                yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_xlsx_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -216,10 +216,13 @@ async def _convert_pptx_stream(file_bytes: bytes, format: str = "markdown") -> A
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
+        from app.models.response import JsonlEvent
+        
         result = await asyncio.to_thread(convert_pptx_to_jsonl, file_bytes)
-        for line in result.split("\n"):
-            if line.strip():
-                yield _sse_event(line)
+        # Result is now a list of JsonlEvent objects
+        for event in result:
+            if isinstance(event, JsonlEvent):
+                yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_pptx_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -247,10 +250,13 @@ async def _convert_ods_stream(file_bytes: bytes, format: str = "markdown") -> As
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
+        from app.models.response import JsonlEvent
+        
         result = await asyncio.to_thread(convert_ods_to_jsonl, file_bytes)
-        for line in result.split("\n"):
-            if line.strip():
-                yield _sse_event(line)
+        # Result is now a list of JsonlEvent objects
+        for event in result:
+            if isinstance(event, JsonlEvent):
+                yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_ods_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size
@@ -278,9 +284,13 @@ async def _convert_odp_stream(file_bytes: bytes, format: str = "markdown") -> As
             yield _sse_event(chunk)
             await asyncio.sleep(0)
     elif format == "jsonl":
+        from app.models.response import JsonlEvent
+        
         result = await asyncio.to_thread(convert_odp_to_jsonl, file_bytes)
-        for line in result:
-            yield _sse_event(line)
+        # Result is now a list of JsonlEvent objects
+        for event in result:
+            if isinstance(event, JsonlEvent):
+                yield _sse_event(event.model_dump_json())
     else:
         markdown = await asyncio.to_thread(convert_odp_to_md, file_bytes)
         chunk_size = settings.streaming_chunk_size

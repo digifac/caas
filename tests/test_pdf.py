@@ -3,6 +3,7 @@
 import asyncio
 import io
 import re
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -270,18 +271,17 @@ async def test_convert_pdf_to_jsonl_structure(
     assert "jsonl" in data
     assert data["jsonl"] is not None
     
-    jsonl_data = data["jsonl"]
-    assert isinstance(jsonl_data, list)
+    jsonl_data: list[dict[str, Any]] = data["jsonl"]
     # Should have start, chunk, and end events
-    assert len(jsonl_data) >= 3  # type: ignore[arg-type]
+    assert len(jsonl_data) >= 3
     
     # First event should be "start"
-    first_event: str = jsonl_data[0]  # type: ignore[index]
-    assert first_event.startswith('{"type": "start"')  # type: ignore[attr-defined]
+    first_event: dict[str, Any] = jsonl_data[0]
+    assert first_event.get("type") == "start"
     
     # Last event should be "end"
-    last_event: str = jsonl_data[-1]  # type: ignore[index]
-    assert last_event.startswith('{"type": "end"')  # type: ignore[attr-defined]
+    last_event: dict[str, Any] = jsonl_data[-1]
+    assert last_event.get("type") == "end"
 
 
 @pytest.mark.anyio
@@ -315,11 +315,11 @@ async def test_convert_pdf_to_jsonl_multi_page(
     assert response.status_code == 200
     data = response.json()
     
-    jsonl_data = data["jsonl"]
+    jsonl_data: list[dict[str, Any]] = data["jsonl"]
     # Should have at least start, one chunk per page, and end
     assert len(jsonl_data) >= 3
     
-    # Verify event types
-    event_types = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]
+    # Verify event types (each item is now a dict with "type" field)
+    event_types = [e.get("type", "") for e in jsonl_data]
     assert "start" in event_types
     assert "end" in event_types

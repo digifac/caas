@@ -321,11 +321,19 @@ async def test_convert_pptx_to_jsonl(
     assert response.status_code == 200
     data = response.json()
     
-    jsonl_data: list[str] = data["jsonl"]
-    assert isinstance(jsonl_data, list)
+    jsonl_data: list[dict[str, Any]] = data["jsonl"]
     assert len(jsonl_data) >= 3
     
-    # Verify event types
-    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]  # type: ignore[misc]
+    # Verify event types (each item is now a dict with "type" field)
+    event_types: list[str] = [e.get("type", "") for e in jsonl_data]
     assert "start" in event_types
     assert "end" in event_types
+    
+    # Verify that events have proper structure (not JSON strings)
+    start_event = next((e for e in jsonl_data if e.get("type") == "start"), None)
+    end_event = next((e for e in jsonl_data if e.get("type") == "end"), None)
+    
+    assert start_event is not None, "Missing start event"
+    assert end_event is not None, "Missing end event"
+    assert isinstance(start_event["metadata"], dict), "Start event metadata should be a dict"
+    assert isinstance(end_event["metadata"], dict), "End event metadata should be a dict"

@@ -204,14 +204,14 @@ def convert_odt_to_json(file_bytes: bytes) -> dict:
     }
 
 
-def convert_odt_to_jsonl(file_bytes: bytes) -> str:
+def convert_odt_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """Convert ODT to JSONL format with chunking.
 
     Args:
         file_bytes: Raw ODT file bytes.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
 
     results = _extract_odt_content(file_bytes)
@@ -219,24 +219,22 @@ def convert_odt_to_jsonl(file_bytes: bytes) -> str:
     return _to_jsonl(results)
 
 
-def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
     """Convert extraction results to JSONL format with chunking.
 
     Args:
         results: List of (page_num, title, text_list) tuples.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
-    import json
-
-    lines = []
+    from app.models.response import JsonlEvent
 
     # Start event
-    lines.append(json.dumps({
-        "type": "start",
-        "format": "odt",
-    }))
+    events: list[JsonlEvent] = [JsonlEvent(
+        type="start",
+        metadata={"format": "odt"}
+    )]
 
     # Convert to text representation for chunking
     all_text = []
@@ -250,16 +248,12 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({
-                "type": "chunk",
-                "content": "\n".join(chunk),
-            }))
+            events.append(JsonlEvent(type="chunk", markdown_text="\n".join(chunk)))
 
     # End event
-    lines.append(json.dumps({
-        "type": "end",
-        "format": "odt",
-        "total_pages": len(results),
-    }))
+    events.append(JsonlEvent(
+        type="end",
+        metadata={"format": "odt", "total_pages": len(results)}
+    ))
 
-    return "\n".join(lines)
+    return events

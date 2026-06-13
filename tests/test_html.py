@@ -1,6 +1,7 @@
 """Tests for HTML to Markdown conversion."""
 
 import asyncio
+from typing import Any
 
 import httpx
 import pytest
@@ -443,11 +444,10 @@ async def test_convert_html_to_jsonl(
     assert response.status_code == 200
     data = response.json()
     
-    jsonl_data = data["jsonl"]
-    assert isinstance(jsonl_data, list)
-    assert len(list(jsonl_data)) >= 3  # type: ignore[arg-type]
+    jsonl_data: list[dict[str, Any]] = data["jsonl"]
+    assert len(jsonl_data) >= 3
     
-    # Verify event types
-    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data if isinstance(e, str)]  # type: ignore[assignment]
+    # Verify event types (each item is now a dict with "type" field)
+    event_types: list[str] = [e.get("type", "") for e in jsonl_data]
     assert "start" in event_types
     assert "end" in event_types

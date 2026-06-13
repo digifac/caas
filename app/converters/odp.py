@@ -442,38 +442,36 @@ def convert_odp_to_json(file_bytes: bytes) -> dict[str, Any]:
     }
 
 
-def convert_odp_to_jsonl(file_bytes: bytes) -> str:
+def convert_odp_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """Convert ODP to JSONL format with chunking.
 
     Args:
         file_bytes: Raw ODP file bytes.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
     results = _extract_odp_content(file_bytes)
 
     return _to_jsonl(results)
 
 
-def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
     """Convert extraction results to JSONL format with chunking.
 
     Args:
         results: List of (slide_num, title, text_lines) tuples.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
-    import json
-
-    lines: list[str] = []
+    from app.models.response import JsonlEvent
 
     # Start event
-    lines.append(json.dumps({
-        "type": "start",
-        "format": "odp",
-    }))
+    events: list[JsonlEvent] = [JsonlEvent(
+        type="start",
+        metadata={"format": "odp"}
+    )]
 
     # Convert to text representation for chunking
     all_text: list[str] = []
@@ -487,16 +485,12 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
         chunks: list[list[str]] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({
-                "type": "chunk",
-                "content": "\n".join(chunk),
-            }))
+            events.append(JsonlEvent(type="chunk", markdown_text="\n".join(chunk)))
 
     # End event
-    lines.append(json.dumps({
-        "type": "end",
-        "format": "odp",
-        "total_slides": len(results),
-    }))
+    events.append(JsonlEvent(
+        type="end",
+        metadata={"format": "odp", "total_slides": len(results)}
+    ))
 
     return "\n".join(lines)

@@ -470,14 +470,14 @@ def convert_html_to_json(file_bytes: bytes) -> dict[str, Any]:  # type: ignore[m
     }
 
 
-def convert_html_to_jsonl(file_bytes: bytes) -> str:
+def convert_html_to_jsonl(file_bytes: bytes) -> list[JsonlEvent]:
     """Convert HTML to JSONL format with chunking.
 
     Args:
         file_bytes: Raw HTML file bytes.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
 
     results = _extract_html_content(file_bytes)
@@ -485,24 +485,22 @@ def convert_html_to_jsonl(file_bytes: bytes) -> str:
     return _to_jsonl(results)
 
 
-def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
+def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> list[JsonlEvent]:
     """Convert extraction results to JSONL format with chunking.
 
     Args:
         results: List of (section_num, title, text_lines) tuples.
 
     Returns:
-        JSONL string with start, chunk, and end events.
+        List of JsonlEvent objects with start, chunk, and end events.
     """
-    import json
-
-    lines = []
+    from app.models.response import JsonlEvent
 
     # Start event
-    lines.append(json.dumps({  # type: ignore[dict-item]
-        "type": "start",
-        "format": "html",
-    }))
+    events: list[JsonlEvent] = [JsonlEvent(
+        type="start",
+        metadata={"format": "html"}
+    )]
 
     # Convert to text representation for chunking
     all_text: list[str] = []
@@ -513,20 +511,15 @@ def _to_jsonl(results: list[tuple[int, str, list[str]]]) -> str:
     chunk_size = settings.jsonl_chunk_size
 
     if all_text:
-        chunks = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
+        chunks: list[str] = [all_text[i:i + chunk_size] for i in range(0, len(all_text), chunk_size)]
 
         for chunk in chunks:
-            lines.append(json.dumps({  # type: ignore[dict-item]
-                "type": "chunk",
-                "format": "html",
-                "data": chunk,
-            }))
+            events.append(JsonlEvent(type="chunk", markdown_text=chunk))
 
     # End event
-    lines.append(json.dumps({  # type: ignore[dict-item]
-        "type": "end",
-        "format": "html",
-        "total_sections": len(results),
-    }))
+    events.append(JsonlEvent(
+        type="end",
+        metadata={"format": "html", "total_sections": len(results)}
+    ))
 
     return "\n".join(lines)  # type: ignore[list-item]

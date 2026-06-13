@@ -288,11 +288,11 @@ async def test_convert_docx_to_jsonl(
     assert response.status_code == 200
     data = response.json()
     
-    jsonl_data = data["jsonl"]
+    jsonl_data: list[dict[str, Any]] = data["jsonl"]
     assert isinstance(jsonl_data, list)
-    assert len(jsonl_data) >= 3  # type: ignore[arg-type]
+    assert len(jsonl_data) >= 3
     
-    # Verify event types
-    event_types: list[str] = [e.split('{"type": ')[1].split('}')[0] for e in jsonl_data]  # type: ignore[list-item]
+    # Verify event types (each item is now a dict with "type" field)
+    event_types: list[str] = [e.get("type", "") for e in jsonl_data]
     assert "start" in event_types
     assert "end" in event_types
